@@ -3,7 +3,7 @@
 
 ## Install
 
-Requires [libslirp](https://github.com/rd235/libslirp).
+Requires [libslirp](https://github.com/rd235/libslirp)(GPL2).
 
 ```console
 $ autoreconf -if
