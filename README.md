@@ -13,6 +13,8 @@ $ make
 
 Or just `cc -o slirp4netns *.c -lslirp -lpthread`
 
+Note: The files under [`qemu`](./qemu) and [`rd235_libslirp`] directories will soon replace libslirp.
+
 ### Static binary
 You can also build a static binary by running `./configure LDFLAGS=-static`.
 
@@ -42,3 +44,8 @@ Terminal 1:
 unshared$ ping 10.0.2.2
 unshared$ curl https://example.com
 ```
+
+## Acknowledgement
+
+* The files under [`qemu`](./qemu) directory were forked from [QEMU](https://github.com/qemu/qemu/commit/c447afd5783b9237fa51b7a85777007d8d568bfc).
+* The files under [`rd235_libslirp`](./rd235_libslirp) directory were forked from [rd235/libslirp](https://github.com/rd235/libslirp/commit/37fd650ad7fba7eb0360b1e1d0abf69cac6eb403).
