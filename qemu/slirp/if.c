@@ -5,9 +5,7 @@
  * terms and conditions of the copyright.
  */
 
-#include "qemu/osdep.h"
 #include "slirp.h"
-#include "qemu/timer.h"
 
 static void
 ifs_insque(struct mbuf *ifm, struct mbuf *ifmhead)

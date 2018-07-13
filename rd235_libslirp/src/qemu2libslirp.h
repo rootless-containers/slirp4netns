@@ -32,7 +32,7 @@ typedef int bool;
 		    const typeof(((type *) 0)->member) *__mptr = (ptr);     \
 		    (type *) ((char *) __mptr - offsetof(type, member));})
 #endif
-#define             g_assert_not_reached()
+#define             g_assert_not_reached() abort()
 #define             g_warning(...)
 #define             g_malloc(X) malloc(X)
 #define             g_malloc0(X) calloc(1,(X))
@@ -41,9 +41,6 @@ typedef int bool;
 #define             g_free(X) free(X)
 #define             g_strdup(X) ((X) ? strdup(X) : strdup(""))
 
-#ifndef ARRAY_SIZE
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
-#endif
 #ifndef DIV_ROUND_UP
 #define DIV_ROUND_UP(n,d) (((n) + (d) - 1) / (d))
 #endif
@@ -143,11 +140,6 @@ static inline void g_array_append_val(GArray *p, struct pollfd elem) {
 		fprintf (stderr, "\n"); \
 		})
 
-#define monitor_printf(mon, format, ...) ({ \
-		fprintf (stderr, format, ## __VA_ARGS__); \
-		fprintf (stderr, "\n"); \
-		})
-
 static inline void qemu_set_nonblock(int fd)
 {
 	int f;
@@ -180,23 +172,5 @@ static inline void g_rand_free (GRand *rand_) {
 }
 
 #define qemu_chr_fe_write_all(...)
-#define qemu_add_child_watch(...)
-
-typedef void QEMUFile;
-
-#define qemu_put_byte(...) ((void) 0)
-#define qemu_put_sbyte(...) ((void) 0)
-#define qemu_put_be16(...) ((void) 0)
-#define qemu_put_sbe16(...) ((void) 0)
-#define qemu_put_be32(...) ((void) 0)
-#define qemu_put_sbe32(...) ((void) 0)
-#define qemu_put_buffer(...) ((void) 0)
-#define qemu_get_byte(...) 0
-#define qemu_get_sbyte(...) 0
-#define qemu_get_be16(...) 0
-#define qemu_get_sbe16(...) 0
-#define qemu_get_be32(...) 0
-#define qemu_get_sbe32(...) 0
-#define qemu_get_buffer(...) ((void) 0)
 
 #endif

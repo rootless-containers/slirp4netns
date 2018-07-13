@@ -228,11 +228,9 @@ tcp_input(struct mbuf *m, int iphlen, struct socket *inso, unsigned short af)
 	int todrop, acked, ourfinisacked, needoutput = 0;
 	int iss = 0;
 	u_long tiwin;
-	int ret;
 	struct sockaddr_storage lhost, fhost;
 	struct sockaddr_in *lhost4, *fhost4;
 	struct sockaddr_in6 *lhost6, *fhost6;
-    struct ex_list *ex_ptr;
     Slirp *slirp;
 
 	DEBUG_CALL("tcp_input");

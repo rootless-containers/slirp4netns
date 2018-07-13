@@ -1,8 +1,6 @@
 #ifndef LIBSLIRP_H
 #define LIBSLIRP_H
 
-#include "qemu-common.h"
-
 typedef struct Slirp Slirp;
 
 int get_dns_addr(struct in_addr *pdns_addr);
@@ -37,7 +35,7 @@ int slirp_remove_hostfwd(Slirp *slirp, int is_udp,
 
 /* Changed from QEMU: slirp_add_exec is removed */
 
-void slirp_connection_info(Slirp *slirp, Monitor *mon);
+/* Changed from QEMU: slirp_connection_info is removed */
 
 void slirp_socket_recv(Slirp *slirp, struct in_addr guest_addr,
                        int guest_port, const uint8_t *buf, int size);

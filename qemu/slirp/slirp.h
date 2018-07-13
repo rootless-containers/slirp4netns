@@ -74,8 +74,6 @@ typedef char *caddr_t;
 #include "debug.h"
 
 #include "qemu/queue.h"
-#include "qemu/sockets.h"
-#include "net/eth.h"
 
 #include "libslirp.h"
 #include "ip.h"
@@ -225,9 +223,6 @@ extern Slirp *slirp_instance;
 #endif
 
 void if_start(Slirp *);
-
-/* ncsi.c */
-void ncsi_input(Slirp *slirp, const uint8_t *pkt, int pkt_len);
 
 #ifndef _WIN32
 #include <netdb.h>

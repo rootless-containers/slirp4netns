@@ -129,6 +129,7 @@ static inline socklen_t sockaddr_size(struct sockaddr_storage *a)
     default:
         g_assert_not_reached();
     }
+    return -1;
 }
 
 struct socket *solookup(struct socket **, struct socket *,

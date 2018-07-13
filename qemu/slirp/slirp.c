@@ -22,12 +22,7 @@
  * THE SOFTWARE.
  */
 #include "qemu/osdep.h"
-#include "qemu-common.h"
-#include "qemu/timer.h"
-#include "qemu/error-report.h"
 #include "slirp.h"
-#include "hw/hw.h"
-#include "qemu/cutils.h"
 
 #ifndef _WIN32
 #include <net/if.h>
@@ -769,7 +764,6 @@ static void arp_input(Slirp *slirp, const uint8_t *pkt, int pkt_len)
     struct ethhdr *reh = (struct ethhdr *)arp_reply;
     struct slirp_arphdr *rah = (struct slirp_arphdr *)(arp_reply + ETH_HLEN);
     int ar_op;
-    struct ex_list *ex_ptr;
 
     if (!slirp->in_enabled) {
         return;
@@ -1097,127 +1091,4 @@ void slirp_socket_recv(Slirp *slirp, struct in_addr guest_addr, int guest_port,
 
     if (ret > 0)
         tcp_output(sototcpcb(so));
-}
-
-static int slirp_tcp_post_load(void *opaque, int version)
-{
-    tcp_template((struct tcpcb *)opaque);
-
-    return 0;
-}
-
-
-/* The sbuf has a pair of pointers that are migrated as offsets;
- * we calculate the offsets and restore the pointers using
- * pre_save/post_load on a tmp structure.
- */
-struct sbuf_tmp {
-    struct sbuf *parent;
-    uint32_t roff, woff;
-};
-
-static int sbuf_tmp_pre_save(void *opaque)
-{
-    struct sbuf_tmp *tmp = opaque;
-    tmp->woff = tmp->parent->sb_wptr - tmp->parent->sb_data;
-    tmp->roff = tmp->parent->sb_rptr - tmp->parent->sb_data;
-
-    return 0;
-}
-
-static int sbuf_tmp_post_load(void *opaque, int version)
-{
-    struct sbuf_tmp *tmp = opaque;
-    uint32_t requested_len = tmp->parent->sb_datalen;
-
-    /* Allocate the buffer space used by the field after the tmp */
-    sbreserve(tmp->parent, tmp->parent->sb_datalen);
-
-    if (tmp->parent->sb_datalen != requested_len) {
-        return -ENOMEM;
-    }
-    if (tmp->woff >= requested_len ||
-        tmp->roff >= requested_len) {
-        error_report("invalid sbuf offsets r/w=%u/%u len=%u",
-                     tmp->roff, tmp->woff, requested_len);
-        return -EINVAL;
-    }
-
-    tmp->parent->sb_wptr = tmp->parent->sb_data + tmp->woff;
-    tmp->parent->sb_rptr = tmp->parent->sb_data + tmp->roff;
-
-    return 0;
-}
-
-
-static bool slirp_older_than_v4(void *opaque, int version_id)
-{
-    return version_id < 4;
-}
-
-static bool slirp_family_inet(void *opaque, int version_id)
-{
-    union slirp_sockaddr *ssa = (union slirp_sockaddr *)opaque;
-    return ssa->ss.ss_family == AF_INET;
-}
-
-static int slirp_socket_pre_load(void *opaque)
-{
-    struct socket *so = opaque;
-    if (tcp_attach(so) < 0) {
-        return -ENOMEM;
-    }
-    /* Older versions don't load these fields */
-    so->so_ffamily = AF_INET;
-    so->so_lfamily = AF_INET;
-    return 0;
-}
-
-/* The OS provided ss_family field isn't that portable; it's size
- * and type varies (16/8 bit, signed, unsigned)
- * and the values it contains aren't fully portable.
- */
-typedef struct SS_FamilyTmpStruct {
-    union slirp_sockaddr    *parent;
-    uint16_t                 portable_family;
-} SS_FamilyTmpStruct;
-
-#define SS_FAMILY_MIG_IPV4   2  /* Linux, BSD, Win... */
-#define SS_FAMILY_MIG_IPV6  10  /* Linux */
-#define SS_FAMILY_MIG_OTHER 0xffff
-
-static int ss_family_pre_save(void *opaque)
-{
-    SS_FamilyTmpStruct *tss = opaque;
-
-    tss->portable_family = SS_FAMILY_MIG_OTHER;
-
-    if (tss->parent->ss.ss_family == AF_INET) {
-        tss->portable_family = SS_FAMILY_MIG_IPV4;
-    } else if (tss->parent->ss.ss_family == AF_INET6) {
-        tss->portable_family = SS_FAMILY_MIG_IPV6;
-    }
-
-    return 0;
-}
-
-static int ss_family_post_load(void *opaque, int version_id)
-{
-    SS_FamilyTmpStruct *tss = opaque;
-
-    switch (tss->portable_family) {
-    case SS_FAMILY_MIG_IPV4:
-        tss->parent->ss.ss_family = AF_INET;
-        break;
-    case SS_FAMILY_MIG_IPV6:
-    case 23: /* compatibility: AF_INET6 from mingw */
-    case 28: /* compatibility: AF_INET6 from FreeBSD sys/socket.h */
-        tss->parent->ss.ss_family = AF_INET6;
-        break;
-    default:
-        error_report("invalid ss_family type %x", tss->portable_family);
-        return -EINVAL;
-    }
-
-    return 0;
 }

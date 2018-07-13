@@ -6,8 +6,6 @@
 #ifndef SLIRP_IP6_H
 #define SLIRP_IP6_H
 
-#include "net/eth.h"
-
 #define ALLNODES_MULTICAST  { .s6_addr = \
                             { 0xff, 0x02, 0x00, 0x00,\
                             0x00, 0x00, 0x00, 0x00,\

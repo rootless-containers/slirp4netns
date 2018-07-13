@@ -6,7 +6,6 @@
  */
 
 #include "qemu/osdep.h"
-#include "qemu-common.h"
 #include "slirp.h"
 #include "ip_icmp.h"
 #ifdef __sun__
