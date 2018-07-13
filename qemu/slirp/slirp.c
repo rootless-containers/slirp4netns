@@ -25,8 +25,6 @@
 #include "qemu-common.h"
 #include "qemu/timer.h"
 #include "qemu/error-report.h"
-#include "chardev/char-fe.h"
-#include "migration/register.h"
 #include "slirp.h"
 #include "hw/hw.h"
 #include "qemu/cutils.h"
@@ -270,14 +268,6 @@ static void slirp_init_once(void)
     loopback_mask = htonl(IN_CLASSA_NET);
 }
 
-static void slirp_state_save(QEMUFile *f, void *opaque);
-static int slirp_state_load(QEMUFile *f, void *opaque, int version_id);
-
-static SaveVMHandlers savevm_slirp_state = {
-    .save_state = slirp_state_save,
-    .load_state = slirp_state_load,
-};
-
 Slirp *slirp_init(int restricted, bool in_enabled, struct in_addr vnetwork,
                   struct in_addr vnetmask, struct in_addr vhost,
                   bool in6_enabled,
@@ -328,8 +318,6 @@ Slirp *slirp_init(int restricted, bool in_enabled, struct in_addr vnetwork,
 
     slirp->opaque = opaque;
 
-    register_savevm_live(NULL, "slirp", 0, 4, &savevm_slirp_state, slirp);
-
     QTAILQ_INSERT_TAIL(&slirp_instances, slirp, entry);
 
     return slirp;
@@ -338,8 +326,6 @@ Slirp *slirp_init(int restricted, bool in_enabled, struct in_addr vnetwork,
 void slirp_cleanup(Slirp *slirp)
 {
     QTAILQ_REMOVE(&slirp_instances, slirp, entry);
-
-    unregister_savevm(NULL, "slirp", slirp);
 
     ip_cleanup(slirp);
     ip6_cleanup(slirp);
@@ -877,10 +863,6 @@ void slirp_input(Slirp *slirp, const uint8_t *pkt, int pkt_len)
         }
         break;
 
-    case ETH_P_NCSI:
-        ncsi_input(slirp, pkt, pkt_len);
-        break;
-
     default:
         break;
     }
@@ -1147,54 +1129,6 @@ static int slirp_tcp_post_load(void *opaque, int version)
     return 0;
 }
 
-static const VMStateDescription vmstate_slirp_tcp = {
-    .name = "slirp-tcp",
-    .version_id = 0,
-    .post_load = slirp_tcp_post_load,
-    .fields = (VMStateField[]) {
-        VMSTATE_INT16(t_state, struct tcpcb),
-        VMSTATE_INT16_ARRAY(t_timer, struct tcpcb, TCPT_NTIMERS),
-        VMSTATE_INT16(t_rxtshift, struct tcpcb),
-        VMSTATE_INT16(t_rxtcur, struct tcpcb),
-        VMSTATE_INT16(t_dupacks, struct tcpcb),
-        VMSTATE_UINT16(t_maxseg, struct tcpcb),
-        VMSTATE_UINT8(t_force, struct tcpcb),
-        VMSTATE_UINT16(t_flags, struct tcpcb),
-        VMSTATE_UINT32(snd_una, struct tcpcb),
-        VMSTATE_UINT32(snd_nxt, struct tcpcb),
-        VMSTATE_UINT32(snd_up, struct tcpcb),
-        VMSTATE_UINT32(snd_wl1, struct tcpcb),
-        VMSTATE_UINT32(snd_wl2, struct tcpcb),
-        VMSTATE_UINT32(iss, struct tcpcb),
-        VMSTATE_UINT32(snd_wnd, struct tcpcb),
-        VMSTATE_UINT32(rcv_wnd, struct tcpcb),
-        VMSTATE_UINT32(rcv_nxt, struct tcpcb),
-        VMSTATE_UINT32(rcv_up, struct tcpcb),
-        VMSTATE_UINT32(irs, struct tcpcb),
-        VMSTATE_UINT32(rcv_adv, struct tcpcb),
-        VMSTATE_UINT32(snd_max, struct tcpcb),
-        VMSTATE_UINT32(snd_cwnd, struct tcpcb),
-        VMSTATE_UINT32(snd_ssthresh, struct tcpcb),
-        VMSTATE_INT16(t_idle, struct tcpcb),
-        VMSTATE_INT16(t_rtt, struct tcpcb),
-        VMSTATE_UINT32(t_rtseq, struct tcpcb),
-        VMSTATE_INT16(t_srtt, struct tcpcb),
-        VMSTATE_INT16(t_rttvar, struct tcpcb),
-        VMSTATE_UINT16(t_rttmin, struct tcpcb),
-        VMSTATE_UINT32(max_sndwnd, struct tcpcb),
-        VMSTATE_UINT8(t_oobflags, struct tcpcb),
-        VMSTATE_UINT8(t_iobc, struct tcpcb),
-        VMSTATE_INT16(t_softerror, struct tcpcb),
-        VMSTATE_UINT8(snd_scale, struct tcpcb),
-        VMSTATE_UINT8(rcv_scale, struct tcpcb),
-        VMSTATE_UINT8(request_r_scale, struct tcpcb),
-        VMSTATE_UINT8(requested_s_scale, struct tcpcb),
-        VMSTATE_UINT32(ts_recent, struct tcpcb),
-        VMSTATE_UINT32(ts_recent_age, struct tcpcb),
-        VMSTATE_UINT32(last_ack_sent, struct tcpcb),
-        VMSTATE_END_OF_LIST()
-    }
-};
 
 /* The sbuf has a pair of pointers that are migrated as offsets;
  * we calculate the offsets and restore the pointers using
@@ -1239,30 +1173,6 @@ static int sbuf_tmp_post_load(void *opaque, int version)
 }
 
 
-static const VMStateDescription vmstate_slirp_sbuf_tmp = {
-    .name = "slirp-sbuf-tmp",
-    .post_load = sbuf_tmp_post_load,
-    .pre_save  = sbuf_tmp_pre_save,
-    .version_id = 0,
-    .fields = (VMStateField[]) {
-        VMSTATE_UINT32(woff, struct sbuf_tmp),
-        VMSTATE_UINT32(roff, struct sbuf_tmp),
-        VMSTATE_END_OF_LIST()
-    }
-};
-
-static const VMStateDescription vmstate_slirp_sbuf = {
-    .name = "slirp-sbuf",
-    .version_id = 0,
-    .fields = (VMStateField[]) {
-        VMSTATE_UINT32(sb_cc, struct sbuf),
-        VMSTATE_UINT32(sb_datalen, struct sbuf),
-        VMSTATE_WITH_TMP(struct sbuf, struct sbuf_tmp, vmstate_slirp_sbuf_tmp),
-        VMSTATE_VBUFFER_UINT32(sb_data, struct sbuf, 0, NULL, sb_datalen),
-        VMSTATE_END_OF_LIST()
-    }
-};
-
 static bool slirp_older_than_v4(void *opaque, int version_id)
 {
     return version_id < 4;
@@ -1285,14 +1195,6 @@ static int slirp_socket_pre_load(void *opaque)
     so->so_lfamily = AF_INET;
     return 0;
 }
-
-#ifndef _WIN32
-#define VMSTATE_SIN4_ADDR(f, s, t) VMSTATE_UINT32_TEST(f, s, t)
-#else
-/* Win uses u_long rather than uint32_t - but it's still 32bits long */
-#define VMSTATE_SIN4_ADDR(f, s, t) VMSTATE_SINGLE_TEST(f, s, t, 0, \
-                                       vmstate_info_uint32, u_long)
-#endif
 
 /* The OS provided ss_family field isn't that portable; it's size
  * and type varies (16/8 bit, signed, unsigned)
@@ -1341,153 +1243,4 @@ static int ss_family_post_load(void *opaque, int version_id)
     }
 
     return 0;
-}
-
-static const VMStateDescription vmstate_slirp_ss_family = {
-    .name = "slirp-socket-addr/ss_family",
-    .pre_save  = ss_family_pre_save,
-    .post_load = ss_family_post_load,
-    .fields = (VMStateField[]) {
-        VMSTATE_UINT16(portable_family, SS_FamilyTmpStruct),
-        VMSTATE_END_OF_LIST()
-    }
-};
-
-static const VMStateDescription vmstate_slirp_socket_addr = {
-    .name = "slirp-socket-addr",
-    .version_id = 4,
-    .fields = (VMStateField[]) {
-        VMSTATE_WITH_TMP(union slirp_sockaddr, SS_FamilyTmpStruct,
-                            vmstate_slirp_ss_family),
-        VMSTATE_SIN4_ADDR(sin.sin_addr.s_addr, union slirp_sockaddr,
-                            slirp_family_inet),
-        VMSTATE_UINT16_TEST(sin.sin_port, union slirp_sockaddr,
-                            slirp_family_inet),
-
-#if 0
-        /* Untested: Needs checking by someone with IPv6 test */
-        VMSTATE_BUFFER_TEST(sin6.sin6_addr, union slirp_sockaddr,
-                            slirp_family_inet6),
-        VMSTATE_UINT16_TEST(sin6.sin6_port, union slirp_sockaddr,
-                            slirp_family_inet6),
-        VMSTATE_UINT32_TEST(sin6.sin6_flowinfo, union slirp_sockaddr,
-                            slirp_family_inet6),
-        VMSTATE_UINT32_TEST(sin6.sin6_scope_id, union slirp_sockaddr,
-                            slirp_family_inet6),
-#endif
-
-        VMSTATE_END_OF_LIST()
-    }
-};
-
-static const VMStateDescription vmstate_slirp_socket = {
-    .name = "slirp-socket",
-    .version_id = 4,
-    .pre_load = slirp_socket_pre_load,
-    .fields = (VMStateField[]) {
-        VMSTATE_UINT32(so_urgc, struct socket),
-        /* Pre-v4 versions */
-        VMSTATE_SIN4_ADDR(so_faddr.s_addr, struct socket,
-                            slirp_older_than_v4),
-        VMSTATE_SIN4_ADDR(so_laddr.s_addr, struct socket,
-                            slirp_older_than_v4),
-        VMSTATE_UINT16_TEST(so_fport, struct socket, slirp_older_than_v4),
-        VMSTATE_UINT16_TEST(so_lport, struct socket, slirp_older_than_v4),
-        /* v4 and newer */
-        VMSTATE_STRUCT(fhost, struct socket, 4, vmstate_slirp_socket_addr,
-                       union slirp_sockaddr),
-        VMSTATE_STRUCT(lhost, struct socket, 4, vmstate_slirp_socket_addr,
-                       union slirp_sockaddr),
-
-        VMSTATE_UINT8(so_iptos, struct socket),
-        VMSTATE_UINT8(so_emu, struct socket),
-        VMSTATE_UINT8(so_type, struct socket),
-        VMSTATE_INT32(so_state, struct socket),
-        VMSTATE_STRUCT(so_rcv, struct socket, 0, vmstate_slirp_sbuf,
-                       struct sbuf),
-        VMSTATE_STRUCT(so_snd, struct socket, 0, vmstate_slirp_sbuf,
-                       struct sbuf),
-        VMSTATE_STRUCT_POINTER(so_tcpcb, struct socket, vmstate_slirp_tcp,
-                       struct tcpcb),
-        VMSTATE_END_OF_LIST()
-    }
-};
-
-static const VMStateDescription vmstate_slirp_bootp_client = {
-    .name = "slirp_bootpclient",
-    .fields = (VMStateField[]) {
-        VMSTATE_UINT16(allocated, BOOTPClient),
-        VMSTATE_BUFFER(macaddr, BOOTPClient),
-        VMSTATE_END_OF_LIST()
-    }
-};
-
-static const VMStateDescription vmstate_slirp = {
-    .name = "slirp",
-    .version_id = 4,
-    .fields = (VMStateField[]) {
-        VMSTATE_UINT16_V(ip_id, Slirp, 2),
-        VMSTATE_STRUCT_ARRAY(bootp_clients, Slirp, NB_BOOTP_CLIENTS, 3,
-                             vmstate_slirp_bootp_client, BOOTPClient),
-        VMSTATE_END_OF_LIST()
-    }
-};
-
-static void slirp_state_save(QEMUFile *f, void *opaque)
-{
-    Slirp *slirp = opaque;
-    struct ex_list *ex_ptr;
-
-    for (ex_ptr = slirp->exec_list; ex_ptr; ex_ptr = ex_ptr->ex_next)
-        if (ex_ptr->ex_pty == 3) {
-            struct socket *so;
-            so = slirp_find_ctl_socket(slirp, ex_ptr->ex_addr,
-                                       ntohs(ex_ptr->ex_fport));
-            if (!so)
-                continue;
-
-            qemu_put_byte(f, 42);
-            vmstate_save_state(f, &vmstate_slirp_socket, so, NULL);
-        }
-    qemu_put_byte(f, 0);
-
-    vmstate_save_state(f, &vmstate_slirp, slirp, NULL);
-}
-
-
-static int slirp_state_load(QEMUFile *f, void *opaque, int version_id)
-{
-    Slirp *slirp = opaque;
-    struct ex_list *ex_ptr;
-
-    while (qemu_get_byte(f)) {
-        int ret;
-        struct socket *so = socreate(slirp);
-
-        if (!so)
-            return -ENOMEM;
-
-        ret = vmstate_load_state(f, &vmstate_slirp_socket, so, version_id);
-
-        if (ret < 0)
-            return ret;
-
-        if ((so->so_faddr.s_addr & slirp->vnetwork_mask.s_addr) !=
-            slirp->vnetwork_addr.s_addr) {
-            return -EINVAL;
-        }
-        for (ex_ptr = slirp->exec_list; ex_ptr; ex_ptr = ex_ptr->ex_next) {
-            if (ex_ptr->ex_pty == 3 &&
-                so->so_faddr.s_addr == ex_ptr->ex_addr.s_addr &&
-                so->so_fport == ex_ptr->ex_fport) {
-                break;
-            }
-        }
-        if (!ex_ptr)
-            return -EINVAL;
-
-        so->extra = (void *)ex_ptr->ex_exec;
-    }
-
-    return vmstate_load_state(f, &vmstate_slirp, slirp, version_id);
 }

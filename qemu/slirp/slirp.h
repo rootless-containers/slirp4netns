@@ -1,6 +1,8 @@
 #ifndef SLIRP_H
 #define SLIRP_H
 
+#include <qemu2libslirp.h>
+
 #include "slirp_config.h"
 
 #ifdef _WIN32

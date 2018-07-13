@@ -22,7 +22,6 @@ typedef int bool;
 #include <netinet/tcp.h>
 #include <poll.h>
 
-#include <unixfwd.h>
 
 #ifndef offsetof
 #define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *) 0)->MEMBER)
@@ -37,6 +36,7 @@ typedef int bool;
 #define             g_warning(...)
 #define             g_malloc(X) malloc(X)
 #define             g_malloc0(X) calloc(1,(X))
+#define             g_realloc(X,N) realloc(X,N)
 #define             g_new(X,N) calloc((N),sizeof(X))
 #define             g_free(X) free(X)
 #define             g_strdup(X) ((X) ? strdup(X) : strdup(""))
@@ -179,9 +179,7 @@ static inline GRand *g_rand_new (void) {
 static inline void g_rand_free (GRand *rand_) {
 }
 
-#define register_savevm(...)
-#define unregister_savevm(...)
-#define qemu_chr_fe_write(...)
+#define qemu_chr_fe_write_all(...)
 #define qemu_add_child_watch(...)
 
 typedef void QEMUFile;

@@ -1,24 +1,11 @@
 # slirp4netns: slirp for network namespaces, without copying buffers across the namespaces
 
-
 ## Install
 
-Requires [libslirp](https://github.com/rd235/libslirp)(GPL2).
-
 ```console
-$ autoreconf -if
-$ ./configure
-$ make
+$ ./make.sh
+$ mv slirp4netns ~/bin
 ```
-
-Or just `cc -o slirp4netns *.c -lslirp -lpthread`
-
-Note: The files under [`qemu`](./qemu) and [`rd235_libslirp`] directories will soon replace libslirp.
-
-### Static binary
-You can also build a static binary by running `./configure LDFLAGS=-static`.
-
-Note that you need to install libslirp with `./configure --enable-static`.
 
 ## Usage
 

@@ -6,16 +6,12 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sched.h>
-#include <pthread.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <linux/if.h>
 #include <linux/if_tun.h>
-
-#include <libslirp.h>
 
 static int nsenter(pid_t target_pid)
 {
@@ -140,96 +136,7 @@ static int recvfd(int sock)
 	return fd;
 }
 
-struct slirp2tap_data {
-	int tapfd, slirpfd;
-};
-
-#define ETH_BUF_SIZE (65536)
-
-// TODO: look into whether we can use splice(2). probably we cannot.
-static void *slirp2tap_thread(void *p)
-{
-	ssize_t rc;
-	struct slirp2tap_data *data = (struct slirp2tap_data *)p;
-	unsigned char *buf = (unsigned char *)malloc(ETH_BUF_SIZE);
-	while (1) {
-		if ((rc = read(data->slirpfd, buf, ETH_BUF_SIZE)) < 0) {
-			perror("slirp2tap_thread: read");
-			free(buf);
-			exit(EXIT_FAILURE);
-		}
-		if ((rc = write(data->tapfd, buf, rc)) < 0) {
-			perror("slirp2tap_thread: write");
-			free(buf);
-			exit(EXIT_FAILURE);
-		}
-	}
-	/* NOTREACHED */
-	free(buf);
-}
-
-static int tap2slirp(SLIRP *slirp, int tapfd)
-{
-	ssize_t rc;
-	unsigned char *buf = (unsigned char *)malloc(ETH_BUF_SIZE);
-	while (1) {
-		if ((rc = read(tapfd, buf, ETH_BUF_SIZE)) < 0) {
-			perror("tap2slirp: recv");
-			free(buf);
-			return (int)rc;
-		}
-		if ((rc = slirp_send(slirp, buf, rc)) < 0) {
-			perror("tap2slirp: slirp_send");
-			free(buf);
-			return (int)rc;
-		}
-	}
-	/* NOTREACHED */
-	free(buf);
-	return -1;
-}
-
-static int do_slirp(int tapfd)
-{
-	int rc;
-	pthread_t thr;
-	struct slirp2tap_data thr_data;
-	int slirpfd;
-	SLIRP *slirp = slirp_open(SLIRP_IPV4);
-	if (slirp == NULL) {
-		perror("slirp_open");
-		return -1;
-	}
-	if (slirp_start(slirp) < 0) {
-		perror("slirp_start");
-		slirp_close(slirp);
-		return -1;
-	}
-	// slirp fd can't be used for sending packets to the slirp
-	if ((slirpfd = slirp_fd(slirp)) < 0) {
-		perror("slirp_fd");
-		slirp_close(slirp);
-		return slirpfd;
-	}
-	thr_data.tapfd = tapfd;
-	thr_data.slirpfd = slirpfd;
-	if ((rc = pthread_create(&thr, NULL, slirp2tap_thread, &thr_data)) != 0) {
-		errno = rc;
-		perror("pthread_create");
-		return -1;
-	}
-	fprintf(stderr, "READY\n");
-	if (tap2slirp(slirp, tapfd) < 0) {
-		return -1;
-	}
-	/* NOTREACHED */
-	if ((rc = pthread_join(thr, NULL)) != 0) {
-		errno = rc;
-		perror("pthread_join");
-		return -1;
-	}
-	return 0;
-}
+int do_slirp(int tapfd);
 
 static int parent(int sock)
 {
@@ -240,9 +147,11 @@ static int parent(int sock)
 	fprintf(stderr, "received tapfd=%d\n", tapfd);
 	close(sock);
 	if ((rc = do_slirp(tapfd)) < 0) {
+		fprintf(stderr, "do_slirp failed\n");
 		close(tapfd);
 		return rc;
 	}
+	/* NOT REACHED */
 	return 0;
 }
 
