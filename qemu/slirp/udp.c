@@ -143,19 +143,6 @@ udp_input(register struct mbuf *m, int iphlen)
                 goto bad;
             }
 
-        /*
-         *  handle TFTP
-         */
-        if (ntohs(uh->uh_dport) == TFTP_SERVER &&
-            ip->ip_dst.s_addr == slirp->vhost_addr.s_addr) {
-            m->m_data += iphlen;
-            m->m_len -= iphlen;
-            tftp_input(&lhost, m);
-            m->m_data -= iphlen;
-            m->m_len += iphlen;
-            goto bad;
-        }
-
         if (slirp->restricted) {
             goto bad;
         }

@@ -95,7 +95,6 @@ typedef char *caddr_t;
 #include "misc.h"
 
 #include "bootp.h"
-#include "tftp.h"
 
 #define ARPOP_REQUEST 1         /* ARP request */
 #define ARPOP_REPLY   2         /* ARP reply   */
@@ -210,10 +209,6 @@ struct Slirp {
     /* icmp states */
     struct socket icmp;
     struct socket *icmp_last_so;
-
-    /* tftp states */
-    char *tftp_prefix;
-    struct tftp_session tftp_sessions[TFTP_SESSIONS_MAX];
 
     ArpTable arp_table;
     NdpTable ndp_table;

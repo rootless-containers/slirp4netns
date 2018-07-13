@@ -32,7 +32,7 @@ Slirp *create_slirp(void *opaque)
 	inet_pton(AF_INET, "10.0.2.15", &vdhcp_start);
 	slirp = slirp_init(0 /* restricted */ , 1 /* is_enabled */ ,
 			   vnetwork, vnetmask, vhost, 0 /* ip6_enabled */ , vprefix_addr6, 0 /* vprefix_len */ , vhost6,
-			   NULL /* vhostname */ , NULL /* tftp_path */ , NULL /* bootfile */ , vdhcp_start,
+			   NULL /* vhostname */ , NULL /* bootfile */ , vdhcp_start,
 			   vnameserver, vnameserver6, NULL /* vdnssearch */ , NULL /* vdomainname */ ,
 			   opaque);
 	if (slirp == NULL) {

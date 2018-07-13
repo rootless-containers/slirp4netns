@@ -8,12 +8,13 @@ typedef struct Slirp Slirp;
 int get_dns_addr(struct in_addr *pdns_addr);
 int get_dns6_addr(struct in6_addr *pdns6_addr, uint32_t *scope_id);
 
+/* Changed from QEMU: tftp is removed */
 Slirp *slirp_init(int restricted, bool in_enabled, struct in_addr vnetwork,
                   struct in_addr vnetmask, struct in_addr vhost,
                   bool in6_enabled,
                   struct in6_addr vprefix_addr6, uint8_t vprefix_len,
                   struct in6_addr vhost6, const char *vhostname,
-                  const char *tftp_path, const char *bootfile,
+                  const char *bootfile,
                   struct in_addr vdhcp_start, struct in_addr vnameserver,
                   struct in6_addr vnameserver6, const char **vdnssearch,
                   const char *vdomainname, void *opaque);

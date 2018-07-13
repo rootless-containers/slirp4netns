@@ -273,7 +273,7 @@ Slirp *slirp_init(int restricted, bool in_enabled, struct in_addr vnetwork,
                   bool in6_enabled,
                   struct in6_addr vprefix_addr6, uint8_t vprefix_len,
                   struct in6_addr vhost6, const char *vhostname,
-                  const char *tftp_path, const char *bootfile,
+                  const char *bootfile,
                   struct in_addr vdhcp_start, struct in_addr vnameserver,
                   struct in6_addr vnameserver6, const char **vdnssearch,
                   const char *vdomainname, void *opaque)
@@ -305,7 +305,6 @@ Slirp *slirp_init(int restricted, bool in_enabled, struct in_addr vnetwork,
         pstrcpy(slirp->client_hostname, sizeof(slirp->client_hostname),
                 vhostname);
     }
-    slirp->tftp_prefix = g_strdup(tftp_path);
     slirp->bootp_filename = g_strdup(bootfile);
     slirp->vdomainname = g_strdup(vdomainname);
     slirp->vdhcp_startaddr = vdhcp_start;
@@ -334,7 +333,6 @@ void slirp_cleanup(Slirp *slirp)
     g_rand_free(slirp->grand);
 
     g_free(slirp->vdnssearch);
-    g_free(slirp->tftp_prefix);
     g_free(slirp->bootp_filename);
     g_free(slirp->vdomainname);
     g_free(slirp);

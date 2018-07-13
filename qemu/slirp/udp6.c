@@ -74,17 +74,6 @@ void udp6_input(struct mbuf *m)
         goto bad;
     }
 
-    /* handle TFTP */
-    if (ntohs(uh->uh_dport) == TFTP_SERVER &&
-        !memcmp(ip->ip_dst.s6_addr, slirp->vhost_addr6.s6_addr, 16)) {
-        m->m_data += iphlen;
-        m->m_len -= iphlen;
-        tftp_input((struct sockaddr_storage *)&lhost, m);
-        m->m_data -= iphlen;
-        m->m_len += iphlen;
-        goto bad;
-    }
-
     so = solookup(&slirp->udp_last_so, &slirp->udb,
                   (struct sockaddr_storage *) &lhost, NULL);
 
