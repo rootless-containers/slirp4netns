@@ -173,7 +173,6 @@ struct Slirp {
     char client_hostname[33];
 
     int restricted;
-    struct ex_list *exec_list;
 
     /* mbuf states */
     struct quehead m_freelist;
@@ -288,7 +287,6 @@ void tcp_connect(struct socket *);
 int tcp_attach(struct socket *);
 uint8_t tcp_tos(struct socket *);
 int tcp_emu(struct socket *, struct mbuf *);
-int tcp_ctl(struct socket *);
 struct tcpcb *tcp_drop(struct tcpcb *tp, int err);
 
 #endif

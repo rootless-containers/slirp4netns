@@ -410,22 +410,6 @@ findso:
 	 * as if it was LISTENING, and continue...
 	 */
         if (so == NULL) {
-          if (slirp->restricted) {
-            /* Any hostfwds will have an existing socket, so we only get here
-             * for non-hostfwd connections. These should be dropped, unless it
-             * happens to be a guestfwd.
-             */
-            for (ex_ptr = slirp->exec_list; ex_ptr; ex_ptr = ex_ptr->ex_next) {
-                if (ex_ptr->ex_fport == ti->ti_dport &&
-                    ti->ti_dst.s_addr == ex_ptr->ex_addr.s_addr) {
-                    break;
-                }
-            }
-            if (!ex_ptr) {
-                goto dropwithreset;
-            }
-          }
-
 	  if ((tiflags & (TH_SYN|TH_FIN|TH_RST|TH_URG|TH_ACK)) != TH_SYN)
 	    goto dropwithreset;
 
@@ -637,18 +621,6 @@ findso:
 	         slirp->vnetwork_addr.s_addr) {
 	    if (so->so_faddr.s_addr != slirp->vhost_addr.s_addr &&
 		so->so_faddr.s_addr != slirp->vnameserver_addr.s_addr) {
-		/* May be an add exec */
-		for (ex_ptr = slirp->exec_list; ex_ptr;
-		     ex_ptr = ex_ptr->ex_next) {
-		  if(ex_ptr->ex_fport == so->so_fport &&
-		     so->so_faddr.s_addr == ex_ptr->ex_addr.s_addr) {
-		    so->so_state |= SS_CTL;
-		    break;
-		  }
-		}
-		if (so->so_state & SS_CTL) {
-		    goto cont_input;
-		}
 	    }
 	    /* CTL_ALIAS: Do nothing, tcp_fconnect will be called on it */
 	  }
@@ -988,26 +960,11 @@ trimthenstep6:
 		 * The sent SYN is ack'ed with our sequence number +1
 		 * The first data byte already in the buffer will get
 		 * lost if no correction is made.  This is only needed for
-		 * SS_CTL since the buffer is empty otherwise.
+		 * SS_CTL (removed in slirrp4netns) since the buffer is empty otherwise.
 		 * tp->snd_una++; or:
 		 */
 		tp->snd_una=ti->ti_ack;
-		if (so->so_state & SS_CTL) {
-		  /* So tcp_ctl reports the right state */
-		  ret = tcp_ctl(so);
-		  if (ret == 1) {
-		    soisfconnected(so);
-		    so->so_state &= ~SS_CTL;   /* success XXX */
-		  } else if (ret == 2) {
-		    so->so_state &= SS_PERSISTENT_MASK;
-		    so->so_state |= SS_NOFDREF; /* CTL_CMD */
-		  } else {
-		    needoutput = 1;
-		    tp->t_state = TCPS_FIN_WAIT_1;
-		  }
-		} else {
-		  soisfconnected(so);
-		}
+		soisfconnected(so);
 
 		(void) tcp_reass(tp, (struct tcpiphdr *)0, (struct mbuf *)0);
 		tp->snd_wl1 = ti->ti_seq - 1;

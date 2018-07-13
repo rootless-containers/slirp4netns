@@ -83,7 +83,6 @@ struct socket {
 #define SS_FCANTSENDMORE	0x010	/* Socket can't send more to peer (for half-closes) */
 #define SS_FWDRAIN		0x040	/* We received a FIN, drain data and set SS_FCANTSENDMORE */
 
-#define SS_CTL			0x080
 #define SS_FACCEPTCONN		0x100	/* Socket is accepting connections from a host on the internet */
 #define SS_FACCEPTONCE		0x200	/* If set, the SS_FACCEPTCONN socket will die after one accept */
 

@@ -789,10 +789,6 @@ static void arp_input(Slirp *slirp, const uint8_t *pkt, int pkt_len)
             if (ah->ar_tip == slirp->vnameserver_addr.s_addr ||
                 ah->ar_tip == slirp->vhost_addr.s_addr)
                 goto arp_ok;
-            for (ex_ptr = slirp->exec_list; ex_ptr; ex_ptr = ex_ptr->ex_next) {
-                if (ex_ptr->ex_addr.s_addr == ah->ar_tip)
-                    goto arp_ok;
-            }
             return;
         arp_ok:
             memset(arp_reply, 0, sizeof(arp_reply));
@@ -1041,23 +1037,6 @@ int slirp_add_hostfwd(Slirp *slirp, int is_udp, struct in_addr host_addr,
             return -1;
     }
     return 0;
-}
-
-int slirp_add_exec(Slirp *slirp, int do_pty, const void *args,
-                   struct in_addr *guest_addr, int guest_port)
-{
-    if (!guest_addr->s_addr) {
-        guest_addr->s_addr = slirp->vnetwork_addr.s_addr |
-            (htonl(0x0204) & ~slirp->vnetwork_mask.s_addr);
-    }
-    if ((guest_addr->s_addr & slirp->vnetwork_mask.s_addr) !=
-        slirp->vnetwork_addr.s_addr ||
-        guest_addr->s_addr == slirp->vhost_addr.s_addr ||
-        guest_addr->s_addr == slirp->vnameserver_addr.s_addr) {
-        return -1;
-    }
-    return add_exec(&slirp->exec_list, do_pty, (char *)args, *guest_addr,
-                    htons(guest_port));
 }
 
 ssize_t slirp_send(struct socket *so, const void *buf, size_t len, int flags)
