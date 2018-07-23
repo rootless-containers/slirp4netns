@@ -35,6 +35,8 @@ static int nsenter(pid_t target_pid)
 		perror("setns(CLONE_NEWNET)");
 		return -1;
 	}
+	close(usernsfd);
+	close(netnsfd);
 	return 0;
 }
 
