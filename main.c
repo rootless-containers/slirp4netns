@@ -12,6 +12,9 @@
 #include <sys/wait.h>
 #include <linux/if.h>
 #include <linux/if_tun.h>
+#include <arpa/inet.h>
+#include <net/route.h>
+#include <stdbool.h>
 
 static int nsenter(pid_t target_pid)
 {
@@ -86,7 +89,66 @@ static int sendfd(int sock, int fd)
 	return rc;
 }
 
-static int child(int sock, pid_t target_pid, const char *tapname)
+static int configure_network(const char *tapname)
+{
+	struct rtentry route;
+	struct ifreq ifr;
+	struct sockaddr_in *sai = (struct sockaddr_in *)&ifr.ifr_addr;
+	int sockfd;
+
+	sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (sockfd < 0) {
+		perror("cannot create socket");
+		return -1;
+	}
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_flags = IFF_UP | IFF_RUNNING;
+	strcpy(ifr.ifr_name, tapname);
+
+	if (ioctl(sockfd, SIOCSIFFLAGS, &ifr) < 0) {
+		perror("cannot set device up");
+		return -1;
+	}
+
+	sai->sin_family = AF_INET;
+	sai->sin_port = 0;
+	inet_pton(AF_INET, "10.0.2.100", &sai->sin_addr);
+
+	if (ioctl(sockfd, SIOCSIFADDR, &ifr) < 0) {
+		perror("cannot set device address");
+		return -1;
+	}
+
+	inet_pton(AF_INET, "255.255.255.0", &sai->sin_addr);
+	if (ioctl(sockfd, SIOCSIFNETMASK, &ifr) < 0) {
+		perror("cannot set device netmask");
+		return -1;
+	}
+
+	memset(&route, 0, sizeof(route));
+	sai = (struct sockaddr_in *)&route.rt_gateway;
+	sai->sin_family = AF_INET;
+	inet_pton(AF_INET, "10.0.2.2", &sai->sin_addr);
+	sai = (struct sockaddr_in *)&route.rt_dst;
+	sai->sin_family = AF_INET;
+	sai->sin_addr.s_addr = INADDR_ANY;
+	sai = (struct sockaddr_in *)&route.rt_genmask;
+	sai->sin_family = AF_INET;
+	sai->sin_addr.s_addr = INADDR_ANY;
+
+	route.rt_flags = RTF_UP | RTF_GATEWAY;
+	route.rt_metric = 0;
+	route.rt_dev = (char *)tapname;
+
+	if (ioctl(sockfd, SIOCADDRT, &route) < 0) {
+		perror("set route");
+		return -1;
+	}
+	return 0;
+}
+
+static int child(int sock, pid_t target_pid, bool do_config_network, const char *tapname)
 {
 	int rc, tapfd;
 	if ((rc = nsenter(target_pid)) < 0) {
@@ -94,6 +156,9 @@ static int child(int sock, pid_t target_pid, const char *tapname)
 	}
 	if ((tapfd = open_tap(tapname)) < 0) {
 		return tapfd;
+	}
+	if (do_config_network && configure_network(tapname) < 0) {
+		return -1;
 	}
 	if (sendfd(sock, tapfd) < 0) {
 		close(tapfd);
@@ -159,34 +224,48 @@ static int parent(int sock)
 
 static void usage(const char *argv0)
 {
-	fprintf(stderr, "Usage: %s PID TAPNAME\n", argv0);
+	fprintf(stderr, "Usage: %s [-c] PID TAPNAME\n", argv0);
 }
 
 // caller needs to free tapname
-static void parse_args(int argc, const char *argv[], pid_t *ptarget_pid, char **tapname)
+static void parse_args(int argc, char *const argv[], pid_t *ptarget_pid, char **tapname, bool * do_config_network)
 {
+	int opt;
 	int target_pid;
-	if (argc != 3) {
+
+	while ((opt = getopt(argc, argv, "c")) != -1) {
+		switch (opt) {
+		case 'c':
+			*do_config_network = true;
+			break;
+		default:
+			usage(argv[0]);
+			exit(EXIT_FAILURE);
+		}
+	}
+	if (argc - optind < 2) {
 		usage(argv[0]);
 		exit(EXIT_FAILURE);
 	}
 	errno = 0;
-	target_pid = strtol(argv[1], NULL, 10);
+	target_pid = strtol(argv[optind], NULL, 10);
 	if (errno != 0) {
 		perror("strtol");
 		usage(argv[0]);
 		exit(EXIT_FAILURE);
 	}
 	*ptarget_pid = (pid_t)target_pid;
-	*tapname = strdup(argv[2]);
+	*tapname = strdup(argv[optind + 1]);
 }
 
-int main(int argc, const char *argv[])
+int main(int argc, char *const argv[])
 {
 	int sv[2];
 	pid_t target_pid, child_pid;
 	char *tapname;
-	parse_args(argc, argv, &target_pid, &tapname);
+	bool do_config_network = false;
+
+	parse_args(argc, argv, &target_pid, &tapname, &do_config_network);
 	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, sv) < 0) {
 		perror("socketpair");
 		exit(EXIT_FAILURE);
@@ -197,7 +276,7 @@ int main(int argc, const char *argv[])
 		exit(EXIT_FAILURE);
 	}
 	if (child_pid == 0) {
-		if (child(sv[1], target_pid, tapname) < 0) {
+		if (child(sv[1], target_pid, configure_network, tapname) < 0) {
 			exit(EXIT_FAILURE);
 		}
 	} else {
