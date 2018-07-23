@@ -3,7 +3,7 @@
 ## Install
 
 ```console
-$ ./make.sh
+$ make
 $ mv slirp4netns ~/bin
 ```
 
