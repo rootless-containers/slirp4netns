@@ -3,8 +3,10 @@
 ## Install
 
 ```console
+$ ./autogen.sh
+$ ./configure --prefix=/usr
 $ make
-$ mv slirp4netns ~/bin
+$ make install
 ```
 
 ## Usage
