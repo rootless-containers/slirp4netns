@@ -102,7 +102,7 @@ static int configure_network(const char *tapname)
 
 	memset(&ifr, 0, sizeof(ifr));
 	ifr.ifr_flags = IFF_UP | IFF_RUNNING;
-	strcpy(ifr.ifr_name, tapname);
+	strncpy(ifr.ifr_name, tapname, sizeof(ifr.ifr_name) - 1);
 
 	if (ioctl(sockfd, SIOCSIFFLAGS, &ifr) < 0) {
 		perror("cannot set device up");
@@ -280,12 +280,17 @@ int main(int argc, char *const argv[])
 	if ((child_pid = fork()) < 0) {
 		perror("fork");
 		free(tapname);
+		tapname = NULL;
 		exit(EXIT_FAILURE);
 	}
 	if (child_pid == 0) {
-		if (child(sv[1], target_pid, configure_network, tapname) < 0) {
+		if (child(sv[1], target_pid, do_config_network, tapname) < 0) {
+			free(tapname);
+			tapname = NULL;
 			exit(EXIT_FAILURE);
 		}
+		free(tapname);
+		tapname = NULL;
 	} else {
 		int child_wstatus, child_status;
 		free(tapname);

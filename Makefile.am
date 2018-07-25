@@ -73,4 +73,17 @@ man1_MANS = slirp4netns.1
 generate-man:
 	go-md2man -in slirp4netns.1.md -out slirp4netns.1
 
-.PHONY: generate-man
+CLANGTIDY = clang-tidy -warnings-as-errors='*'
+
+lint:
+	$(CLANGTIDY) $(slirp4netns_SOURCES) -- $(AM_CFLAGS)
+
+lint-full:
+	$(CLANGTIDY) $(slirp4netns_SOURCES) $(libqemu_slirp_a_SOURCES) -- $(AM_CFLAGS)
+
+indent:
+# indent(1): "You must use the ‘-T’ option to tell indent the name of all the typenames in your program that are defined by typedef."
+	indent -linux -l120 -T ssize_t -T pid_t -T SLIRP $(slirp4netns_SOURCES)
+	$(RM) *.c~
+
+.PHONY: generate-man lint lint-full indent
