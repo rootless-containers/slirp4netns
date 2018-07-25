@@ -48,7 +48,7 @@ int do_slirp(int tapfd)
 	Slirp *slirp = NULL;
 	uint8_t *buf = NULL;
 	struct libslirp_data opaque = {.tapfd = tapfd };
-	static GArray pollfds;
+	GArray pollfds;
 	struct pollfd tap_pollfd = { tapfd, POLLIN | POLLHUP, 0 };
 	slirp = create_slirp((void *)&opaque);
 	if (slirp == NULL) {
