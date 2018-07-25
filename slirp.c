@@ -66,7 +66,12 @@ int do_slirp(int tapfd)
 		pollfds.len = 1;
 		slirp_pollfds_fill(&pollfds, &timeout);
 		update_ra_timeout(&timeout);
-		pollout = poll(pollfds.pfd, pollfds.len, timeout);
+		do
+			pollout = poll(pollfds.pfd, pollfds.len, timeout);
+		while (pollout < 0 && errno == EINTR);
+		if (pollout < 0) {
+			goto err;
+		}
 		if (pollfds.pfd[0].revents) {
 			ssize_t rc = read(tapfd, buf, ETH_BUF_SIZE);
 			if (rc < 0) {
