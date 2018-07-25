@@ -15,6 +15,7 @@
 #include <arpa/inet.h>
 #include <net/route.h>
 #include <stdbool.h>
+#include "slirp.h"
 
 static int nsenter(pid_t target_pid)
 {
@@ -203,9 +204,7 @@ static int recvfd(int sock)
 	return fd;
 }
 
-int do_slirp(int tapfd);
-
-static int parent(int sock)
+static int parent(int sock, int exit_fd)
 {
 	int rc, tapfd;
 	if ((tapfd = recvfd(sock)) < 0) {
@@ -213,7 +212,7 @@ static int parent(int sock)
 	}
 	fprintf(stderr, "received tapfd=%d\n", tapfd);
 	close(sock);
-	if ((rc = do_slirp(tapfd)) < 0) {
+	if ((rc = do_slirp(tapfd, exit_fd)) < 0) {
 		fprintf(stderr, "do_slirp failed\n");
 		close(tapfd);
 		return rc;
@@ -224,19 +223,29 @@ static int parent(int sock)
 
 static void usage(const char *argv0)
 {
-	fprintf(stderr, "Usage: %s [-c] PID TAPNAME\n", argv0);
+	fprintf(stderr, "Usage: %s [-c] [-e FD] PID TAPNAME\n", argv0);
 }
 
 // caller needs to free tapname
-static void parse_args(int argc, char *const argv[], pid_t *ptarget_pid, char **tapname, bool * do_config_network)
+static void parse_args(int argc, char *const argv[], pid_t *ptarget_pid, char **tapname, bool * do_config_network,
+		       int *exit_fd)
 {
 	int opt;
 	int target_pid;
 
-	while ((opt = getopt(argc, argv, "c")) != -1) {
+	while ((opt = getopt(argc, argv, "ce:")) != -1) {
 		switch (opt) {
 		case 'c':
 			*do_config_network = true;
+			break;
+		case 'e':
+			errno = 0;
+			*exit_fd = strtol(optarg, NULL, 10);
+			if (errno) {
+				perror("strtol");
+				usage(argv[0]);
+				exit(EXIT_FAILURE);
+			}
 			break;
 		default:
 			usage(argv[0]);
@@ -263,9 +272,10 @@ int main(int argc, char *const argv[])
 	int sv[2];
 	pid_t target_pid, child_pid;
 	char *tapname;
+	int exit_fd = -1;
 	bool do_config_network = false;
 
-	parse_args(argc, argv, &target_pid, &tapname, &do_config_network);
+	parse_args(argc, argv, &target_pid, &tapname, &do_config_network, &exit_fd);
 	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, sv) < 0) {
 		perror("socketpair");
 		exit(EXIT_FAILURE);
@@ -293,7 +303,7 @@ int main(int argc, char *const argv[])
 			fprintf(stderr, "child failed(%d)\n", child_status);
 			exit(child_status);
 		}
-		if (parent(sv[0]) < 0) {
+		if (parent(sv[0], exit_fd) < 0) {
 			fprintf(stderr, "parent failed\n");
 			exit(EXIT_FAILURE);
 		}
