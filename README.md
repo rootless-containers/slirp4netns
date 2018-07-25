@@ -6,8 +6,10 @@
 $ ./autogen.sh
 $ ./configure --prefix=/usr
 $ make
-$ make install
+$ sudo make install
 ```
+
+To build `slirp4netns` as a static binary, please run `./configure` with `LDFLAGS=-static`.
 
 ## Usage
 
