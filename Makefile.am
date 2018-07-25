@@ -5,7 +5,7 @@ AM_CFLAGS = -I $(abs_top_srcdir)/rd235_libslirp/include -I$(abs_top_srcdir)/rd23
 noinst_LIBRARIES = libqemu_slirp.a libslirp.a
 
 EXTRA_DIST = \
-	slirp.h \
+	slirp4netns.h \
 	qemu/include/qemu/queue.h \
 	qemu/slirp/slirp.h \
 	qemu/slirp/tcp_var.h \
@@ -59,5 +59,5 @@ libqemu_slirp_a_SOURCES = \
 
 libslirp_a_SOURCES = rd235_libslirp/src/qemu2libslirp.c
 
-slirp4netns_SOURCES = main.c slirp.c
+slirp4netns_SOURCES = main.c slirp4netns.c
 slirp4netns_LDADD = libslirp.a libqemu_slirp.a

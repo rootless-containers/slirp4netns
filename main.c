@@ -15,7 +15,7 @@
 #include <arpa/inet.h>
 #include <net/route.h>
 #include <stdbool.h>
-#include "slirp.h"
+#include "slirp4netns.h"
 
 static int nsenter(pid_t target_pid)
 {

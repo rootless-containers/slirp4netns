@@ -4,6 +4,7 @@ a.out
 *~
 *.log
 *.o
+*.a
 config.h
 config.status
 INSTALL
@@ -14,12 +15,15 @@ INSTALL
 
 # http://www.gnu.org/software/automake
 
+Makefile
 Makefile.in
 /ar-lib
 /mdate-sh
 /py-compile
 /test-driver
 /ylwrap
+*.dirstamp
+*tar.*
 
 # http://www.gnu.org/software/autoconf
 
