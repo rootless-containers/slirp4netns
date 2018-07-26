@@ -5,10 +5,11 @@ AM_CFLAGS = -I $(abs_top_srcdir)/rd235_libslirp/include -I$(abs_top_srcdir)/rd23
 noinst_LIBRARIES = libqemu_slirp.a libslirp.a
 
 AM_TESTS_ENVIRONMENT = PATH="$(abs_top_builddir):$(PATH)"
-TESTS = tests/test-slirp4netns.sh
+TESTS = tests/test-slirp4netns.sh tests/test-slirp4netns-configure.sh
 
 EXTRA_DIST = \
 	$(TESTS) \
+	tests/common.sh \
 	slirp4netns.h \
 	qemu/include/qemu/queue.h \
 	qemu/slirp/slirp.h \
