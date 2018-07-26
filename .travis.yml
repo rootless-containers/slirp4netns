@@ -1,0 +1,10 @@
+dist: trusty
+sudo: required
+
+services:
+  - docker
+
+script:
+  - docker build -t slirp4netns-tests -f Dockerfile.tests .
+  - sudo chown -R 1000:1000 .
+  - docker run --security-opt seccomp="unconfined" -ti --rm -v /dev:/dev -v $(pwd):/slirp4netns:Z slirp4netns-tests
