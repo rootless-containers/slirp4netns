@@ -25,3 +25,15 @@ function wait_for_network_device {
         let COUNTER=COUNTER+1
     done
 }
+
+function wait_process_exits {
+    COUNTER=0
+    while [ $COUNTER -lt 20 ]; do
+        if  kill -0 $1; then
+            sleep 0.5
+        else
+            break
+        fi
+        let COUNTER=COUNTER+1
+    done
+}
