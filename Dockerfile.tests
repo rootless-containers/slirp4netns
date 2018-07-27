@@ -1,15 +1,15 @@
-FROM ubuntu
-
-RUN apt-get update && apt-get install -y automake autotools-dev git make gcc \
-    indent libtool iproute2
-
-USER 1000:1000
-
+FROM ubuntu AS build
+RUN apt update && apt install -y automake autotools-dev make gcc
+COPY . /slirp4netns
 WORKDIR /slirp4netns
+RUN chown -R 1000:1000 /slirp4netns
+USER 1000:1000
+RUN ./autogen.sh && ./configure && make -j $(nproc)
 
-CMD ["bash", "-c", "hack/indent.sh && \
-    test -z \"$(git diff)\" && \
-    ./autogen.sh && \
-    ./configure && \
-    make -j \"$(nproc)\" && \
-    make -j \"$(nproc)\" distcheck"]
+FROM build AS test
+USER 0
+RUN apt update && apt install -y git indent libtool iproute2 clang clang-tidy
+USER 1000:1000
+RUN make indent && test -z "$(git diff)"
+RUN make lint
+CMD ["bash", "-c", "make -j \"$(nproc)\" distcheck"]
