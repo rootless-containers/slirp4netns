@@ -25,7 +25,10 @@ Default configuration:
 bring up the interface. IP will be set to 10.0.2.100.
 
 **-e FD**
-specify FD for terminating slirp4netns.
+specify the FD for terminating slirp4netns.
+
+**-r FD**
+specify the FD to write to when the network is configured.
 
 # EXAMPLE
 
