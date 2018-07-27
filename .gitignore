@@ -5,6 +5,7 @@ a.out
 *.log
 *.o
 *.a
+*.trs
 config.h
 config.status
 INSTALL
