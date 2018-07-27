@@ -1,0 +1,95 @@
+.nh
+.TH SLIRP4NETNS 1 "July 2018" "Rootless Containers" "User Commands"
+
+.SH NAME
+.PP
+slirp4netns \- User\-mode networking for unprivileged network namespaces
+
+
+.SH SYNOPSIS
+.PP
+slirp4netns [\-c] [\-e FD] PID TAPNAME
+
+
+.SH DESCRIPTION
+.PP
+slirp4netns provides a user\-mode networking ("slirp") for unprivileged network namespaces.
+
+.PP
+Default configuration:
+
+.RS
+.IP \(bu 2
+Gateway: 10.0.2.2
+.IP \(bu 2
+DNS: 10.0.2.3
+.IP \(bu 2
+Host: 10.0.2.2, 10.0.2.3
+
+.RE
+
+
+.SH OPTIONS
+.PP
+\fB\-c\fP
+bring up the interface. IP will be set to 10.0.2.100.
+
+.PP
+\fB\-e FD\fP
+specify FD for terminating slirp4netns.
+
+
+.SH EXAMPLE
+.PP
+Terminal 1:
+
+.PP
+.RS
+
+.nf
+$ unshare \-r \-n \-m
+unshared$ echo $$ > /tmp/pid
+unshared$ ip tuntap add name tap0 mode tap
+unshared$ ip link set tap0 up
+unshared$ ip addr add 10.0.2.100/24 dev tap0
+unshared$ ip route add default via 10.0.2.2 dev tap0
+unshared$ echo "nameserver 10.0.2.3" > /tmp/resolv.conf
+unshared$ mount \-\-bind /tmp/resolv.conf /etc/resolv.conf
+
+.fi
+.RE
+
+.PP
+Terminal 2:
+
+.PP
+.RS
+
+.nf
+$ slirp4netns $(cat /tmp/pid) tap0
+
+.fi
+.RE
+
+.PP
+Terminal 1:
+
+.PP
+.RS
+
+.nf
+unshared$ ping 10.0.2.2
+unshared$ curl https://example.com
+
+.fi
+.RE
+
+
+.SH SEE ALSO
+.PP
+\fBnetwork\_namespaces\fP(7), \fBuser\_namespaces\fP(7)
+
+
+.SH AVAILABILITY
+.PP
+The slirp4netns command is available from \fBhttps://github.com/rootless\-containers/slirp4netns\fP under GNU GENERAL PUBLIC LICENSE Version 2.

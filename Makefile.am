@@ -8,6 +8,8 @@ AM_TESTS_ENVIRONMENT = PATH="$(abs_top_builddir):$(PATH)"
 TESTS = tests/test-slirp4netns.sh tests/test-slirp4netns-configure.sh tests/test-slirp4netns-exit-fd.sh
 
 EXTRA_DIST = \
+	slirp4netns.1.md \
+	slirp4netns.1 \
 	$(TESTS) \
 	tests/common.sh \
 	slirp4netns.h \
@@ -66,3 +68,9 @@ libslirp_a_SOURCES = rd235_libslirp/src/qemu2libslirp.c
 
 slirp4netns_SOURCES = main.c slirp4netns.c
 slirp4netns_LDADD = libslirp.a libqemu_slirp.a
+man1_MANS = slirp4netns.1
+
+generate-man:
+	go-md2man -in slirp4netns.1.md -out slirp4netns.1
+
+.PHONY: generate-man
