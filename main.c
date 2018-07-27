@@ -146,7 +146,7 @@ static int configure_network(const char *tapname)
 	return 0;
 }
 
-static int child(int sock, pid_t target_pid, bool do_config_network, const char *tapname)
+static int child(int sock, pid_t target_pid, bool do_config_network, const char *tapname, int ready_fd)
 {
 	int rc, tapfd;
 	if ((rc = nsenter(target_pid)) < 0) {
@@ -157,6 +157,12 @@ static int child(int sock, pid_t target_pid, bool do_config_network, const char 
 	}
 	if (do_config_network && configure_network(tapname) < 0) {
 		return -1;
+	}
+	if (ready_fd >= 0) {
+		do
+			rc = write(ready_fd, "1", 1);
+		while (rc < 0 && errno == EINTR);
+		close(ready_fd);
 	}
 	if (sendfd(sock, tapfd) < 0) {
 		close(tapfd);
@@ -220,17 +226,17 @@ static int parent(int sock, int exit_fd)
 
 static void usage(const char *argv0)
 {
-	fprintf(stderr, "Usage: %s [-c] [-e FD] PID TAPNAME\n", argv0);
+	fprintf(stderr, "Usage: %s [-c] [-e FD] [-r FD] PID TAPNAME\n", argv0);
 }
 
 // caller needs to free tapname
 static void parse_args(int argc, char *const argv[], pid_t *ptarget_pid, char **tapname, bool * do_config_network,
-		       int *exit_fd)
+		       int *exit_fd, int *ready_fd)
 {
 	int opt;
 	int target_pid;
 
-	while ((opt = getopt(argc, argv, "ce:")) != -1) {
+	while ((opt = getopt(argc, argv, "ce:r:")) != -1) {
 		switch (opt) {
 		case 'c':
 			*do_config_network = true;
@@ -244,10 +250,23 @@ static void parse_args(int argc, char *const argv[], pid_t *ptarget_pid, char **
 				exit(EXIT_FAILURE);
 			}
 			break;
+		case 'r':
+			errno = 0;
+			*ready_fd = strtol(optarg, NULL, 10);
+			if (errno) {
+				perror("strtol");
+				usage(argv[0]);
+				exit(EXIT_FAILURE);
+			}
+			break;
 		default:
 			usage(argv[0]);
 			exit(EXIT_FAILURE);
 		}
+	}
+	if (*ready_fd >= 0 && !*do_config_network) {
+		fprintf(stderr, "the option -r FD requires -c\n");
+		exit(EXIT_FAILURE);
 	}
 	if (argc - optind < 2) {
 		usage(argv[0]);
@@ -270,9 +289,10 @@ int main(int argc, char *const argv[])
 	pid_t target_pid, child_pid;
 	char *tapname;
 	int exit_fd = -1;
+	int ready_fd = -1;
 	bool do_config_network = false;
 
-	parse_args(argc, argv, &target_pid, &tapname, &do_config_network, &exit_fd);
+	parse_args(argc, argv, &target_pid, &tapname, &do_config_network, &exit_fd, &ready_fd);
 	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, sv) < 0) {
 		perror("socketpair");
 		exit(EXIT_FAILURE);
@@ -284,7 +304,7 @@ int main(int argc, char *const argv[])
 		exit(EXIT_FAILURE);
 	}
 	if (child_pid == 0) {
-		if (child(sv[1], target_pid, do_config_network, tapname) < 0) {
+		if (child(sv[1], target_pid, do_config_network, tapname, ready_fd) < 0) {
 			free(tapname);
 			tapname = NULL;
 			exit(EXIT_FAILURE);
