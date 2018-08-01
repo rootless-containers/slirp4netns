@@ -86,4 +86,7 @@ indent:
 	indent -linux -l120 -T ssize_t -T pid_t -T SLIRP $(slirp4netns_SOURCES)
 	$(RM) *.c~
 
-.PHONY: generate-man lint lint-full indent
+benchmark:
+	benchmarks/benchmark-iperf3.sh
+
+.PHONY: generate-man lint lint-full indent benchmark

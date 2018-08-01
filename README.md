@@ -36,6 +36,18 @@ unshared$ ping 10.0.2.2
 unshared$ curl https://example.com
 ```
 
+## Benchmarks
+
+### iperf3 (netns -> host)
+
+Aug 1, 2018, on [RootlessKit](https://github.com/rootless-containers/rootlesskit) Travis: https://travis-ci.org/rootless-containers/rootlesskit/builds/410721610
+
+* slirp4netns: 1.07 Gbits/sec
+* VPNKit: 528 Mbits/sec
+* vdeplug_slirp: 771 Mbits/sec
+
+The latest revision of slirp4netns is regularly benchmarked (`make benchmark`) on Travis: https://travis-ci.org/rootless-containers/slirp4netns
+
 ## Acknowledgement
 
 * The files under [`qemu`](./qemu) directory were forked from [QEMU](https://github.com/qemu/qemu/commit/c447afd5783b9237fa51b7a85777007d8d568bfc).
