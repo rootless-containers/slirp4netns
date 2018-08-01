@@ -37,3 +37,15 @@ function wait_process_exits {
         let COUNTER=COUNTER+1
     done
 }
+
+function wait_for_ping_connectivity {
+    COUNTER=0
+    while [ $COUNTER -lt 20 ]; do
+        if nsenter --preserve-credentials -U -n --target=$1 ping -c 1 -w 1 $2; then
+            break
+        else
+            sleep 0.5
+        fi
+        let COUNTER=COUNTER+1
+    done
+}
