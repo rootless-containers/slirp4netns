@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include <assert.h>
 #include <stdio.h>
+#include <signal.h>
 #include <arpa/inet.h>
 
 #include "qemu/slirp/slirp.h"
@@ -68,6 +69,7 @@ int do_slirp(int tapfd, int exitfd)
 		n_fds++;
 		g_array_append_val(&pollfds, exit_pollfd);
 	}
+	signal(SIGPIPE, SIG_IGN);
 	while (1) {
 		int pollout;
 		uint32_t timeout = -1;
