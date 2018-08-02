@@ -160,7 +160,7 @@ static void dhcpv6_info_request(Slirp *slirp, struct sockaddr_in6 *srcsas,
 
         *resp++ = OPTION_BOOTFILE_URL >> 8;     /* option-code high byte */
         *resp++ = OPTION_BOOTFILE_URL;          /* option-code low byte */
-        smaxlen = (uint8_t *)m->m_data + IF_MTU - (resp + 2);
+        smaxlen = (uint8_t *)m->m_data + slirp->if_mtu - (resp + 2);
         slen = snprintf((char *)resp + 2, smaxlen,
                         "tftp://[%02x%02x:%02x%02x:%02x%02x:%02x%02x:"
                                 "%02x%02x:%02x%02x:%02x%02x:%02x%02x]/%s",

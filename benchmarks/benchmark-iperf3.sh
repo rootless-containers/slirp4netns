@@ -11,7 +11,8 @@ child=$!
 
 wait_for_network_namespace $child
 
-slirp4netns -c $child tun11 &
+mtu=${MTU:=1500}
+slirp4netns -c --mtu $mtu $child tun11 &
 slirp_pid=$!
 
 wait_for_network_device $child tun11

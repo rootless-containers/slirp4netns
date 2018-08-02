@@ -172,6 +172,11 @@ struct Slirp {
 
     int restricted;
 
+    /* virtual network configuration */
+    /* Changed from QEMU: IF_MTU and IF_MRU were originally hard-coded to 1500 in if.h */
+    int if_mtu;
+    int if_mru;
+
     /* mbuf states */
     struct quehead m_freelist;
     struct quehead m_usedlist;

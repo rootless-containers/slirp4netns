@@ -75,7 +75,7 @@ ip_output(struct socket *so, struct mbuf *m0)
 	/*
 	 * If small enough for interface, can just send directly.
 	 */
-	if ((uint16_t)ip->ip_len <= IF_MTU) {
+	if ((uint16_t)ip->ip_len <= slirp->if_mtu) {
 		ip->ip_len = htons((uint16_t)ip->ip_len);
 		ip->ip_off = htons((uint16_t)ip->ip_off);
 		ip->ip_sum = 0;
@@ -94,7 +94,7 @@ ip_output(struct socket *so, struct mbuf *m0)
 		goto bad;
 	}
 
-	len = (IF_MTU - hlen) &~ 7;       /* ip databytes per packet */
+	len = (slirp->if_mtu - hlen) &~ 7;       /* ip databytes per packet */
 	if (len < 8) {
 		error = -1;
 		goto bad;
