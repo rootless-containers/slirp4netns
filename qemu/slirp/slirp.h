@@ -1,6 +1,6 @@
 #ifndef SLIRP_H
 #define SLIRP_H
-
+#include <config.h>
 #include <qemu2libslirp.h>
 
 #include "slirp_config.h"

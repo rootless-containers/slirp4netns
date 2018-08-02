@@ -4,6 +4,10 @@ sudo: required
 services:
   - docker
 
+env:
+  - CONFIGURE="--enable-skip-cksum=no"
+  - CONFIGURE="--enable-skip-cksum=yes"
+
 script:
-  - docker build -t slirp4netns-tests -f Dockerfile.tests .
+  - docker build -t slirp4netns-tests -f Dockerfile.tests --build-arg CONFIGURE=$CONFIGURE .
   - docker run --security-opt seccomp="unconfined" -ti --rm -v /dev:/dev slirp4netns-tests
