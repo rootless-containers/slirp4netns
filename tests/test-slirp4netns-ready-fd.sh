@@ -16,7 +16,7 @@ slirp_pid=$!
 function cleanup {
     set +xeuo pipefail
     kill -9 $child $slirp_pid
-    rm -f configured
+    rm -f configured keep_alive
 }
 trap cleanup EXIT
 
