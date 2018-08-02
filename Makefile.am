@@ -89,4 +89,12 @@ indent:
 benchmark:
 	benchmarks/benchmark-iperf3.sh
 
-.PHONY: generate-man lint lint-full indent benchmark
+ci:
+	$(MAKE) indent
+	test -z "$(git diff)"
+	$(MAKE) lint
+	$(MAKE) -j $(shell nproc) distcheck
+	PATH=$(shell pwd):$$PATH $(MAKE) benchmark MTU=1500
+	PATH=$(shell pwd):$$PATH $(MAKE) benchmark MTU=65520
+
+.PHONY: generate-man lint lint-full indent benchmark ci
