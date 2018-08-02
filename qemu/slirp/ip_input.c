@@ -105,9 +105,11 @@ ip_input(struct mbuf *m)
 	 * ip->ip_sum = cksum(m, hlen);
 	 * if (ip->ip_sum) {
 	 */
+#if !defined(SLIRP4NETNS_SKIP_CKSUM)
 	if(cksum(m,hlen)) {
 	  goto bad;
 	}
+#endif /* !defined(SLIRP4NETNS_SKIP_CKSUM) */
 
 	/*
 	 * Convert fields to host representation.

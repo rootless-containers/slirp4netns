@@ -30,5 +30,16 @@ AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 AC_CHECK_FUNCS([atexit clock_gettime inet_ntoa memmove memset socket strchr strdup strerror strstr strtol])
 
+AC_ARG_ENABLE(skip-cksum,
+  [AS_HELP_STRING([--enable-skip-cksum],
+    [skip validation of cksum (default is no)])],
+  [],
+  [enable_skip_cksum=no]
+)
+
+AS_IF([test "x$enable_skip_cksum" != xno],
+  [AC_DEFINE([SLIRP4NETNS_SKIP_CKSUM], [1], [skip cksum])]
+)
+
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

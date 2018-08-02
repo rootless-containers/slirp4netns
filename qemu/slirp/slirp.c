@@ -274,7 +274,11 @@ Slirp *slirp_init(int restricted, bool in_enabled, struct in_addr vnetwork,
                   const char *vdomainname, void *opaque)
 {
     Slirp *slirp = g_malloc0(sizeof(Slirp));
-
+#if defined(SLIRP4NETNS_SKIP_CKSUM)
+    printf("EXPERIMENTAL: SLIRP4NETNS_SKIP_CKSUM is enabled\n");
+#else
+    printf("SLIRP4NETNS_SKIP_CKSUM is disabled\n");
+#endif /* defined(SLIRP4NETNS_SKIP_CKSUM) */
     slirp_init_once();
 
     slirp->grand = g_rand_new();

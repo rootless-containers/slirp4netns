@@ -331,10 +331,11 @@ tcp_input(struct mbuf *m, int iphlen, struct socket *inso, unsigned short af)
 	}
 
 	len = ((sizeof(struct tcpiphdr) - sizeof(struct tcphdr)) + tlen);
+#if !defined(SLIRP4NETNS_SKIP_CKSUM)
 	if (cksum(m, len)) {
 	    goto drop;
 	}
-
+#endif /* !defined(SLIRP4NETNS_SKIP_CKSUM) */
 	/*
 	 * Check that TCP offset makes sense,
 	 * pull out TCP options and adjust length.		XXX
