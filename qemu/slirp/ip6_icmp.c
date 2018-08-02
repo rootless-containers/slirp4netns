@@ -93,7 +93,7 @@ void icmp6_send_error(struct mbuf *m, uint8_t type, uint8_t code)
 
     rip->ip_nh = IPPROTO_ICMPV6;
     const int error_data_len = MIN(m->m_len,
-            IF_MTU - (sizeof(struct ip6) + ICMP6_ERROR_MINLEN));
+            slirp->if_mtu - (sizeof(struct ip6) + ICMP6_ERROR_MINLEN));
     rip->ip_pl = htons(ICMP6_ERROR_MINLEN + error_data_len);
     t->m_len = sizeof(struct ip6) + ntohs(rip->ip_pl);
 
@@ -110,7 +110,7 @@ void icmp6_send_error(struct mbuf *m, uint8_t type, uint8_t code)
         ricmp->icmp6_err.unused = 0;
         break;
     case ICMP6_TOOBIG:
-        ricmp->icmp6_err.mtu = htonl(IF_MTU);
+        ricmp->icmp6_err.mtu = htonl(slirp->if_mtu);
         break;
     case ICMP6_PARAMPROB:
         /* TODO: Handle this case */

@@ -23,8 +23,8 @@
 /*
  * Find a nice value for msize
  */
-#define SLIRP_MSIZE\
-    (offsetof(struct mbuf, m_dat) + IF_MAXLINKHDR + TCPIPHDR_DELTA + IF_MTU)
+#define SLIRP_MSIZE(mtu)                                                 \
+    (offsetof(struct mbuf, m_dat) + IF_MAXLINKHDR + TCPIPHDR_DELTA + (mtu))
 
 void
 m_init(Slirp *slirp)
@@ -71,7 +71,7 @@ m_get(Slirp *slirp)
 	DEBUG_CALL("m_get");
 
 	if (slirp->m_freelist.qh_link == &slirp->m_freelist) {
-                m = g_malloc(SLIRP_MSIZE);
+    m = g_malloc(SLIRP_MSIZE(slirp->if_mtu));
 		slirp->mbuf_alloced++;
 		if (slirp->mbuf_alloced > MBUF_THRESH)
 			flags = M_DOFREE;
@@ -86,7 +86,7 @@ m_get(Slirp *slirp)
 	m->m_flags = (flags | M_USEDLIST);
 
 	/* Initialise it */
-	m->m_size = SLIRP_MSIZE - offsetof(struct mbuf, m_dat);
+	m->m_size = SLIRP_MSIZE(slirp->if_mtu) - offsetof(struct mbuf, m_dat);
 	m->m_data = m->m_dat;
 	m->m_len = 0;
         m->m_nextpkt = NULL;

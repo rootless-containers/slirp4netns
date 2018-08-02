@@ -21,7 +21,7 @@ void slirp_output(void *opaque, const uint8_t * pkt, int pkt_len)
 	assert(rc == pkt_len);
 }
 
-Slirp *create_slirp(void *opaque)
+Slirp *create_slirp(void *opaque, unsigned int mtu)
 {
 	Slirp *slirp = NULL;
 	struct in_addr vnetwork, vnetmask, vhost, vdhcp_start, vnameserver;
@@ -35,6 +35,7 @@ Slirp *create_slirp(void *opaque)
 			   vnetwork, vnetmask, vhost, 0 /* ip6_enabled */ , vprefix_addr6, 0 /* vprefix_len */ , vhost6,
 			   NULL /* vhostname */ , NULL /* bootfile */ , vdhcp_start,
 			   vnameserver, vnameserver6, NULL /* vdnssearch */ , NULL /* vdomainname */ ,
+			   mtu /* if_mtu */ , mtu /* if_mru */ ,
 			   opaque);
 	if (slirp == NULL) {
 		fprintf(stderr, "slirp_init failed\n");
@@ -44,7 +45,7 @@ Slirp *create_slirp(void *opaque)
 
 #define ETH_BUF_SIZE (65536)
 
-int do_slirp(int tapfd, int exitfd)
+int do_slirp(int tapfd, int exitfd, unsigned int mtu)
 {
 	int ret = -1;
 	Slirp *slirp = NULL;
@@ -55,7 +56,7 @@ int do_slirp(int tapfd, int exitfd)
 	struct pollfd tap_pollfd = { tapfd, POLLIN | POLLHUP, 0 };
 	struct pollfd exit_pollfd = { exitfd, POLLHUP, 0 };
 
-	slirp = create_slirp((void *)&opaque);
+	slirp = create_slirp((void *)&opaque, mtu);
 	if (slirp == NULL) {
 		fprintf(stderr, "create_slirp failed\n");
 		goto err;

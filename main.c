@@ -88,7 +88,7 @@ static int sendfd(int sock, int fd)
 	return rc;
 }
 
-static int configure_network(const char *tapname)
+static int configure_network(const char *tapname, unsigned int mtu)
 {
 	struct rtentry route;
 	struct ifreq ifr;
@@ -107,6 +107,12 @@ static int configure_network(const char *tapname)
 
 	if (ioctl(sockfd, SIOCSIFFLAGS, &ifr) < 0) {
 		perror("cannot set device up");
+		return -1;
+	}
+
+	ifr.ifr_mtu = (int)mtu;
+	if (ioctl(sockfd, SIOCSIFMTU, &ifr) < 0) {
+		perror("cannot set MTU");
 		return -1;
 	}
 
@@ -147,7 +153,8 @@ static int configure_network(const char *tapname)
 	return 0;
 }
 
-static int child(int sock, pid_t target_pid, bool do_config_network, const char *tapname, int ready_fd)
+static int child(int sock, pid_t target_pid, bool do_config_network, const char *tapname, int ready_fd,
+		 unsigned int mtu)
 {
 	int rc, tapfd;
 	if ((rc = nsenter(target_pid)) < 0) {
@@ -156,7 +163,7 @@ static int child(int sock, pid_t target_pid, bool do_config_network, const char 
 	if ((tapfd = open_tap(tapname)) < 0) {
 		return tapfd;
 	}
-	if (do_config_network && configure_network(tapname) < 0) {
+	if (do_config_network && configure_network(tapname, mtu) < 0) {
 		return -1;
 	}
 	if (ready_fd >= 0) {
@@ -208,7 +215,7 @@ static int recvfd(int sock)
 	return fd;
 }
 
-static int parent(int sock, int exit_fd)
+static int parent(int sock, int exit_fd, unsigned int mtu)
 {
 	int rc, tapfd;
 	if ((tapfd = recvfd(sock)) < 0) {
@@ -216,7 +223,8 @@ static int parent(int sock, int exit_fd)
 	}
 	fprintf(stderr, "received tapfd=%d\n", tapfd);
 	close(sock);
-	if ((rc = do_slirp(tapfd, exit_fd)) < 0) {
+	printf("starting slirp, MTU=%d\n", mtu);
+	if ((rc = do_slirp(tapfd, exit_fd, mtu)) < 0) {
 		fprintf(stderr, "do_slirp failed\n");
 		close(tapfd);
 		return rc;
@@ -232,6 +240,7 @@ static void usage(const char *argv0)
 	printf("-c, --configure      bring up the interface\n");
 	printf("-e, --exit-fd=FD     specify the FD for terminating slirp4netns\n");
 	printf("-r, --ready-fd=FD    specify the FD to write to when the network is configured\n");
+	printf("-m, --mtu=MTU        specify MTU (default=1500, max=65521)\n");
 }
 
 struct options {
@@ -240,12 +249,14 @@ struct options {
 	bool do_config_network;	// -c
 	int exit_fd;		// -e
 	int ready_fd;		// -r
+	unsigned int mtu;	// -m
 };
 
 static void options_init(struct options *options)
 {
 	memset(options, 0, sizeof(*options));
 	options->exit_fd = options->ready_fd = -1;
+	options->mtu = 1500;
 }
 
 static void options_destroy(struct options *options)
@@ -267,10 +278,11 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 		{"configure", no_argument, NULL, 'c'},
 		{"exit-fd", required_argument, NULL, 'e'},
 		{"ready-fd", required_argument, NULL, 'r'},
+		{"mtu", required_argument, NULL, 'm'},
 		{0, 0, 0, 0},
 	};
 	options_init(options);
-	while ((opt = getopt_long(argc, argv, "ce:r:", longopts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "ce:r:m:", longopts, NULL)) != -1) {
 		switch (opt) {
 		case 'c':
 			options->do_config_network = true;
@@ -293,6 +305,15 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 				exit(EXIT_FAILURE);
 			}
 			break;
+		case 'm':
+			errno = 0;
+			options->mtu = strtol(optarg, NULL, 10);
+			if (errno) {
+				perror("strtol");
+				usage(argv[0]);
+				exit(EXIT_FAILURE);
+			}
+			break;
 		default:
 			usage(argv[0]);
 			exit(EXIT_FAILURE);
@@ -300,6 +321,10 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 	}
 	if (options->ready_fd >= 0 && !options->do_config_network) {
 		fprintf(stderr, "the option -r FD requires -c\n");
+		exit(EXIT_FAILURE);
+	}
+	if (options->mtu == 0 || options->mtu > 65521) {
+		fprintf(stderr, "MTU must be a positive integer (< 65522)\n");
 		exit(EXIT_FAILURE);
 	}
 	if (argc - optind < 2) {
@@ -333,7 +358,9 @@ int main(int argc, char *const argv[])
 		exit(EXIT_FAILURE);
 	}
 	if (child_pid == 0) {
-		if (child(sv[1], options.target_pid, options.do_config_network, options.tapname, options.ready_fd) < 0) {
+		if (child
+		    (sv[1], options.target_pid, options.do_config_network, options.tapname, options.ready_fd,
+		     options.mtu) < 0) {
 			options_destroy(&options);
 			exit(EXIT_FAILURE);
 		}
@@ -351,7 +378,7 @@ int main(int argc, char *const argv[])
 			fprintf(stderr, "child failed(%d)\n", child_status);
 			exit(child_status);
 		}
-		if (parent(sv[0], options.exit_fd) < 0) {
+		if (parent(sv[0], options.exit_fd, options.mtu) < 0) {
 			fprintf(stderr, "parent failed\n");
 			exit(EXIT_FAILURE);
 		}

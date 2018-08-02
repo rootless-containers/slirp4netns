@@ -38,7 +38,7 @@ unshared$ curl https://example.com
 
 ## Benchmarks
 
-### iperf3 (netns -> host)
+### iperf3 (netns -> host, MTU=1500)
 
 Aug 1, 2018, on [RootlessKit](https://github.com/rootless-containers/rootlesskit) Travis: https://travis-ci.org/rootless-containers/rootlesskit/builds/410721610
 

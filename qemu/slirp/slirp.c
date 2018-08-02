@@ -263,6 +263,7 @@ static void slirp_init_once(void)
     loopback_mask = htonl(IN_CLASSA_NET);
 }
 
+/* Changed from QEMU: removed tftp, added if_mtu and if_mru */
 Slirp *slirp_init(int restricted, bool in_enabled, struct in_addr vnetwork,
                   struct in_addr vnetmask, struct in_addr vhost,
                   bool in6_enabled,
@@ -271,7 +272,7 @@ Slirp *slirp_init(int restricted, bool in_enabled, struct in_addr vnetwork,
                   const char *bootfile,
                   struct in_addr vdhcp_start, struct in_addr vnameserver,
                   struct in6_addr vnameserver6, const char **vdnssearch,
-                  const char *vdomainname, void *opaque)
+                  const char *vdomainname, unsigned int if_mtu, unsigned int if_mru, void *opaque)
 {
     Slirp *slirp = g_malloc0(sizeof(Slirp));
 
@@ -310,6 +311,8 @@ Slirp *slirp_init(int restricted, bool in_enabled, struct in_addr vnetwork,
         translate_dnssearch(slirp, vdnssearch);
     }
 
+    slirp->if_mtu = if_mtu == 0 ? 1500 : if_mtu;
+    slirp->if_mru = if_mru == 0 ? 1500 : if_mru;
     slirp->opaque = opaque;
 
     QTAILQ_INSERT_TAIL(&slirp_instances, slirp, entry);

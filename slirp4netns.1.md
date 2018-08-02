@@ -30,6 +30,9 @@ specify the FD for terminating slirp4netns.
 **-r**, **--ready-fd=FD**
 specify the FD to write to when the network is configured.
 
+**-m**, **--mtu=MTU**
+specify MTU (default=1500, max=65521).
+
 # EXAMPLE
 
 Terminal 1:
