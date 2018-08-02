@@ -1,3 +1,4 @@
+.nh
 .TH SLIRP4NETNS 1 "July 2018" "Rootless Containers" "User Commands"
 
 .SH NAME
@@ -16,6 +17,8 @@ slirp4netns provides a user\-mode networking ("slirp") for unprivileged network 
 
 .PP
 Default configuration:
+
+.RS
 .IP \(bu 2
 Gateway: 10.0.2.2
 .IP \(bu 2
@@ -23,18 +26,20 @@ DNS: 10.0.2.3
 .IP \(bu 2
 Host: 10.0.2.2, 10.0.2.3
 
+.RE
+
 
 .SH OPTIONS
 .PP
-\fB\-c\fP
+\fB\-c\fP, \fB\-\-configure\fP
 bring up the interface. IP will be set to 10.0.2.100.
 
 .PP
-\fB\-e FD\fP
+\fB\-e\fP, \fB\-\-exit\-fd=FD\fP
 specify the FD for terminating slirp4netns.
 
 .PP
-\fB\-r FD\fP
+\fB\-r\fP, \fB\-\-ready\-fd=FD\fP
 specify the FD to write to when the network is configured.
 
 
@@ -91,5 +96,4 @@ unshared$ curl https://example.com
 
 .SH AVAILABILITY
 .PP
-The slirp4netns command is available from \fB
-\[la]https://github.com/rootless-containers/slirp4netns\[ra]\fP under GNU GENERAL PUBLIC LICENSE Version 2.
+The slirp4netns command is available from \fBhttps://github.com/rootless\-containers/slirp4netns\fP under GNU GENERAL PUBLIC LICENSE Version 2.

@@ -21,13 +21,13 @@ Default configuration:
 
 # OPTIONS
 
-**-c**
+**-c**, **--configure**
 bring up the interface. IP will be set to 10.0.2.100.
 
-**-e FD**
+**-e**, **--exit-fd=FD**
 specify the FD for terminating slirp4netns.
 
-**-r FD**
+**-r**, **--ready-fd=FD**
 specify the FD to write to when the network is configured.
 
 # EXAMPLE
