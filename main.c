@@ -10,9 +10,9 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <linux/if.h>
 #include <linux/if_tun.h>
 #include <arpa/inet.h>
+#include <net/if.h>
 #include <net/route.h>
 #include <stdbool.h>
 #include <getopt.h>
@@ -154,7 +154,7 @@ static int configure_network(const char *tapname, unsigned int mtu)
 }
 
 static int child(int sock, pid_t target_pid, bool do_config_network, const char *tapname, int ready_fd,
-		 unsigned int mtu)
+		 unsigned int mtu, bool enable_ipv6)
 {
 	int rc, tapfd;
 	if ((rc = nsenter(target_pid)) < 0) {
@@ -215,7 +215,7 @@ static int recvfd(int sock)
 	return fd;
 }
 
-static int parent(int sock, int exit_fd, unsigned int mtu)
+static int parent(int sock, int exit_fd, unsigned int mtu, bool enable_ipv6)
 {
 	int rc, tapfd;
 	if ((tapfd = recvfd(sock)) < 0) {
@@ -224,7 +224,7 @@ static int parent(int sock, int exit_fd, unsigned int mtu)
 	fprintf(stderr, "received tapfd=%d\n", tapfd);
 	close(sock);
 	printf("starting slirp, MTU=%d\n", mtu);
-	if ((rc = do_slirp(tapfd, exit_fd, mtu)) < 0) {
+	if ((rc = do_slirp(tapfd, exit_fd, mtu, enable_ipv6)) < 0) {
 		fprintf(stderr, "do_slirp failed\n");
 		close(tapfd);
 		return rc;
@@ -241,6 +241,7 @@ static void usage(const char *argv0)
 	printf("-e, --exit-fd=FD     specify the FD for terminating slirp4netns\n");
 	printf("-r, --ready-fd=FD    specify the FD to write to when the network is configured\n");
 	printf("-m, --mtu=MTU        specify MTU (default=1500, max=65521)\n");
+	printf("-6, --enable-ipv6    enable IPv6 (experimental)\n");
 }
 
 struct options {
@@ -250,6 +251,7 @@ struct options {
 	int exit_fd;		// -e
 	int ready_fd;		// -r
 	unsigned int mtu;	// -m
+	bool enable_ipv6;	// -6
 };
 
 static void options_init(struct options *options)
@@ -279,10 +281,11 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 		{"exit-fd", required_argument, NULL, 'e'},
 		{"ready-fd", required_argument, NULL, 'r'},
 		{"mtu", required_argument, NULL, 'm'},
+		{"enable-ipv6", no_argument, NULL, '6'},
 		{0, 0, 0, 0},
 	};
 	options_init(options);
-	while ((opt = getopt_long(argc, argv, "ce:r:m:", longopts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "ce:r:m:6", longopts, NULL)) != -1) {
 		switch (opt) {
 		case 'c':
 			options->do_config_network = true;
@@ -313,6 +316,10 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 				usage(argv[0]);
 				exit(EXIT_FAILURE);
 			}
+			break;
+		case '6':
+			options->enable_ipv6 = true;
+			printf("WARNING: Support for IPv6 is experimental\n");
 			break;
 		default:
 			usage(argv[0]);
@@ -360,7 +367,7 @@ int main(int argc, char *const argv[])
 	if (child_pid == 0) {
 		if (child
 		    (sv[1], options.target_pid, options.do_config_network, options.tapname, options.ready_fd,
-		     options.mtu) < 0) {
+		     options.mtu, options.enable_ipv6) < 0) {
 			options_destroy(&options);
 			exit(EXIT_FAILURE);
 		}
@@ -378,7 +385,7 @@ int main(int argc, char *const argv[])
 			fprintf(stderr, "child failed(%d)\n", child_status);
 			exit(child_status);
 		}
-		if (parent(sv[0], options.exit_fd, options.mtu) < 0) {
+		if (parent(sv[0], options.exit_fd, options.mtu, options.enable_ipv6) < 0) {
 			fprintf(stderr, "parent failed\n");
 			exit(EXIT_FAILURE);
 		}
