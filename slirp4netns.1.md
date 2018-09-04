@@ -15,14 +15,14 @@ slirp4netns provides a user-mode networking ("slirp") for unprivileged network n
 
 Default configuration:
 
-* Gateway: 10.0.2.2
-* DNS: 10.0.2.3
-* Host: 10.0.2.2, 10.0.2.3
+* Gateway: 10.0.2.2, fd00::2
+* DNS: 10.0.2.3, fd00::3
+* Host: 10.0.2.2, 10.0.2.3, fd00::2, fd00::3
 
 # OPTIONS
 
 **-c**, **--configure**
-bring up the interface. IP will be set to 10.0.2.100.
+bring up the interface. IP will be set to 10.0.2.100. IPv6 will be set to a random address.
 
 **-e**, **--exit-fd=FD**
 specify the FD for terminating slirp4netns.
@@ -32,6 +32,9 @@ specify the FD to write to when the network is configured.
 
 **-m**, **--mtu=MTU**
 specify MTU (default=1500, max=65521).
+
+**-6**, **--enable-ipv6**
+enable IPv6 (experimental).
 
 # EXAMPLE
 

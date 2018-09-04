@@ -20,11 +20,11 @@ Default configuration:
 
 .RS
 .IP \(bu 2
-Gateway: 10.0.2.2
+Gateway: 10.0.2.2, fd00::2
 .IP \(bu 2
-DNS: 10.0.2.3
+DNS: 10.0.2.3, fd00::3
 .IP \(bu 2
-Host: 10.0.2.2, 10.0.2.3
+Host: 10.0.2.2, 10.0.2.3, fd00::2, fd00::3
 
 .RE
 
@@ -32,7 +32,7 @@ Host: 10.0.2.2, 10.0.2.3
 .SH OPTIONS
 .PP
 \fB\-c\fP, \fB\-\-configure\fP
-bring up the interface. IP will be set to 10.0.2.100.
+bring up the interface. IP will be set to 10.0.2.100. IPv6 will be set to a random address.
 
 .PP
 \fB\-e\fP, \fB\-\-exit\-fd=FD\fP
@@ -45,6 +45,10 @@ specify the FD to write to when the network is configured.
 .PP
 \fB\-m\fP, \fB\-\-mtu=MTU\fP
 specify MTU (default=1500, max=65521).
+
+.PP
+\fB\-6\fP, \fB\-\-enable\-ipv6\fP
+enable IPv6 (experimental).
 
 
 .SH EXAMPLE

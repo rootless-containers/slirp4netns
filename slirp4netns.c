@@ -21,18 +21,22 @@ void slirp_output(void *opaque, const uint8_t * pkt, int pkt_len)
 	assert(rc == pkt_len);
 }
 
-Slirp *create_slirp(void *opaque, unsigned int mtu)
+Slirp *create_slirp(void *opaque, unsigned int mtu, bool ip6_enabled)
 {
 	Slirp *slirp = NULL;
 	struct in_addr vnetwork, vnetmask, vhost, vdhcp_start, vnameserver;
-	struct in6_addr vhost6, vprefix_addr6, vnameserver6;	/* ignored */
+	struct in6_addr vhost6, vprefix_addr6, vnameserver6;
+	int vprefix_len = 64;
 	inet_pton(AF_INET, "10.0.2.0", &vnetwork);
 	inet_pton(AF_INET, "255.255.255.0", &vnetmask);
 	inet_pton(AF_INET, "10.0.2.2", &vhost);
 	inet_pton(AF_INET, "10.0.2.3", &vnameserver);
 	inet_pton(AF_INET, "10.0.2.15", &vdhcp_start);
+	inet_pton(AF_INET6, "fd00::2", &vhost6);
+	inet_pton(AF_INET6, "fd00::", &vprefix_addr6);
+	inet_pton(AF_INET6, "fd00::3", &vnameserver6);
 	slirp = slirp_init(0 /* restricted */ , 1 /* is_enabled */ ,
-			   vnetwork, vnetmask, vhost, 0 /* ip6_enabled */ , vprefix_addr6, 0 /* vprefix_len */ , vhost6,
+			   vnetwork, vnetmask, vhost, (int)ip6_enabled, vprefix_addr6, vprefix_len, vhost6,
 			   NULL /* vhostname */ , NULL /* bootfile */ , vdhcp_start,
 			   vnameserver, vnameserver6, NULL /* vdnssearch */ , NULL /* vdomainname */ ,
 			   mtu /* if_mtu */ , mtu /* if_mru */ ,
@@ -45,7 +49,7 @@ Slirp *create_slirp(void *opaque, unsigned int mtu)
 
 #define ETH_BUF_SIZE (65536)
 
-int do_slirp(int tapfd, int exitfd, unsigned int mtu)
+int do_slirp(int tapfd, int exitfd, unsigned int mtu, bool ip6_enabled)
 {
 	int ret = -1;
 	Slirp *slirp = NULL;
@@ -56,7 +60,7 @@ int do_slirp(int tapfd, int exitfd, unsigned int mtu)
 	struct pollfd tap_pollfd = { tapfd, POLLIN | POLLHUP, 0 };
 	struct pollfd exit_pollfd = { exitfd, POLLHUP, 0 };
 
-	slirp = create_slirp((void *)&opaque, mtu);
+	slirp = create_slirp((void *)&opaque, mtu, ip6_enabled);
 	if (slirp == NULL) {
 		fprintf(stderr, "create_slirp failed\n");
 		goto err;
