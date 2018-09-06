@@ -8,12 +8,15 @@ slirp4netns \- User\-mode networking for unprivileged network namespaces
 
 .SH SYNOPSIS
 .PP
-slirp4netns [\-c] [\-e FD] PID TAPNAME
+slirp4netns [OPTION]... PID TAPNAME
 
 
 .SH DESCRIPTION
 .PP
-slirp4netns provides a user\-mode networking ("slirp") for unprivileged network namespaces.
+slirp4netns provides user\-mode networking ("slirp") for network namespaces.
+
+.PP
+Unlike \fBveth\fP(4), slirp4netns does not require the root privileges on the host.
 
 .PP
 Default configuration:
@@ -53,45 +56,99 @@ enable IPv6 (experimental).
 
 .SH EXAMPLE
 .PP
-Terminal 1:
+Terminal 1: Create user/network/mount namespaces
 
 .PP
 .RS
 
 .nf
-$ unshare \-r \-n \-m
+$ unshare \-\-user \-\-map\-root\-user \-\-net \-\-mount
 unshared$ echo $$ > /tmp/pid
-unshared$ ip tuntap add name tap0 mode tap
-unshared$ ip link set tap0 up
-unshared$ ip addr add 10.0.2.100/24 dev tap0
-unshared$ ip route add default via 10.0.2.2 dev tap0
+
+.fi
+.RE
+
+.PP
+Terminal 2: Start slirp4netns
+
+.PP
+.RS
+
+.nf
+$ slirp4netns \-\-configure \-\-mtu=65520 $(cat /tmp/pid) tap0
+starting slirp, MTU=65520
+...
+
+.fi
+.RE
+
+.PP
+Terminal 1: Make sure \fBtap0\fP is configured and connected to the Internet
+
+.PP
+.RS
+
+.nf
+unshared$ ip a
+1: lo: <LOOPBACK> mtu 65536 qdisc noop state DOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+3: tap0: <BROADCAST,UP,LOWER\_UP> mtu 65520 qdisc fq\_codel state UNKNOWN group default qlen 1000
+    link/ether c2:28:0c:0e:29:06 brd ff:ff:ff:ff:ff:ff
+    inet 10.0.2.100/24 brd 10.0.2.255 scope global tap0
+       valid\_lft forever preferred\_lft forever
+    inet6 fe80::c028:cff:fe0e:2906/64 scope link 
+       valid\_lft forever preferred\_lft forever
 unshared$ echo "nameserver 10.0.2.3" > /tmp/resolv.conf
 unshared$ mount \-\-bind /tmp/resolv.conf /etc/resolv.conf
-
-.fi
-.RE
-
-.PP
-Terminal 2:
-
-.PP
-.RS
-
-.nf
-$ slirp4netns $(cat /tmp/pid) tap0
-
-.fi
-.RE
-
-.PP
-Terminal 1:
-
-.PP
-.RS
-
-.nf
-unshared$ ping 10.0.2.2
 unshared$ curl https://example.com
+
+.fi
+.RE
+
+.PP
+Bind\-mounting \fB/etc/resolv.conf\fP is only needed when \fB/etc/resolv.conf\fP on
+the host refers to loopback addresses (\fB127.0.0.X\fP, typically because of
+\fBdnsmasq\fP(8) or \fBsystemd\-resolved.service\fP(8)) that cannot be accessed from
+the namespace.
+
+.PP
+If your \fB/etc/resolv.conf\fP on the host is managed by \fBnetworkmanager\fP(8)
+or \fBsystemd\-resolved.service\fP(8), you might need to mount a new filesystem on
+\fB/etc\fP instead, so as to prevent the new \fB/etc/resolv.conf\fP from being
+unmounted unexpectedly when \fB/etc/resolv.conf\fP on the host is regenerated.
+
+.PP
+.RS
+
+.nf
+unshared$ mkdir /tmp/a /tmp/b
+unshared$ mount \-\-rbind /etc /tmp/a
+unshared$ mount \-\-rbind /tmp/b /etc
+unshared$ mkdir /etc/.ro
+unshared$ mount \-\-move /tmp/a /etc/.ro
+unshared$ cd /etc
+unshared$ for f in .ro/*; do ln \-s $f $(basename $f); done
+unshared$ rm resolv.conf
+unshared$ echo "nameserver 10.0.2.3" > /tmp/resolv.conf
+unshared$ curl https://example.com
+
+.fi
+.RE
+
+
+.SH ROUTING PING PACKETS
+.PP
+To route ping packets, you need to set up \fBnet.ipv4.ping\_group\_range\fP properly
+as the root.
+
+.PP
+e.g.
+
+.PP
+.RS
+
+.nf
+$ sudo sh \-c "echo 0   2147483647  > /proc/sys/net/ipv4/ping\_group\_range"
 
 .fi
 .RE
@@ -99,7 +156,7 @@ unshared$ curl https://example.com
 
 .SH SEE ALSO
 .PP
-\fBnetwork\_namespaces\fP(7), \fBuser\_namespaces\fP(7)
+\fBnetwork\_namespaces\fP(7), \fBuser\_namespaces\fP(7), \fBveth\fP(4)
 
 
 .SH AVAILABILITY
