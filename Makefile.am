@@ -1,11 +1,11 @@
 bin_PROGRAMS = slirp4netns
 
-AM_CFLAGS = -I $(abs_top_srcdir)/rd235_libslirp/include -I$(abs_top_srcdir)/rd235_libslirp/src -I$(abs_top_srcdir)/qemu/include -I$(abs_top_srcdir)/qemu/slirp
+AM_CFLAGS = -I $(abs_top_srcdir)/rd235_libslirp/include -I$(abs_top_srcdir)/rd235_libslirp/src -I$(abs_top_srcdir)/qemu/include -I$(abs_top_srcdir)/qemu/slirp -I$(abs_top_srcdir)/parson
 
-noinst_LIBRARIES = libqemu_slirp.a libslirp.a
+noinst_LIBRARIES = libqemu_slirp.a libslirp.a libparson.a
 
 AM_TESTS_ENVIRONMENT = PATH="$(abs_top_builddir):$(PATH)"
-TESTS = tests/test-slirp4netns.sh tests/test-slirp4netns-configure.sh tests/test-slirp4netns-exit-fd.sh tests/test-slirp4netns-ready-fd.sh
+TESTS = tests/test-slirp4netns.sh tests/test-slirp4netns-configure.sh tests/test-slirp4netns-exit-fd.sh tests/test-slirp4netns-ready-fd.sh tests/test-slirp4netns-api-socket.sh
 
 EXTRA_DIST = \
 	slirp4netns.1.md \
@@ -13,6 +13,7 @@ EXTRA_DIST = \
 	$(TESTS) \
 	tests/common.sh \
 	slirp4netns.h \
+	api.h \
 	qemu/include/qemu/queue.h \
 	qemu/slirp/slirp.h \
 	qemu/slirp/tcp_var.h \
@@ -36,7 +37,8 @@ EXTRA_DIST = \
 	qemu/slirp/ip6_icmp.h \
 	qemu/slirp/tcpip.h \
 	rd235_libslirp/include/qemu/osdep.h \
-	rd235_libslirp/src/qemu2libslirp.h
+	rd235_libslirp/src/qemu2libslirp.h \
+	parson/parson.h
 
 libqemu_slirp_a_SOURCES = \
 			qemu/slirp/arp_table.c \
@@ -74,8 +76,10 @@ COMMIT := $(shell V=$Format:%H$ ; \
 DEFINE_COMMIT = -DCOMMIT="\"$(COMMIT)\""
 
 slirp4netns_CFLAGS = $(AM_CFLAGS) $(DEFINE_COMMIT)
-slirp4netns_SOURCES = main.c slirp4netns.c
-slirp4netns_LDADD = libslirp.a libqemu_slirp.a
+libparson_a_SOURCES = parson/parson.c
+
+slirp4netns_SOURCES = main.c slirp4netns.c api.c
+slirp4netns_LDADD = libslirp.a libqemu_slirp.a libparson.a
 man1_MANS = slirp4netns.1
 
 generate-man:
@@ -87,16 +91,17 @@ lint:
 	$(CLANGTIDY) $(slirp4netns_SOURCES) -- $(AM_CFLAGS)
 
 lint-full:
-	$(CLANGTIDY) $(slirp4netns_SOURCES) $(libqemu_slirp_a_SOURCES) -- $(AM_CFLAGS)
+	$(CLANGTIDY) $(slirp4netns_SOURCES) $(libqemu_slirp_a_SOURCES) $(libparson_a_SOURCES) -- $(AM_CFLAGS)
 
 indent:
 # indent(1): "You must use the ‘-T’ option to tell indent the name of all the typenames in your program that are defined by typedef."
-	indent -linux -l120 -T ssize_t -T pid_t -T SLIRP $(slirp4netns_SOURCES)
+	indent -linux -l120 -T ssize_t -T pid_t -T SLIRP -T JSON_Object -T JSON_Value $(slirp4netns_SOURCES)
 	$(RM) *.c~
 
 
 benchmark:
 	benchmarks/benchmark-iperf3.sh
+	benchmarks/benchmark-iperf3-reverse.sh
 
 ci:
 	$(MAKE) indent

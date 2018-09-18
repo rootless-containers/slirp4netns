@@ -6,6 +6,7 @@
 
 #include "qemu/slirp/slirp.h"
 #include "libslirp.h"
+#include "api.h"
 
 struct libslirp_data {
 	int tapfd;
@@ -49,16 +50,21 @@ Slirp *create_slirp(void *opaque, unsigned int mtu, bool ip6_enabled)
 
 #define ETH_BUF_SIZE (65536)
 
-int do_slirp(int tapfd, int exitfd, unsigned int mtu, bool ip6_enabled)
+int do_slirp(int tapfd, int exitfd, unsigned int mtu, const char *api_socket, bool ip6_enabled)
 {
 	int ret = -1;
 	Slirp *slirp = NULL;
 	uint8_t *buf = NULL;
 	struct libslirp_data opaque = {.tapfd = tapfd };
+	int apifd = -1;
+	struct api_ctx *apictx = NULL;
 	GArray pollfds = { 0 };
+	int pollfds_exitfd_idx = -1;
+	int pollfds_apifd_idx = -1;
 	size_t n_fds = 1;
 	struct pollfd tap_pollfd = { tapfd, POLLIN | POLLHUP, 0 };
 	struct pollfd exit_pollfd = { exitfd, POLLHUP, 0 };
+	struct pollfd api_pollfd = { -1, POLLIN | POLLHUP, 0 };
 
 	slirp = create_slirp((void *)&opaque, mtu, ip6_enabled);
 	if (slirp == NULL) {
@@ -73,6 +79,20 @@ int do_slirp(int tapfd, int exitfd, unsigned int mtu, bool ip6_enabled)
 	if (exitfd >= 0) {
 		n_fds++;
 		g_array_append_val(&pollfds, exit_pollfd);
+		pollfds_exitfd_idx = n_fds - 1;
+	}
+	if (api_socket != NULL) {
+		if ((apifd = api_bindlisten(api_socket)) < 0) {
+			goto err;
+		}
+		if ((apictx = api_ctx_alloc()) == NULL) {
+			fprintf(stderr, "api_ctx_alloc failed\n");
+			goto err;
+		}
+		api_pollfd.fd = apifd;
+		n_fds++;
+		g_array_append_val(&pollfds, api_pollfd);
+		pollfds_apifd_idx = n_fds - 1;
 	}
 	signal(SIGPIPE, SIG_IGN);
 	while (1) {
@@ -100,9 +120,17 @@ int do_slirp(int tapfd, int exitfd, unsigned int mtu, bool ip6_enabled)
 		}
 
 		/* The exitfd is closed.  */
-		if (exitfd >= 0 && pollfds.pfd[1].revents) {
+		if (pollfds_exitfd_idx >= 0 && pollfds.pfd[pollfds_exitfd_idx].revents) {
 			fprintf(stderr, "exitfd event\n");
 			goto success;
+		}
+
+		if (pollfds_apifd_idx >= 0 && pollfds.pfd[pollfds_apifd_idx].revents) {
+			int rc;
+			fprintf(stderr, "apifd event\n");
+			if ((rc = api_handler(slirp, apifd, apictx)) < 0) {
+				fprintf(stderr, "api_handler: rc=%d\n", rc);
+			}
 		}
 
 		slirp_pollfds_poll(&pollfds, (pollout <= 0));
@@ -114,6 +142,13 @@ int do_slirp(int tapfd, int exitfd, unsigned int mtu, bool ip6_enabled)
 	fprintf(stderr, "do_slirp is exiting\n");
 	if (buf != NULL) {
 		free(buf);
+	}
+	if (apictx != NULL) {
+		api_ctx_free(apictx);
+	}
+	if (pollfds.pfd != NULL) {
+		free(pollfds.pfd);
+		pollfds.len = pollfds.maxlen = 0;
 	}
 	return ret;
 }
