@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+#include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -242,6 +243,8 @@ static void usage(const char *argv0)
 	printf("-r, --ready-fd=FD    specify the FD to write to when the network is configured\n");
 	printf("-m, --mtu=MTU        specify MTU (default=1500, max=65521)\n");
 	printf("-6, --enable-ipv6    enable IPv6 (experimental)\n");
+	printf("\n");
+	printf("Version: %s\n", GIT_VERSION[0] ? GIT_VERSION : PACKAGE_VERSION);
 }
 
 struct options {

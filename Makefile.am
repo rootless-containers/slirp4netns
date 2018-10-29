@@ -66,6 +66,7 @@ libqemu_slirp_a_SOURCES = \
 
 libslirp_a_SOURCES = rd235_libslirp/src/qemu2libslirp.c
 
+slirp4netns_CFLAGS = $(AM_CFLAGS) -DGIT_VERSION=\""$(shell git rev-parse HEAD || true)"\"
 slirp4netns_SOURCES = main.c slirp4netns.c
 slirp4netns_LDADD = libslirp.a libqemu_slirp.a
 man1_MANS = slirp4netns.1
