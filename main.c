@@ -233,9 +233,9 @@ static int parent(int sock, int exit_fd, unsigned int mtu, bool enable_ipv6)
 	return 0;
 }
 
-// fallback if VERSION is undefined
-#ifndef VERSION
-#define VERSION "unknown"
+// fallback if commit hash is not defined
+#ifndef COMMIT
+#define COMMIT "unknown"
 #endif
 
 static void usage(const char *argv0)
@@ -247,7 +247,7 @@ static void usage(const char *argv0)
 	printf("-r, --ready-fd=FD    specify the FD to write to when the network is configured\n");
 	printf("-m, --mtu=MTU        specify MTU (default=1500, max=65521)\n");
 	printf("-6, --enable-ipv6    enable IPv6 (experimental)\n");
-	printf("\nVersion: %s\n", VERSION);
+	printf("\nVersion: %s\n", COMMIT);
 }
 
 struct options {
