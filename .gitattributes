@@ -1,1 +1,1 @@
-main.c export-subst
+Makefile.am export-subst

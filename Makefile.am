@@ -66,9 +66,15 @@ libqemu_slirp_a_SOURCES = \
 
 libslirp_a_SOURCES = rd235_libslirp/src/qemu2libslirp.c
 
-VERSION := $(shell [ -d .git ] && echo "-DVERSION=\\\"$$(git describe --always --abbrev)\\\"")
+# define specific version if commit information available or was
+# replaced during git-archive creation
+VERSION := $(shell V=$Format:%h$ ; \
+	expr match "$$V" ormat: >/dev/null \
+		&& ([ -d .git ] && git describe --always --abbrev || echo unknown) \
+		|| echo "$$V" )
+DEFINE_VERSION = -DVERSION="\"$(VERSION)\""
 
-slirp4netns_CFLAGS = $(AM_CFLAGS) $(VERSION)
+slirp4netns_CFLAGS = $(AM_CFLAGS) $(DEFINE_VERSION)
 slirp4netns_SOURCES = main.c slirp4netns.c
 slirp4netns_LDADD = libslirp.a libqemu_slirp.a
 man1_MANS = slirp4netns.1
