@@ -67,9 +67,9 @@ libqemu_slirp_a_SOURCES = \
 libslirp_a_SOURCES = rd235_libslirp/src/qemu2libslirp.c
 
 # define specific commit if git available or it was replaced during git-archive creation
-COMMIT := $(shell V=$Format:%h$ ; \
+COMMIT := $(shell V=$Format:%H$ ; \
 	expr match "$$V" ormat: >/dev/null \
-		&& (cd "$$abs_srcdir" && [ -d .git ] && git describe --always --long --dirty || echo unknown) \
+		&& (cd "$$abs_srcdir" && [ -d .git ] && git describe --always --abbrev=0 --dirty --exclude=\* || echo unknown) \
 		|| echo "$$V" )
 DEFINE_COMMIT = -DCOMMIT="\"$(COMMIT)\""
 
@@ -93,6 +93,7 @@ indent:
 # indent(1): "You must use the ‘-T’ option to tell indent the name of all the typenames in your program that are defined by typedef."
 	indent -linux -l120 -T ssize_t -T pid_t -T SLIRP $(slirp4netns_SOURCES)
 	$(RM) *.c~
+
 
 benchmark:
 	benchmarks/benchmark-iperf3.sh
