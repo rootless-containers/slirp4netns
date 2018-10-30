@@ -66,11 +66,10 @@ libqemu_slirp_a_SOURCES = \
 
 libslirp_a_SOURCES = rd235_libslirp/src/qemu2libslirp.c
 
-# define specific version if commit information available or was
-# replaced during git-archive creation
+# define specific commit if git available or it was replaced during git-archive creation
 COMMIT := $(shell V=$Format:%h$ ; \
 	expr match "$$V" ormat: >/dev/null \
-		&& ([ -d .git ] && git describe --always --abbrev || echo unknown) \
+		&& (cd "$$abs_srcdir" && [ -d .git ] && git describe --always --long --dirty || echo unknown) \
 		|| echo "$$V" )
 DEFINE_COMMIT = -DCOMMIT="\"$(COMMIT)\""
 
