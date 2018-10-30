@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+#include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -233,6 +234,7 @@ static int parent(int sock, int exit_fd, unsigned int mtu, bool enable_ipv6)
 	return 0;
 }
 
+
 static void usage(const char *argv0)
 {
 	printf("Usage: %s [OPTION]... PID TAPNAME\n", argv0);
@@ -242,6 +244,15 @@ static void usage(const char *argv0)
 	printf("-r, --ready-fd=FD    specify the FD to write to when the network is configured\n");
 	printf("-m, --mtu=MTU        specify MTU (default=1500, max=65521)\n");
 	printf("-6, --enable-ipv6    enable IPv6 (experimental)\n");
+	printf("-v, --version        show version and exit\n");
+}
+
+static void version(const char *argv0)
+{
+	printf("%s version %s\n", argv0, VERSION ? VERSION : PACKAGE_VERSION);
+#ifdef COMMIT
+	printf("commit: %s\n", COMMIT);
+#endif
 }
 
 struct options {
@@ -282,10 +293,11 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 		{"ready-fd", required_argument, NULL, 'r'},
 		{"mtu", required_argument, NULL, 'm'},
 		{"enable-ipv6", no_argument, NULL, '6'},
+		{"version", no_argument, NULL, 'v'},
 		{0, 0, 0, 0},
 	};
 	options_init(options);
-	while ((opt = getopt_long(argc, argv, "ce:r:m:6", longopts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "ce:r:m:6v", longopts, NULL)) != -1) {
 		switch (opt) {
 		case 'c':
 			options->do_config_network = true;
@@ -321,6 +333,9 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 			options->enable_ipv6 = true;
 			printf("WARNING: Support for IPv6 is experimental\n");
 			break;
+		case 'v':
+			version(argv[0]);
+			exit(EXIT_SUCCESS);
 		default:
 			usage(argv[0]);
 			exit(EXIT_FAILURE);
