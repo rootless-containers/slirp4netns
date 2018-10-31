@@ -247,9 +247,10 @@ static void usage(const char *argv0)
 	printf("-v, --version        show version and exit\n");
 }
 
-static void version(const char *argv0)
+// version output is runc-compatible and machine-parsable
+static void version()
 {
-	printf("%s version %s\n", argv0, VERSION ? VERSION : PACKAGE_VERSION);
+	printf("slirp4netns version %s\n", VERSION ? VERSION : PACKAGE_VERSION);
 #ifdef COMMIT
 	printf("commit: %s\n", COMMIT);
 #endif
@@ -334,7 +335,7 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 			printf("WARNING: Support for IPv6 is experimental\n");
 			break;
 		case 'v':
-			version(argv[0]);
+			version();
 			exit(EXIT_SUCCESS);
 		default:
 			usage(argv[0]);
