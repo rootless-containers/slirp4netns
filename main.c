@@ -234,7 +234,6 @@ static int parent(int sock, int exit_fd, unsigned int mtu, bool enable_ipv6)
 	return 0;
 }
 
-
 static void usage(const char *argv0)
 {
 	printf("Usage: %s [OPTION]... PID TAPNAME\n", argv0);
@@ -244,6 +243,7 @@ static void usage(const char *argv0)
 	printf("-r, --ready-fd=FD    specify the FD to write to when the network is configured\n");
 	printf("-m, --mtu=MTU        specify MTU (default=1500, max=65521)\n");
 	printf("-6, --enable-ipv6    enable IPv6 (experimental)\n");
+	printf("-h, --help           show this help and exit\n");
 	printf("-v, --version        show version and exit\n");
 }
 
@@ -293,11 +293,12 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 		{"ready-fd", required_argument, NULL, 'r'},
 		{"mtu", required_argument, NULL, 'm'},
 		{"enable-ipv6", no_argument, NULL, '6'},
+		{"help", no_argument, NULL, 'h'},
 		{"version", no_argument, NULL, 'v'},
 		{0, 0, 0, 0},
 	};
 	options_init(options);
-	while ((opt = getopt_long(argc, argv, "ce:r:m:6v", longopts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "ce:r:m:6hv", longopts, NULL)) != -1) {
 		switch (opt) {
 		case 'c':
 			options->do_config_network = true;
@@ -333,6 +334,9 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 			options->enable_ipv6 = true;
 			printf("WARNING: Support for IPv6 is experimental\n");
 			break;
+		case 'h':
+			usage(argv[0]);
+			exit(EXIT_SUCCESS);
 		case 'v':
 			version(argv[0]);
 			exit(EXIT_SUCCESS);
