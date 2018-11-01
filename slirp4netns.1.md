@@ -38,6 +38,12 @@ specify MTU (default=1500, max=65521).
 **-6**, **--enable-ipv6**
 enable IPv6 (experimental).
 
+**-h**, **--help**
+show help and exit
+
+**-v**, **--version**
+show version and exit
+
 # EXAMPLE
 
 Terminal 1: Create user/network/mount namespaces
