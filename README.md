@@ -33,7 +33,7 @@ $ sudo make install
 
 ### Install from binary
 
-#### [Fedora](https://src.fedoraproject.org/rpms/slirp4netns):
+#### [Fedora (28 or later)](https://src.fedoraproject.org/rpms/slirp4netns):
 
 ```console
 $ sudo dnf install slirp4netns
@@ -51,6 +51,26 @@ Otherwise make sure you have [base-devel](https://www.archlinux.org/groups/x86_6
     curl -Lo PKGBUILD "https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=slirp4netns-git"
     makepkg
     sudo pacman -U slirp4netns-git-*.pkg.tar.*
+
+#### [openSUSE Tumbleweed](https://build.opensuse.org/package/show/openSUSE%3AFactory/slirp4netns)
+
+```console
+$ sudo zypper install slirp4netns
+```
+
+#### [openSUSE Leap 15.0](https://build.opensuse.org/package/show/devel%3Akubic/slirp4netns)
+
+```console
+$ sudo zypper addrepo --refresh http://download.opensuse.org/repositories/devel:/kubic/openSUSE_Leap_15.0/devel:kubic.repo
+$ sudo zypper install slirp4netns
+```
+
+#### [SUSE Linux Enterprise 15](https://build.opensuse.org/package/show/devel%3Akubic/slirp4netns)
+
+```console
+$ sudo zypper addrepo --refresh http://download.opensuse.org/repositories/devel:/kubic/SLE_15/devel:kubic.repo
+$ sudo zypper install slirp4netns
+```
 
 ### Usage
 
