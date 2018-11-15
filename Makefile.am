@@ -1,9 +1,6 @@
 bin_PROGRAMS = slirp4netns
 
 AM_CFLAGS = -I $(abs_top_srcdir)/rd235_libslirp/include -I$(abs_top_srcdir)/rd235_libslirp/src -I$(abs_top_srcdir)/qemu/include -I$(abs_top_srcdir)/qemu/slirp
-
-noinst_LIBRARIES = libqemu_slirp.a libslirp.a
-
 AM_TESTS_ENVIRONMENT = PATH="$(abs_top_builddir):$(PATH)"
 TESTS = tests/test-slirp4netns.sh tests/test-slirp4netns-configure.sh tests/test-slirp4netns-exit-fd.sh tests/test-slirp4netns-ready-fd.sh
 
@@ -75,7 +72,11 @@ DEFINE_COMMIT = -DCOMMIT="\"$(COMMIT)\""
 
 slirp4netns_CFLAGS = $(AM_CFLAGS) $(DEFINE_COMMIT)
 slirp4netns_SOURCES = main.c slirp4netns.c
+if BUILD_LIBSLIRP
+noinst_LIBRARIES = libqemu_slirp.a libslirp.a
 slirp4netns_LDADD = libslirp.a libqemu_slirp.a
+endif
+
 man1_MANS = slirp4netns.1
 
 generate-man:

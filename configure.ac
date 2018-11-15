@@ -30,5 +30,13 @@ AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 AC_CHECK_FUNCS([atexit clock_gettime inet_ntoa memmove memset socket strchr strdup strerror strstr strtol getopt_long])
 
+AC_ARG_WITH(system-qemu,
+	[AC_HELP_STRING([--with-system-qemu], [define if using qemu for managing the slirp network (not all functionalities will be supported)])],
+	[with_system_qemu=$withval], [with_system_qemu=])
+if test -n "$with_system_qemu"; then
+	AC_DEFINE_UNQUOTED([SYSTEM_QEMU_PATH], "$with_system_qemu", [Define the path to the qemu executable to use])
+fi
+AM_CONDITIONAL([BUILD_LIBSLIRP], [test -z "$with_system_qemu"])
+
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

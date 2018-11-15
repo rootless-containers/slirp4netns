@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+#include <config.h>
 #include <assert.h>
 #include <stdio.h>
 #include <signal.h>
@@ -6,6 +7,10 @@
 
 #include "qemu/slirp/slirp.h"
 #include "libslirp.h"
+
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/prctl.h>
 
 struct libslirp_data {
 	int tapfd;
@@ -20,6 +25,43 @@ void slirp_output(void *opaque, const uint8_t * pkt, int pkt_len)
 	}
 	assert(rc == pkt_len);
 }
+
+#ifdef SYSTEM_QEMU_PATH
+
+int do_slirp(int tapfd, int exitfd, unsigned int mtu, bool ip6_enabled)
+{
+	int pid = fork();
+	if (pid < 0) {
+		perror("cannot fork");
+		return -1;
+	}
+
+	if (pid) {
+		if (exitfd < 0) {
+			int ret, status;
+			do
+				ret = waitpid(pid, &status, 0);
+			while (ret < 0 && errno == EINTR);
+		} else {
+			char c;
+			errno = 0;
+			do
+				read(exitfd, &c, 1);
+			while (errno == EINTR);
+		}
+	} else {
+		char tap[32];
+
+		prctl(PR_SET_PDEATHSIG, SIGKILL);
+		sprintf(tap, "tap,fd=%d", tapfd);
+		execlp(SYSTEM_QEMU_PATH, SYSTEM_QEMU_PATH, "-M", "none", "-nographic", "-net", tap, "-net", "user",
+		       NULL);
+		exit(EXIT_FAILURE);
+	}
+	return 0;
+}
+
+#else
 
 Slirp *create_slirp(void *opaque, unsigned int mtu, bool ip6_enabled)
 {
@@ -117,3 +159,4 @@ int do_slirp(int tapfd, int exitfd, unsigned int mtu, bool ip6_enabled)
 	}
 	return ret;
 }
+#endif
