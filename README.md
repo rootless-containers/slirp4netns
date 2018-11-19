@@ -13,9 +13,12 @@ slirp4netns allows connecting a network namespace to the Internet in a completel
 
 * [Usernetes](https://github.com/rootless-containers/usernetes) (via RootlessKit)
 * [Podman](https://github.com/containers/libpod)
+* [Buildah](https://github.com/containers/buildah)
+* [ctnr](https://github.com/mgoltzsche/ctnr) (via slirp-cni-plugin)
 
 * [RootlessKit](https://github.com/rootless-containers/rootlesskit)
 * [become-root](https://github.com/giuseppe/become-root)
+* [slirp-cni-plugin](https://github.com/mgoltzsche/slirp-cni-plugin)
 
 ## Quick start
 
@@ -33,7 +36,7 @@ $ sudo make install
 
 ### Install from binary
 
-#### [Fedora (28 or later)](https://src.fedoraproject.org/rpms/slirp4netns):
+#### RHEL 8 & [Fedora (28 or later)](https://src.fedoraproject.org/rpms/slirp4netns):
 
 ```console
 $ sudo dnf install slirp4netns
