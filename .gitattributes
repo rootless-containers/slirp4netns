@@ -1,1 +1,1 @@
-Makefile.am export-subst
+version.sh export-subst
