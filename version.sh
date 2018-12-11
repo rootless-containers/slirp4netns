@@ -15,21 +15,25 @@
 #                                           #
 #-------------------------------------------#
 
-# Ignore warnings about necessary single-quotes and literal newlines for POSIX compatability:
+# Ignore certain shellcheck warnings:
+#  - $Format.. looks like a variable in single-quotes but is necessary so it does _not_ expand
+#  - backslash before a literal newline is a portable way to insert newlines with sed
 # shellcheck disable=SC2016,SC1004
 
-# add 'VERSION export-subst' in .gitattributes and
-# these strings will be substituted by git-archive
+# Add the following line in .gitattributes so these strings are substituted by git-archive:
+#   version.sh export-subst
 COMMIT='$Format:%H$'
 REFS='$Format:%D$'
 
-# constants
+# Fallback values
 FALLBACK_VERSION='commit'
 FALLBACK_COMMIT='unknown'
-REVISION='.r'
+
+# Revision seperator in 'describe' string
+REVISION='-'
 
 # check if variable contains a subst value or still has the format string
-hasval() { expr "$1" : '$Format' == 0 >/dev/null; }
+hasval() { test -n "${1##\$Format*}"; }
 
 # parse the %D reflist to get tag or branch
 refparse() { REF="$1";
