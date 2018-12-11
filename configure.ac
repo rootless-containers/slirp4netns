@@ -1,7 +1,8 @@
 AC_PREREQ([2.69])
-AC_INIT([slirp4netns], [unversioned], [https://github.com/rootless-containers/slirp4netns/issues])
+AC_INIT([slirp4netns], [m4_esyscmd_s([sh version.sh version])], [https://github.com/rootless-containers/slirp4netns/issues])
 AC_CONFIG_SRCDIR([main.c])
 AC_CONFIG_HEADERS([config.h])
+AC_DEFINE_UNQUOTED([COMMIT], "`sh version.sh commit`", "Git commit from which we build")
 
 AC_PROG_CC
 AC_PROG_RANLIB

@@ -66,11 +66,7 @@ libqemu_slirp_a_SOURCES = \
 
 libslirp_a_SOURCES = rd235_libslirp/src/qemu2libslirp.c
 
-# define specific commit if git available or it was replaced during git-archive creation
-COMMIT     := $(shell sh ./version.sh commit)
-GITVERSION := $(shell sh ./version.sh version)
-
-slirp4netns_CFLAGS = $(AM_CFLAGS) -DCOMMIT="\"$(COMMIT)\"" -DGITVERSION="\"$(GITVERSION)\""
+slirp4netns_CFLAGS = $(AM_CFLAGS)
 slirp4netns_SOURCES = main.c slirp4netns.c
 slirp4netns_LDADD = libslirp.a libqemu_slirp.a
 man1_MANS = slirp4netns.1

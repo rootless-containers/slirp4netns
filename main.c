@@ -250,10 +250,7 @@ static void usage(const char *argv0)
 // version output is runc-compatible and machine-parsable
 static void version()
 {
-#ifndef GITVERSION
-#define GITVERSION VERSION
-#endif
-	printf("slirp4netns version %s\n", GITVERSION ? GITVERSION : PACKAGE_VERSION);
+	printf("slirp4netns version %s\n", VERSION ? VERSION : PACKAGE_VERSION);
 #ifdef COMMIT
 	printf("commit: %s\n", COMMIT);
 #endif
