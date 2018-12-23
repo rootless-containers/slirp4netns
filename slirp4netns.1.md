@@ -19,7 +19,7 @@ Default configuration:
 
 * Gateway: 10.0.2.2, fd00::2
 * DNS: 10.0.2.3, fd00::3
-* Host: 10.0.2.2, 10.0.2.3, fd00::2, fd00::3
+* Host: 10.0.2.2, 10.0.2.3, fd00::2, fd00::3 (See **FILTERING CONNECTIONS**)
 
 # OPTIONS
 
@@ -106,6 +106,22 @@ as the root.
 e.g.
 ```console
 $ sudo sh -c "echo 0   2147483647  > /proc/sys/net/ipv4/ping_group_range"
+```
+
+# FILTERING CONNECTIONS
+
+By default, ports listening on the host loopback address (127.0.0.1, ::1) are
+accessible from the child namespace via 10.0.2.2, 10.0.2.3, fd00::2, and
+fd00::3.
+
+It is recommended to configure iptables rules to block connections to these
+addresses.
+
+e.g.
+```console
+unshared$ iptables -A OUTPUT -d 10.0.2.2 -j DROP
+unshared$ iptables -A OUTPUT -d 10.0.2.3 -p udp --dport 53 -j ACCEPT
+unshared$ iptables -A OUTPUT -d 10.0.2.3 -j DROP
 ```
 
 # SEE ALSO
