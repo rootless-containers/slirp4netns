@@ -40,6 +40,7 @@ typedef	uint32_t tcp_seq;
 
 #define TCP_SNDSPACE 1024*128
 #define TCP_RCVSPACE 1024*128
+#define TCP_MAXSEG_MAX 32768
 
 /*
  * TCP header.
