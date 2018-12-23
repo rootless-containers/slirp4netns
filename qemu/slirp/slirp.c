@@ -951,7 +951,7 @@ static int if_encap6(Slirp *slirp, struct mbuf *ifm, struct ethhdr *eh,
  */
 int if_encap(Slirp *slirp, struct mbuf *ifm)
 {
-    uint8_t buf[1600];
+    uint8_t buf[65521 + 100]; // max MTU + 100
     struct ethhdr *eh = (struct ethhdr *)buf;
     uint8_t ethaddr[ETH_ALEN];
     const struct ip *iph = (const struct ip *)ifm->m_data;
