@@ -15,8 +15,8 @@
 #include <arpa/inet.h>
 #include <net/if.h>
 #include <net/route.h>
-#include <stdbool.h>
 #include <getopt.h>
+#include <qemu2libslirp-bool.h>
 #include "slirp4netns.h"
 
 static int nsenter(pid_t target_pid)
@@ -216,7 +216,7 @@ static int recvfd(int sock)
 	return fd;
 }
 
-static int parent(int sock, int exit_fd, unsigned int mtu, const char *api_socket, bool enable_ipv6)
+static int parent(int sock, int exit_fd, const char *api_socket, struct slirp_config *cfg)
 {
 	int rc, tapfd;
 	if ((tapfd = recvfd(sock)) < 0) {
@@ -224,8 +224,11 @@ static int parent(int sock, int exit_fd, unsigned int mtu, const char *api_socke
 	}
 	fprintf(stderr, "received tapfd=%d\n", tapfd);
 	close(sock);
-	printf("starting slirp, MTU=%d, API=%s\n", mtu, api_socket);
-	if ((rc = do_slirp(tapfd, exit_fd, mtu, api_socket, enable_ipv6)) < 0) {
+	printf("starting slirp, MTU=%d, API=%s\n", cfg->mtu, api_socket);
+	if (!cfg->no_host_loopback) {
+		printf("WARNING: 127.0.0.1:* on the host is accessible as 10.0.2.2 (set --no-host-loopback to prohibit connecting to 127.0.0.1:*)\n");
+	}
+	if ((rc = do_slirp(tapfd, exit_fd, api_socket, cfg)) < 0) {
 		fprintf(stderr, "do_slirp failed\n");
 		close(tapfd);
 		return rc;
@@ -242,6 +245,7 @@ static void usage(const char *argv0)
 	printf("-e, --exit-fd=FD     specify the FD for terminating slirp4netns\n");
 	printf("-r, --ready-fd=FD    specify the FD to write to when the network is configured\n");
 	printf("-m, --mtu=MTU        specify MTU (default=1500, max=65521)\n");
+	printf("--no-host-loopback   prohibit connecting to 127.0.0.1:* on the host namespace\n");
 	printf("-a, --api-socket=PATH    specify API socket path (experimental)\n");
 	printf("-6, --enable-ipv6    enable IPv6 (experimental)\n");
 	printf("-h, --help           show this help and exit\n");
@@ -264,6 +268,7 @@ struct options {
 	int exit_fd;		// -e
 	int ready_fd;		// -r
 	unsigned int mtu;	// -m
+	bool no_host_loopback;  // --no-host-loopback
 	bool enable_ipv6;	// -6
 	char *api_socket;	// -a
 };
@@ -294,11 +299,13 @@ static void options_destroy(struct options *options)
 static void parse_args(int argc, char *const argv[], struct options *options)
 {
 	int opt;
+#define NO_HOST_LOOPBACK -42
 	const struct option longopts[] = {
 		{"configure", no_argument, NULL, 'c'},
 		{"exit-fd", required_argument, NULL, 'e'},
 		{"ready-fd", required_argument, NULL, 'r'},
 		{"mtu", required_argument, NULL, 'm'},
+		{"no-host-loopback", no_argument, NULL, NO_HOST_LOOPBACK},
 		{"api-socket", required_argument, NULL, 'a'},
 		{"enable-ipv6", no_argument, NULL, '6'},
 		{"help", no_argument, NULL, 'h'},
@@ -338,6 +345,9 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 				exit(EXIT_FAILURE);
 			}
 			break;
+		case NO_HOST_LOOPBACK:
+			options->no_host_loopback = true;
+			break;
 		case 'a':
 			options->api_socket = strdup(optarg);
 			printf("WARNING: Support for API socket is experimental\n");
@@ -357,6 +367,7 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 			exit(EXIT_FAILURE);
 		}
 	}
+#undef NO_HOST_LOOPBACK
 	if (options->ready_fd >= 0 && !options->do_config_network) {
 		fprintf(stderr, "the option -r FD requires -c\n");
 		exit(EXIT_FAILURE);
@@ -407,6 +418,7 @@ int main(int argc, char *const argv[])
 		options_destroy(&options);
 	} else {
 		int child_wstatus, child_status;
+		struct slirp_config cfg = {.mtu = options.mtu,.enable_ipv6 = options.enable_ipv6,.no_host_loopback = options.no_host_loopback};
 		waitpid(child_pid, &child_wstatus, 0);
 		if (!WIFEXITED(child_wstatus)) {
 			fprintf(stderr, "child failed\n");
@@ -419,7 +431,7 @@ int main(int argc, char *const argv[])
 			exit_status = child_status;
 			goto finish;
 		}
-		if (parent(sv[0], options.exit_fd, options.mtu, options.api_socket, options.enable_ipv6) < 0) {
+		if (parent(sv[0], options.exit_fd, options.api_socket, &cfg) < 0) {
 			fprintf(stderr, "parent failed\n");
 			exit_status = EXIT_FAILURE;
 			goto finish;

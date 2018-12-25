@@ -7,6 +7,7 @@
 #include "qemu/slirp/slirp.h"
 #include "libslirp.h"
 #include "api.h"
+#include "slirp4netns.h"
 
 struct libslirp_data {
 	int tapfd;
@@ -22,7 +23,7 @@ void slirp_output(void *opaque, const uint8_t * pkt, int pkt_len)
 	assert(rc == pkt_len);
 }
 
-Slirp *create_slirp(void *opaque, unsigned int mtu, bool ip6_enabled)
+Slirp *create_slirp(void *opaque, struct slirp_config *cfg)
 {
 	Slirp *slirp = NULL;
 	struct in_addr vnetwork, vnetmask, vhost, vdhcp_start, vnameserver;
@@ -37,11 +38,11 @@ Slirp *create_slirp(void *opaque, unsigned int mtu, bool ip6_enabled)
 	inet_pton(AF_INET6, "fd00::", &vprefix_addr6);
 	inet_pton(AF_INET6, "fd00::3", &vnameserver6);
 	slirp = slirp_init(0 /* restricted */ , 1 /* is_enabled */ ,
-			   vnetwork, vnetmask, vhost, (int)ip6_enabled, vprefix_addr6, vprefix_len, vhost6,
+			   vnetwork, vnetmask, vhost, (int)(cfg->enable_ipv6), vprefix_addr6, vprefix_len, vhost6,
 			   NULL /* vhostname */ , NULL /* bootfile */ , vdhcp_start,
 			   vnameserver, vnameserver6, NULL /* vdnssearch */ , NULL /* vdomainname */ ,
-			   mtu /* if_mtu */ , mtu /* if_mru */ ,
-			   opaque);
+			   cfg->mtu /* if_mtu */ , cfg->mtu /* if_mru */ ,
+			   cfg->no_host_loopback, opaque);
 	if (slirp == NULL) {
 		fprintf(stderr, "slirp_init failed\n");
 	}
@@ -50,7 +51,7 @@ Slirp *create_slirp(void *opaque, unsigned int mtu, bool ip6_enabled)
 
 #define ETH_BUF_SIZE (65536)
 
-int do_slirp(int tapfd, int exitfd, unsigned int mtu, const char *api_socket, bool ip6_enabled)
+int do_slirp(int tapfd, int exitfd, const char *api_socket, struct slirp_config *cfg)
 {
 	int ret = -1;
 	Slirp *slirp = NULL;
@@ -66,7 +67,7 @@ int do_slirp(int tapfd, int exitfd, unsigned int mtu, const char *api_socket, bo
 	struct pollfd exit_pollfd = { exitfd, POLLHUP, 0 };
 	struct pollfd api_pollfd = { -1, POLLIN | POLLHUP, 0 };
 
-	slirp = create_slirp((void *)&opaque, mtu, ip6_enabled);
+	slirp = create_slirp((void *)&opaque, cfg);
 	if (slirp == NULL) {
 		fprintf(stderr, "create_slirp failed\n");
 		goto err;

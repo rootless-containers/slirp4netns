@@ -4,9 +4,6 @@
 #define slirp_send _slirp_send
 
 #define QEMU_PACKED __attribute__((packed))
-typedef int bool;
-#define true 1
-#define false 0
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
