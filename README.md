@@ -75,6 +75,12 @@ $ sudo zypper addrepo --refresh http://download.opensuse.org/repositories/devel:
 $ sudo zypper install slirp4netns
 ```
 
+#### [Debian GNU/Linux Sid](https://packages.debian.org/sid/slirp4netns)
+
+```console
+$ sudo apt install slirp4netns
+```
+
 ### Usage
 
 Terminal 1: Create user/network/mount namespaces
