@@ -3,7 +3,7 @@
 function wait_for_network_namespace {
     # Wait that the namespace is ready.
     COUNTER=0
-    while [ $COUNTER -lt 10 ]; do
+    while [ $COUNTER -lt 40 ]; do
         if nsenter --preserve-credentials -U -n --target=$1 true; then
             break
         else
@@ -16,7 +16,7 @@ function wait_for_network_namespace {
 function wait_for_network_device {
     # Wait that the device appears.
     COUNTER=0
-    while [ $COUNTER -lt 20 ]; do
+    while [ $COUNTER -lt 40 ]; do
         if nsenter --preserve-credentials -U -n --target=$1 ip addr show $2; then
             break
         else
@@ -28,7 +28,7 @@ function wait_for_network_device {
 
 function wait_process_exits {
     COUNTER=0
-    while [ $COUNTER -lt 20 ]; do
+    while [ $COUNTER -lt 40 ]; do
         if  kill -0 $1; then
             sleep 0.5
         else
@@ -40,8 +40,21 @@ function wait_process_exits {
 
 function wait_for_ping_connectivity {
     COUNTER=0
-    while [ $COUNTER -lt 20 ]; do
+    while [ $COUNTER -lt 40 ]; do
         if nsenter --preserve-credentials -U -n --target=$1 ping -c 1 -w 1 $2; then
+            break
+        else
+            sleep 0.5
+        fi
+        let COUNTER=COUNTER+1
+    done
+}
+
+function wait_for_file_content {
+    # Wait for a file to get the specified content.
+    COUNTER=0
+    while [ $COUNTER -lt 20 ]; do
+        if grep $1 $2; then
             break
         else
             sleep 0.5

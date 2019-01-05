@@ -22,6 +22,6 @@ trap cleanup EXIT
 
 wait_for_network_device $child tun11
 
-grep 1 configured
+wait_for_file_content 1 configured
 
 exit 0
