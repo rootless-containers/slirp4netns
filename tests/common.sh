@@ -49,3 +49,16 @@ function wait_for_ping_connectivity {
         let COUNTER=COUNTER+1
     done
 }
+
+function wait_for_file_content {
+    # Wait for a file to get the specified content.
+    COUNTER=0
+    while [ $COUNTER -lt 20 ]; do
+        if grep $1 $2; then
+            break
+        else
+            sleep 0.5
+        fi
+        let COUNTER=COUNTER+1
+    done
+}
