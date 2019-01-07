@@ -1556,7 +1556,7 @@ tcp_mss(struct tcpcb *tp, u_int offer)
             mss = MIN(mss, offer);
         mss = MAX(mss, 32);
 	if (mss < tp->t_maxseg || offer != 0)
-	   tp->t_maxseg = mss;
+	   tp->t_maxseg = MIN(mss, TCP_MAXSEG_MAX);
 
 	tp->snd_cwnd = mss;
 

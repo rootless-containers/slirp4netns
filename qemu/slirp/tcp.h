@@ -38,8 +38,9 @@ typedef	uint32_t tcp_seq;
 #define      PR_SLOWHZ       2               /* 2 slow timeouts per second (approx) */
 #define      PR_FASTHZ       5               /* 5 fast timeouts per second (not important) */
 
-#define TCP_SNDSPACE 8192
-#define TCP_RCVSPACE 8192
+#define TCP_SNDSPACE 1024*128
+#define TCP_RCVSPACE 1024*128
+#define TCP_MAXSEG_MAX 32768
 
 /*
  * TCP header.
@@ -95,19 +96,6 @@ struct tcphdr {
 #define    TCPOLEN_TIMESTAMP		10
 #define    TCPOLEN_TSTAMP_APPA		(TCPOLEN_TIMESTAMP+2) /* appendix A */
 #endif
-
-/*
- * Default maximum segment size for TCP.
- * With an IP MSS of 576, this is 536,
- * but 512 is probably more convenient.
- * This should be defined as MIN(512, IP_MSS - sizeof (struct tcpiphdr)).
- *
- * We make this 1460 because we only care about Ethernet in the qemu context.
- */
-#undef TCP_MSS
-#define	TCP_MSS	1460
-#undef TCP6_MSS
-#define TCP6_MSS 1440
 
 #undef TCP_MAXWIN
 #define	TCP_MAXWIN	65535	/* largest value for (unscaled) window */
