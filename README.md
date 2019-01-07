@@ -2,6 +2,8 @@
 
 slirp4netns provides user-mode networking ("slirp") for unprivileged network namespaces.
 
+Latest stable release: [v0.2.0](https://github.com/rootless-containers/slirp4netns/releases/tag/v0.2.0)
+
 ## Motivation
 
 Starting with Linux 3.8, unprivileged users can create [`network_namespaces(7)`](http://man7.org/linux/man-pages/man7/network_namespaces.7.html) along with [`user_namespaces(7)`](http://man7.org/linux/man-pages/man7/user_namespaces.7.html).
