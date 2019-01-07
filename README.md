@@ -42,18 +42,18 @@ $ sudo make install
 $ sudo dnf install slirp4netns
 ```
 
-#### [Arch Linux](https://aur.archlinux.org/packages/slirp4netns-git/):
+#### [Arch Linux](https://aur.archlinux.org/packages/slirp4netns/):
 
-If you're running Arch Linux you can install `slirp4netns-git` from AUR. When you're using an AUR helper ([yay](https://github.com/Jguer/yay), for example) simply use:
+If you're running Arch Linux you can install `slirp4netns` (or [`slirp4netns-git`](https://aur.archlinux.org/packages/slirp4netns-git/)) from AUR. When you're using an AUR helper ([yay](https://github.com/Jguer/yay), for example) simply use:
 
-    yay -S slirp4netns-git
+    yay -S slirp4netns
     
 Otherwise make sure you have [base-devel](https://www.archlinux.org/groups/x86_64/base-devel/) installed and build a package manually:
 
     cd $(mktemp -d)
-    curl -Lo PKGBUILD "https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=slirp4netns-git"
+    curl -Lo PKGBUILD "https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=slirp4netns"
     makepkg
-    sudo pacman -U slirp4netns-git-*.pkg.tar.*
+    sudo pacman -U slirp4netns-*.pkg.tar.*
 
 #### [openSUSE Tumbleweed](https://build.opensuse.org/package/show/openSUSE%3AFactory/slirp4netns)
 
