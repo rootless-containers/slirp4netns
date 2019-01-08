@@ -667,7 +667,9 @@ sosendto(struct socket *so, struct mbuf *m)
 
 	addr = so->fhost.ss;
 	DEBUG_CALL(" sendto()ing)");
-	sotranslate_out(so, &addr);
+	if (sotranslate_out(so, &addr) < 0) {
+		return -1;
+	}
 
 	/* Don't care what port we get */
 	ret = sendto(so->s, m->m_data, m->m_len, 0,
@@ -835,50 +837,57 @@ sofwdrain(struct socket *so)
 /*
  * Translate addr in host addr when it is a virtual address
  */
-void sotranslate_out(struct socket *so, struct sockaddr_storage *addr)
+int sotranslate_out(struct socket *so, struct sockaddr_storage *addr)
 {
-    Slirp *slirp = so->slirp;
-    struct sockaddr_in *sin = (struct sockaddr_in *)addr;
-    struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)addr;
+  int rc = 0;
+  Slirp *slirp = so->slirp;
+  struct sockaddr_in *sin = (struct sockaddr_in *)addr;
+  struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)addr;
 
-    switch (addr->ss_family) {
-    case AF_INET:
-        if ((so->so_faddr.s_addr & slirp->vnetwork_mask.s_addr) ==
-                slirp->vnetwork_addr.s_addr) {
-            /* It's an alias */
-            if (so->so_faddr.s_addr == slirp->vnameserver_addr.s_addr) {
-                if (get_dns_addr(&sin->sin_addr) < 0) {
-                    sin->sin_addr = loopback_addr;
-                }
-            } else {
-                sin->sin_addr = loopback_addr;
-            }
+  switch (addr->ss_family) {
+  case AF_INET:
+    if ((so->so_faddr.s_addr & slirp->vnetwork_mask.s_addr) ==
+        slirp->vnetwork_addr.s_addr) {
+      /* It's an alias */
+      if (so->so_faddr.s_addr == slirp->vnameserver_addr.s_addr) {
+        if (get_dns_addr(&sin->sin_addr) >= 0) {
+          goto ret;
         }
-
-        DEBUG_MISC((dfd, " addr.sin_port=%d, "
-            "addr.sin_addr.s_addr=%.16s\n",
-            ntohs(sin->sin_port), inet_ntoa(sin->sin_addr)));
-        break;
-
-    case AF_INET6:
-        if (in6_equal_net(&so->so_faddr6, &slirp->vprefix_addr6,
-                    slirp->vprefix_len)) {
-            if (in6_equal(&so->so_faddr6, &slirp->vnameserver_addr6)) {
-                uint32_t scope_id;
-                if (get_dns6_addr(&sin6->sin6_addr, &scope_id) >= 0) {
-                    sin6->sin6_scope_id = scope_id;
-                } else {
-                    sin6->sin6_addr = in6addr_loopback;
-                }
-            } else {
-                sin6->sin6_addr = in6addr_loopback;
-            }
-        }
-        break;
-
-    default:
-        break;
+      }
+      if (slirp->no_host_loopback) {
+        rc = -1;
+        errno = EPERM;
+        goto ret;
+      } else {
+        sin->sin_addr = loopback_addr;
+      }
     }
+    break;
+  case AF_INET6:
+    if (in6_equal_net(&so->so_faddr6, &slirp->vprefix_addr6,
+                      slirp->vprefix_len)) {
+      if (in6_equal(&so->so_faddr6, &slirp->vnameserver_addr6)) {
+        uint32_t scope_id;
+        if (get_dns6_addr(&sin6->sin6_addr, &scope_id) >= 0) {
+          sin6->sin6_scope_id = scope_id;
+          goto ret;
+        }
+	    }
+      if (slirp->no_host_loopback){
+        rc = -1;
+        errno = EPERM;
+        goto ret;
+      } else {
+        sin6->sin6_addr = in6addr_loopback;
+      }
+    }
+    break;
+
+  default:
+    break;
+  }
+ ret:
+  return rc;
 }
 
 void sotranslate_in(struct socket *so, struct sockaddr_storage *addr)

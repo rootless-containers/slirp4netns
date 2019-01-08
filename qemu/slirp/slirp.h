@@ -1,6 +1,7 @@
 #ifndef SLIRP_H
 #define SLIRP_H
 
+#include <qemu2libslirp-bool.h>
 #include <qemu2libslirp.h>
 
 #include "slirp_config.h"
@@ -176,6 +177,10 @@ struct Slirp {
     /* Changed from QEMU: IF_MTU and IF_MRU were originally hard-coded to 1500 in if.h */
     int if_mtu;
     int if_mru;
+
+
+    /* Changed from QEMU: no_host_loopback is added for prohibiting connections to 127.0.0.1 */
+    bool no_host_loopback;
 
     /* mbuf states */
     struct quehead m_freelist;

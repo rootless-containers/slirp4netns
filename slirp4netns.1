@@ -50,6 +50,10 @@ specify the FD to write to when the network is configured.
 specify MTU (default=1500, max=65521).
 
 .PP
+\fB\-\-no\-host\-loopback\fP
+prohibit connecting to 127.0.0.1:* on the host namespace
+
+.PP
 \fB\-a\fP, \fB\-\-api\-socket\fP
 API socket path (experimental).
 
@@ -161,6 +165,26 @@ e.g.
 
 .nf
 $ sudo sh \-c "echo 0   2147483647  > /proc/sys/net/ipv4/ping\_group\_range"
+
+.fi
+.RE
+
+
+.SH FILTERING CONNECTIONS
+.PP
+By default, ports listening on \fBINADDR\_LOOPBACK\fP (\fB127.0.0.1\fP) on the host are accessible from the child namespace via \fB10.0.2.2\fP\&.
+\fB\-\-no\-host\-loopback\fP can be used to prohibit connecting to \fBINADDR\_LOOPBACK\fP on the host.
+
+.PP
+However, a host loopback address might be still accessible via \fB10.0.2.3\fP if \fB\fC/etc/resolv.conf\fR on the host refers to a loopback address.
+You may want to set up iptables for limiting access to \fB10.0.2.3\fP in such a case.
+
+.PP
+.RS
+
+.nf
+unshared$ iptables \-A OUTPUT \-d 10.0.2.3 \-p udp \-\-dport 53 \-j ACCEPT
+unshared$ iptables \-A OUTPUT \-d 10.0.2.3 \-j DROP
 
 .fi
 .RE

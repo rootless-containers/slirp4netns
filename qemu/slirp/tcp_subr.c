@@ -421,7 +421,8 @@ int tcp_fconnect(struct socket *so, unsigned short af)
 
     addr = so->fhost.ss;
     DEBUG_CALL(" connect()ing")
-    sotranslate_out(so, &addr);
+    if (sotranslate_out(so, &addr) < 0)
+      return -1;
 
     /* We don't care what port we get */
     ret = connect(s, (struct sockaddr *)&addr, sockaddr_size(&addr));
