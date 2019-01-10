@@ -1,7 +1,7 @@
 #ifndef SLIRP_H
 #define SLIRP_H
 
-#include <qemu2libslirp-bool.h>
+#include <stdbool.h>
 #include <qemu2libslirp.h>
 
 #include "slirp_config.h"

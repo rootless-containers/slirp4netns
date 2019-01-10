@@ -38,7 +38,6 @@ EXTRA_DIST = \
 	qemu/slirp/tcpip.h \
 	rd235_libslirp/include/qemu/osdep.h \
 	rd235_libslirp/src/qemu2libslirp.h \
-	rd235_libslirp/src/qemu2libslirp-bool.h \
 	parson/parson.h
 
 libqemu_slirp_a_SOURCES = \
