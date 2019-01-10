@@ -16,7 +16,7 @@
 #include <net/if.h>
 #include <net/route.h>
 #include <getopt.h>
-#include <qemu2libslirp-bool.h>
+#include <stdbool.h>
 #include "slirp4netns.h"
 
 static int nsenter(pid_t target_pid)
