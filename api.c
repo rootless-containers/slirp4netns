@@ -310,5 +310,6 @@ int api_handler(Slirp * slirp, int listenfd, struct api_ctx *ctx)
 	if (rc == 0 && wrc != 0) {
 		rc = wrc;
 	}
+	close(fd);
 	return rc;
 }
