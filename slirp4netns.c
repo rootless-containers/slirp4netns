@@ -140,6 +140,7 @@ int do_slirp(int tapfd, int exitfd, const char *api_socket, struct slirp_config 
 	}
 	if (apictx != NULL) {
 		api_ctx_free(apictx);
+		unlink(api_socket);
 	}
 	if (pollfds.pfd != NULL) {
 		free(pollfds.pfd);
