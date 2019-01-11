@@ -114,6 +114,9 @@ static int api_handle_req_add_hostfwd(Slirp * slirp, int fd, struct api_ctx *ctx
 		free(fwd);
 		goto finish;
 	}
+	if (host_addr_s == NULL || host_addr_s[0] == '\0') {
+		host_addr_s = "0.0.0.0";
+	}
 	if (inet_pton(AF_INET, host_addr_s, &fwd->host_addr) != 1) {
 		const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: bad arguments.host_addr\"}}";
 		wrc = write(fd, err, strlen(err));

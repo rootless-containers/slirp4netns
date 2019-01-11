@@ -150,6 +150,8 @@ $ echo -n $json | nc -U /tmp/slirp4netns.sock
 { "return": {"id": 42}}
 ```
 
+If **host_addr** is not specified, then it defaults to "0.0.0.0".
+
 **list_hostfwd**: List exposed ports
 
 ```console
