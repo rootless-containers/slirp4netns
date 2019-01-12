@@ -245,9 +245,9 @@ static int parent(int sock, int exit_fd, const char *api_socket, struct slirp_co
 	if (api_socket != NULL) {
 		printf("* API Socket:      %s\n", api_socket);
 	}
-	if (!cfg->no_host_loopback) {
+	if (!cfg->disable_host_loopback) {
 		printf
-		    ("WARNING: 127.0.0.1:* on the host is accessible as %s (set --no-host-loopback to prohibit connecting to 127.0.0.1:*)\n",
+		    ("WARNING: 127.0.0.1:* on the host is accessible as %s (set --disable-host-loopback to prohibit connecting to 127.0.0.1:*)\n",
 		     inet_ntoa(cfg->vhost));
 	}
 	if ((rc = do_slirp(tapfd, exit_fd, api_socket, cfg)) < 0) {
@@ -268,7 +268,7 @@ static void usage(const char *argv0)
 	printf("-r, --ready-fd=FD        specify the FD to write to when the network is configured\n");
 	printf("-m, --mtu=MTU            specify MTU (default=%d, max=65521)\n", DEFAULT_MTU);
 	printf("--cidr=CIDR              specify network address CIDR (default=%s)\n", DEFAULT_CIDR);
-	printf("--no-host-loopback       prohibit connecting to 127.0.0.1:* on the host namespace\n");
+	printf("--disable-host-loopback  prohibit connecting to 127.0.0.1:* on the host namespace\n");
 	printf("-a, --api-socket=PATH    specify API socket path (experimental)\n");
 	printf("-6, --enable-ipv6        enable IPv6 (experimental)\n");
 	printf("-h, --help               show this help and exit\n");
@@ -291,7 +291,7 @@ struct options {
 	int exit_fd;		// -e
 	int ready_fd;		// -r
 	unsigned int mtu;	// -m
-	bool no_host_loopback;	// --no-host-loopback
+	bool disable_host_loopback;	// --disable-host-loopback
 	char *cidr;		// --cidr
 	bool enable_ipv6;	// -6
 	char *api_socket;	// -a
@@ -327,15 +327,17 @@ static void options_destroy(struct options *options)
 static void parse_args(int argc, char *const argv[], struct options *options)
 {
 	int opt;
-#define CIDR -41
-#define NO_HOST_LOOPBACK -42
+#define CIDR -42
+#define DISABLE_HOST_LOOPBACK -43
+#define _DEPRECATED_NO_HOST_LOOPBACK -10043	// deprecated in favor of disable-host-loopback
 	const struct option longopts[] = {
 		{"configure", no_argument, NULL, 'c'},
 		{"exit-fd", required_argument, NULL, 'e'},
 		{"ready-fd", required_argument, NULL, 'r'},
 		{"mtu", required_argument, NULL, 'm'},
 		{"cidr", required_argument, NULL, CIDR},
-		{"no-host-loopback", no_argument, NULL, NO_HOST_LOOPBACK},
+		{"disable-host-loopback", no_argument, NULL, DISABLE_HOST_LOOPBACK},
+		{"no-host-loopback", no_argument, NULL, _DEPRECATED_NO_HOST_LOOPBACK},
 		{"api-socket", required_argument, NULL, 'a'},
 		{"enable-ipv6", no_argument, NULL, '6'},
 		{"help", no_argument, NULL, 'h'},
@@ -378,8 +380,14 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 		case CIDR:
 			options->cidr = strdup(optarg);
 			break;
-		case NO_HOST_LOOPBACK:
-			options->no_host_loopback = true;
+		case _DEPRECATED_NO_HOST_LOOPBACK:
+			// There was no tagged release with support for --no-host-loopback.
+			// So no one will be affected by removal of --no-host-loopback.
+			printf
+			    ("WARNING: --no-host-loopback is deprecated and will be removed in future releases, please use --disable-host-loopback instead.\n");
+			/* FALLTHROUGH */
+		case DISABLE_HOST_LOOPBACK:
+			options->disable_host_loopback = true;
 			break;
 		case 'a':
 			options->api_socket = strdup(optarg);
@@ -401,7 +409,8 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 		}
 	}
 #undef CIDR
-#undef NO_HOST_LOOPBACK
+#undef DISABLE_HOST_LOOPBACK
+#undef _DEPRECATED_NO_HOST_LOOPBACK
 	if (options->ready_fd >= 0 && !options->do_config_network) {
 		fprintf(stderr, "the option -r FD requires -c\n");
 		exit(EXIT_FAILURE);
@@ -518,7 +527,7 @@ static int slirp_config_from_options(struct slirp_config *cfg, struct options *o
 		goto finish;
 	}
 	cfg->enable_ipv6 = cfg->enable_ipv6;
-	cfg->no_host_loopback = opt->no_host_loopback;
+	cfg->disable_host_loopback = opt->disable_host_loopback;
  finish:
 	return rc;
 }

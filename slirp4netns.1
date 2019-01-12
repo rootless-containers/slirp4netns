@@ -58,12 +58,12 @@ specify the FD to write to when the network is configured.
 specify MTU (max=65521).
 
 .PP
-\fB\-\-no\-host\-loopback\fP (since v0.3.0)
-prohibit connecting to 127.0.0.1:* on the host namespace
-
-.PP
 \fB\-\-cidr\fP (since v0.3.0)
 specify CIDR, e.g. 10.0.2.0/24
+
+.PP
+\fB\-\-disable\-host\-loopback\fP (since v0.3.0)
+prohibit connecting to 127.0.0.1:* on the host namespace
 
 .PP
 \fB\-a\fP, \fB\-\-api\-socket\fP (since v0.3.0)
@@ -185,7 +185,7 @@ $ sudo sh \-c "echo 0   2147483647  > /proc/sys/net/ipv4/ping\_group\_range"
 .SH FILTERING CONNECTIONS
 .PP
 By default, ports listening on \fBINADDR\_LOOPBACK\fP (\fB127.0.0.1\fP) on the host are accessible from the child namespace via the gateway (default: \fB10.0.2.2\fP).
-\fB\-\-no\-host\-loopback\fP can be used to prohibit connecting to \fBINADDR\_LOOPBACK\fP on the host.
+\fB\-\-disable\-host\-loopback\fP can be used to prohibit connecting to \fBINADDR\_LOOPBACK\fP on the host.
 
 .PP
 However, a host loopback address might be still accessible via the built\-in DNS (default: \fB10.0.2.3\fP) if \fB\fC/etc/resolv.conf\fR on the host refers to a loopback address.

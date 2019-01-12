@@ -39,11 +39,11 @@ specify the FD to write to when the network is configured.
 **-m**, **--mtu=MTU**
 specify MTU (max=65521).
 
-**--no-host-loopback** (since v0.3.0)
-prohibit connecting to 127.0.0.1:\* on the host namespace
-
 **--cidr** (since v0.3.0)
 specify CIDR, e.g. 10.0.2.0/24
+
+**--disable-host-loopback** (since v0.3.0)
+prohibit connecting to 127.0.0.1:\* on the host namespace
 
 **-a**, **--api-socket** (since v0.3.0)
 API socket path (experimental).
@@ -124,7 +124,7 @@ $ sudo sh -c "echo 0   2147483647  > /proc/sys/net/ipv4/ping_group_range"
 # FILTERING CONNECTIONS
 
 By default, ports listening on **INADDR_LOOPBACK** (**127.0.0.1**) on the host are accessible from the child namespace via the gateway (default: **10.0.2.2**).
-**--no-host-loopback** can be used to prohibit connecting to **INADDR_LOOPBACK** on the host.
+**--disable-host-loopback** can be used to prohibit connecting to **INADDR_LOOPBACK** on the host.
 
 However, a host loopback address might be still accessible via the built-in DNS (default: **10.0.2.3**) if `/etc/resolv.conf` on the host refers to a loopback address.
 You may want to set up iptables for limiting access to the built-in DNS in such a case.

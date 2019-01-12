@@ -16,7 +16,7 @@ Slirp *slirp_init(int restricted, bool in_enabled, struct in_addr vnetwork,
                   struct in_addr vdhcp_start, struct in_addr vnameserver,
                   struct in6_addr vnameserver6, const char **vdnssearch,
                   const char *vdomainname, unsigned int if_mtu, unsigned int if_mru,
-                  bool no_host_loopback,
+                  bool disable_host_loopback,
                   void *opaque);
 void slirp_cleanup(Slirp *slirp);
 
