@@ -48,7 +48,7 @@ prohibit connecting to 127.0.0.1:\* on the host namespace
 **-a**, **--api-socket** (since v0.3.0)
 API socket path (experimental).
 
-**-6**, **--enable-ipv6** (since v0.3.0)
+**-6**, **--enable-ipv6**
 enable IPv6 (experimental).
 
 **-h**, **--help**
