@@ -179,8 +179,8 @@ struct Slirp {
     int if_mru;
 
 
-    /* Changed from QEMU: no_host_loopback is added for prohibiting connections to 127.0.0.1 */
-    bool no_host_loopback;
+    /* Changed from QEMU: disable_host_loopback is added for prohibiting connections to 127.0.0.1 */
+    bool disable_host_loopback;
 
     /* mbuf states */
     struct quehead m_freelist;

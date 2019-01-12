@@ -5,7 +5,7 @@ AM_CFLAGS = -I $(abs_top_srcdir)/rd235_libslirp/include -I$(abs_top_srcdir)/rd23
 noinst_LIBRARIES = libqemu_slirp.a libslirp.a libparson.a
 
 AM_TESTS_ENVIRONMENT = PATH="$(abs_top_builddir):$(PATH)"
-TESTS = tests/test-slirp4netns.sh tests/test-slirp4netns-configure.sh tests/test-slirp4netns-exit-fd.sh tests/test-slirp4netns-ready-fd.sh tests/test-slirp4netns-api-socket.sh tests/test-slirp4netns-no-host-loopback.sh tests/test-slirp4netns-cidr.sh
+TESTS = tests/test-slirp4netns.sh tests/test-slirp4netns-configure.sh tests/test-slirp4netns-exit-fd.sh tests/test-slirp4netns-ready-fd.sh tests/test-slirp4netns-api-socket.sh tests/test-slirp4netns-disable-host-loopback.sh tests/test-slirp4netns-cidr.sh
 
 EXTRA_DIST = \
 	slirp4netns.1.md \

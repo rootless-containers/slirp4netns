@@ -854,7 +854,7 @@ int sotranslate_out(struct socket *so, struct sockaddr_storage *addr)
           goto ret;
         }
       }
-      if (slirp->no_host_loopback) {
+      if (slirp->disable_host_loopback) {
         rc = -1;
         errno = EPERM;
         goto ret;
@@ -873,7 +873,7 @@ int sotranslate_out(struct socket *so, struct sockaddr_storage *addr)
           goto ret;
         }
 	    }
-      if (slirp->no_host_loopback){
+      if (slirp->disable_host_loopback){
         rc = -1;
         errno = EPERM;
         goto ret;

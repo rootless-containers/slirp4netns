@@ -36,7 +36,7 @@ Slirp *create_slirp(void *opaque, struct slirp_config *cfg)
 			   vprefix_len, vhost6, NULL /* vhostname */ , NULL /* bootfile */ , cfg->vdhcp_start,
 			   cfg->vnameserver, vnameserver6, NULL /* vdnssearch */ , NULL /* vdomainname */ ,
 			   cfg->mtu /* if_mtu */ , cfg->mtu /* if_mru */ ,
-			   cfg->no_host_loopback, opaque);
+			   cfg->disable_host_loopback, opaque);
 	if (slirp == NULL) {
 		fprintf(stderr, "slirp_init failed\n");
 	}
