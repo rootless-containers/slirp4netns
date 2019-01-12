@@ -23,11 +23,19 @@ Default configuration:
 
 .RS
 .IP \(bu 2
-Gateway: 10.0.2.2, fd00::2
+MTU:               1500
 .IP \(bu 2
-DNS: 10.0.2.3, fd00::3
+CIDR:              10.0.2.0/24
 .IP \(bu 2
-Host: 10.0.2.2, 10.0.2.3, fd00::2, fd00::3
+Gateway/Host:      10.0.2.2    (network address + 2)
+.IP \(bu 2
+DNS:               10.0.2.3    (network address + 3)
+.IP \(bu 2
+IPv6 CIDR:         fd00::/64
+.IP \(bu 2
+IPv6 Gateway/Host: fd00::2
+.IP \(bu 2
+IPv6 DNS:          fd00::3
 
 .RE
 
@@ -35,7 +43,7 @@ Host: 10.0.2.2, 10.0.2.3, fd00::2, fd00::3
 .SH OPTIONS
 .PP
 \fB\-c\fP, \fB\-\-configure\fP
-bring up the interface. IP will be set to 10.0.2.100. IPv6 will be set to a random address.
+bring up the interface. IP will be set to 10.0.2.100 (network address + 100) by default. IPv6 will be set to a random address.
 
 .PP
 \fB\-e\fP, \fB\-\-exit\-fd=FD\fP
@@ -47,18 +55,22 @@ specify the FD to write to when the network is configured.
 
 .PP
 \fB\-m\fP, \fB\-\-mtu=MTU\fP
-specify MTU (default=1500, max=65521).
+specify MTU (max=65521).
 
 .PP
-\fB\-\-no\-host\-loopback\fP
+\fB\-\-no\-host\-loopback\fP (since v0.3.0)
 prohibit connecting to 127.0.0.1:* on the host namespace
 
 .PP
-\fB\-a\fP, \fB\-\-api\-socket\fP
+\fB\-\-cidr\fP (since v0.3.0)
+specify CIDR, e.g. 10.0.2.0/24
+
+.PP
+\fB\-a\fP, \fB\-\-api\-socket\fP (since v0.3.0)
 API socket path (experimental).
 
 .PP
-\fB\-6\fP, \fB\-\-enable\-ipv6\fP
+\fB\-6\fP, \fB\-\-enable\-ipv6\fP (since v0.3.0)
 enable IPv6 (experimental).
 
 .PP
@@ -172,12 +184,12 @@ $ sudo sh \-c "echo 0   2147483647  > /proc/sys/net/ipv4/ping\_group\_range"
 
 .SH FILTERING CONNECTIONS
 .PP
-By default, ports listening on \fBINADDR\_LOOPBACK\fP (\fB127.0.0.1\fP) on the host are accessible from the child namespace via \fB10.0.2.2\fP\&.
+By default, ports listening on \fBINADDR\_LOOPBACK\fP (\fB127.0.0.1\fP) on the host are accessible from the child namespace via the gateway (default: \fB10.0.2.2\fP).
 \fB\-\-no\-host\-loopback\fP can be used to prohibit connecting to \fBINADDR\_LOOPBACK\fP on the host.
 
 .PP
-However, a host loopback address might be still accessible via \fB10.0.2.3\fP if \fB\fC/etc/resolv.conf\fR on the host refers to a loopback address.
-You may want to set up iptables for limiting access to \fB10.0.2.3\fP in such a case.
+However, a host loopback address might be still accessible via the built\-in DNS (default: \fB10.0.2.3\fP) if \fB\fC/etc/resolv.conf\fR on the host refers to a loopback address.
+You may want to set up iptables for limiting access to the built\-in DNS in such a case.
 
 .PP
 .RS
