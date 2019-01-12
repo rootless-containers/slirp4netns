@@ -17,7 +17,18 @@
 #include <net/route.h>
 #include <getopt.h>
 #include <stdbool.h>
+#include <regex.h>
 #include "slirp4netns.h"
+
+#define DEFAULT_MTU (1500)
+#define DEFAULT_CIDR ("10.0.2.0/24")
+#define DEFAULT_VHOST_OFFSET (2)	// 10.0.2.2
+#define DEFAULT_VDHCPSTART_OFFSET (15)	// 10.0.2.15
+#define DEFAULT_VNAMESERVER_OFFSET (3)	// 10.0.2.3
+#define DEFAULT_RECOMMENDED_VGUEST_OFFSET (100)	// 10.0.2.100
+#define NETWORK_PREFIX_MIN (1)
+// >=26 is not supported because the recommended guest IP is set to network addr + 100 .
+#define NETWORK_PREFIX_MAX (25)
 
 static int nsenter(pid_t target_pid)
 {
@@ -89,7 +100,7 @@ static int sendfd(int sock, int fd)
 	return rc;
 }
 
-static int configure_network(const char *tapname, unsigned int mtu)
+static int configure_network(const char *tapname, struct slirp_config *cfg)
 {
 	struct rtentry route;
 	struct ifreq ifr;
@@ -111,7 +122,7 @@ static int configure_network(const char *tapname, unsigned int mtu)
 		return -1;
 	}
 
-	ifr.ifr_mtu = (int)mtu;
+	ifr.ifr_mtu = (int)cfg->mtu;
 	if (ioctl(sockfd, SIOCSIFMTU, &ifr) < 0) {
 		perror("cannot set MTU");
 		return -1;
@@ -119,14 +130,14 @@ static int configure_network(const char *tapname, unsigned int mtu)
 
 	sai->sin_family = AF_INET;
 	sai->sin_port = 0;
-	inet_pton(AF_INET, "10.0.2.100", &sai->sin_addr);
+	sai->sin_addr = cfg->recommended_vguest;
 
 	if (ioctl(sockfd, SIOCSIFADDR, &ifr) < 0) {
 		perror("cannot set device address");
 		return -1;
 	}
 
-	inet_pton(AF_INET, "255.255.255.0", &sai->sin_addr);
+	sai->sin_addr = cfg->vnetmask;
 	if (ioctl(sockfd, SIOCSIFNETMASK, &ifr) < 0) {
 		perror("cannot set device netmask");
 		return -1;
@@ -135,7 +146,7 @@ static int configure_network(const char *tapname, unsigned int mtu)
 	memset(&route, 0, sizeof(route));
 	sai = (struct sockaddr_in *)&route.rt_gateway;
 	sai->sin_family = AF_INET;
-	inet_pton(AF_INET, "10.0.2.2", &sai->sin_addr);
+	sai->sin_addr = cfg->vhost;
 	sai = (struct sockaddr_in *)&route.rt_dst;
 	sai->sin_family = AF_INET;
 	sai->sin_addr.s_addr = INADDR_ANY;
@@ -155,7 +166,7 @@ static int configure_network(const char *tapname, unsigned int mtu)
 }
 
 static int child(int sock, pid_t target_pid, bool do_config_network, const char *tapname, int ready_fd,
-		 unsigned int mtu, bool enable_ipv6)
+		 struct slirp_config *cfg)
 {
 	int rc, tapfd;
 	if ((rc = nsenter(target_pid)) < 0) {
@@ -164,7 +175,7 @@ static int child(int sock, pid_t target_pid, bool do_config_network, const char 
 	if ((tapfd = open_tap(tapname)) < 0) {
 		return tapfd;
 	}
-	if (do_config_network && configure_network(tapname, mtu) < 0) {
+	if (do_config_network && configure_network(tapname, cfg) < 0) {
 		return -1;
 	}
 	if (ready_fd >= 0) {
@@ -224,9 +235,20 @@ static int parent(int sock, int exit_fd, const char *api_socket, struct slirp_co
 	}
 	fprintf(stderr, "received tapfd=%d\n", tapfd);
 	close(sock);
-	printf("starting slirp, MTU=%d, API=%s\n", cfg->mtu, api_socket);
+	printf("Starting slirp\n");
+	printf("* MTU:             %d\n", cfg->mtu);
+	printf("* Network:         %s\n", inet_ntoa(cfg->vnetwork));
+	printf("* Netmask:         %s\n", inet_ntoa(cfg->vnetmask));
+	printf("* Gateway:         %s\n", inet_ntoa(cfg->vhost));
+	printf("* DNS:             %s\n", inet_ntoa(cfg->vnameserver));
+	printf("* Recommended IP:  %s\n", inet_ntoa(cfg->recommended_vguest));
+	if (api_socket != NULL) {
+		printf("* API Socket:      %s\n", api_socket);
+	}
 	if (!cfg->no_host_loopback) {
-		printf("WARNING: 127.0.0.1:* on the host is accessible as 10.0.2.2 (set --no-host-loopback to prohibit connecting to 127.0.0.1:*)\n");
+		printf
+		    ("WARNING: 127.0.0.1:* on the host is accessible as %s (set --no-host-loopback to prohibit connecting to 127.0.0.1:*)\n",
+		     inet_ntoa(cfg->vhost));
 	}
 	if ((rc = do_slirp(tapfd, exit_fd, api_socket, cfg)) < 0) {
 		fprintf(stderr, "do_slirp failed\n");
@@ -241,15 +263,16 @@ static void usage(const char *argv0)
 {
 	printf("Usage: %s [OPTION]... PID TAPNAME\n", argv0);
 	printf("User-mode networking for unprivileged network namespaces.\n\n");
-	printf("-c, --configure      bring up the interface\n");
-	printf("-e, --exit-fd=FD     specify the FD for terminating slirp4netns\n");
-	printf("-r, --ready-fd=FD    specify the FD to write to when the network is configured\n");
-	printf("-m, --mtu=MTU        specify MTU (default=1500, max=65521)\n");
-	printf("--no-host-loopback   prohibit connecting to 127.0.0.1:* on the host namespace\n");
+	printf("-c, --configure          bring up the interface\n");
+	printf("-e, --exit-fd=FD         specify the FD for terminating slirp4netns\n");
+	printf("-r, --ready-fd=FD        specify the FD to write to when the network is configured\n");
+	printf("-m, --mtu=MTU            specify MTU (default=%d, max=65521)\n", DEFAULT_MTU);
+	printf("--cidr=CIDR              specify network address CIDR (default=%s)\n", DEFAULT_CIDR);
+	printf("--no-host-loopback       prohibit connecting to 127.0.0.1:* on the host namespace\n");
 	printf("-a, --api-socket=PATH    specify API socket path (experimental)\n");
-	printf("-6, --enable-ipv6    enable IPv6 (experimental)\n");
-	printf("-h, --help           show this help and exit\n");
-	printf("-v, --version        show version and exit\n");
+	printf("-6, --enable-ipv6        enable IPv6 (experimental)\n");
+	printf("-h, --help               show this help and exit\n");
+	printf("-v, --version            show version and exit\n");
 }
 
 // version output is runc-compatible and machine-parsable
@@ -268,7 +291,8 @@ struct options {
 	int exit_fd;		// -e
 	int ready_fd;		// -r
 	unsigned int mtu;	// -m
-	bool no_host_loopback;  // --no-host-loopback
+	bool no_host_loopback;	// --no-host-loopback
+	char *cidr;		// --cidr
 	bool enable_ipv6;	// -6
 	char *api_socket;	// -a
 };
@@ -277,7 +301,7 @@ static void options_init(struct options *options)
 {
 	memset(options, 0, sizeof(*options));
 	options->exit_fd = options->ready_fd = -1;
-	options->mtu = 1500;
+	options->mtu = DEFAULT_MTU;
 }
 
 static void options_destroy(struct options *options)
@@ -285,6 +309,10 @@ static void options_destroy(struct options *options)
 	if (options->tapname != NULL) {
 		free(options->tapname);
 		options->tapname = NULL;
+	}
+	if (options->cidr != NULL) {
+		free(options->cidr);
+		options->cidr = NULL;
 	}
 	if (options->api_socket != NULL) {
 		free(options->api_socket);
@@ -299,12 +327,14 @@ static void options_destroy(struct options *options)
 static void parse_args(int argc, char *const argv[], struct options *options)
 {
 	int opt;
+#define CIDR -41
 #define NO_HOST_LOOPBACK -42
 	const struct option longopts[] = {
 		{"configure", no_argument, NULL, 'c'},
 		{"exit-fd", required_argument, NULL, 'e'},
 		{"ready-fd", required_argument, NULL, 'r'},
 		{"mtu", required_argument, NULL, 'm'},
+		{"cidr", required_argument, NULL, CIDR},
 		{"no-host-loopback", no_argument, NULL, NO_HOST_LOOPBACK},
 		{"api-socket", required_argument, NULL, 'a'},
 		{"enable-ipv6", no_argument, NULL, '6'},
@@ -345,6 +375,9 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 				exit(EXIT_FAILURE);
 			}
 			break;
+		case CIDR:
+			options->cidr = strdup(optarg);
+			break;
 		case NO_HOST_LOOPBACK:
 			options->no_host_loopback = true;
 			break;
@@ -367,6 +400,7 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 			exit(EXIT_FAILURE);
 		}
 	}
+#undef CIDR
 #undef NO_HOST_LOOPBACK
 	if (options->ready_fd >= 0 && !options->do_config_network) {
 		fprintf(stderr, "the option -r FD requires -c\n");
@@ -390,14 +424,118 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 	options->tapname = strdup(argv[optind + 1]);
 }
 
+static int from_regmatch(char *buf, size_t buf_len, regmatch_t match, const char *orig)
+{
+	size_t len = match.rm_eo - match.rm_so;
+	if (len > buf_len - 1) {
+		return -1;
+	}
+	memset(buf, 0, buf_len);
+	strncpy(buf, &orig[match.rm_so], len);
+	return 0;
+}
+
+static int parse_cidr(struct in_addr *network, struct in_addr *netmask, const char *cidr)
+{
+	int rc = 0;
+	regex_t r;
+	regmatch_t matches[4];
+	size_t nmatch = sizeof(matches) / sizeof(matches[0]);
+	const char *cidr_regex = "^(([0-9]{1,3}\\.){3}[0-9]{1,3})/([0-9]{1,2})$";
+	char snetwork[16], sprefix[16];
+	int prefix;
+	rc = regcomp(&r, cidr_regex, REG_EXTENDED);
+	if (rc != 0) {
+		fprintf(stderr, "internal regex error\n");
+		rc = -1;
+		goto finish;
+	}
+	rc = regexec(&r, cidr, nmatch, matches, 0);
+	if (rc != 0) {
+		fprintf(stderr, "invalid CIDR: %s\n", cidr);
+		rc = -1;
+		goto finish;
+	}
+	rc = from_regmatch(snetwork, sizeof(snetwork), matches[1], cidr);
+	if (rc < 0) {
+		fprintf(stderr, "invalid CIDR: %s\n", cidr);
+		goto finish;
+	}
+	rc = from_regmatch(sprefix, sizeof(sprefix), matches[3], cidr);
+	if (rc < 0) {
+		fprintf(stderr, "invalid CIDR: %s\n", cidr);
+		goto finish;
+	}
+	if (inet_pton(AF_INET, snetwork, network) != 1) {
+		fprintf(stderr, "invalid network address: %s\n", snetwork);
+		rc = -1;
+		goto finish;
+	}
+	errno = 0;
+	prefix = strtoul(sprefix, NULL, 10);
+	if (errno) {
+		fprintf(stderr, "invalid prefix length: %s\n", sprefix);
+		rc = -1;
+		goto finish;
+	}
+	if (prefix < NETWORK_PREFIX_MIN || prefix > NETWORK_PREFIX_MAX) {
+		fprintf(stderr, "prefix length needs to be %d-%d\n", NETWORK_PREFIX_MIN, NETWORK_PREFIX_MAX);
+		rc = -1;
+		goto finish;
+	}
+	netmask->s_addr = htonl(~((1 << (32 - prefix)) - 1));
+	if ((network->s_addr & netmask->s_addr) != network->s_addr) {
+		fprintf(stderr, "CIDR needs to be a network address like 10.0.2.0/24, not like 10.0.2.100/24\n");
+		rc = -1;
+		goto finish;
+	}
+ finish:
+	regfree(&r);
+	return rc;
+}
+
+static int slirp_config_from_cidr(struct slirp_config *cfg, const char *cidr)
+{
+	int rc;
+	rc = parse_cidr(&cfg->vnetwork, &cfg->vnetmask, cidr);
+	if (rc < 0) {
+		goto finish;
+	}
+	cfg->vhost.s_addr = htonl(ntohl(cfg->vnetwork.s_addr) + DEFAULT_VHOST_OFFSET);
+	cfg->vdhcp_start.s_addr = htonl(ntohl(cfg->vnetwork.s_addr) + DEFAULT_VDHCPSTART_OFFSET);
+	cfg->vnameserver.s_addr = htonl(ntohl(cfg->vnetwork.s_addr) + DEFAULT_VNAMESERVER_OFFSET);
+	cfg->recommended_vguest.s_addr = htonl(ntohl(cfg->vnetwork.s_addr) + DEFAULT_RECOMMENDED_VGUEST_OFFSET);
+ finish:
+	return rc;
+}
+
+static int slirp_config_from_options(struct slirp_config *cfg, struct options *opt)
+{
+	int rc = 0;
+	cfg->mtu = opt->mtu;
+	rc = slirp_config_from_cidr(cfg, opt->cidr == NULL ? DEFAULT_CIDR : opt->cidr);
+	if (rc < 0) {
+		goto finish;
+	}
+	cfg->enable_ipv6 = cfg->enable_ipv6;
+	cfg->no_host_loopback = opt->no_host_loopback;
+ finish:
+	return rc;
+}
+
 int main(int argc, char *const argv[])
 {
 	int sv[2];
 	pid_t child_pid;
 	struct options options;
+	struct slirp_config slirp_config;
 	int exit_status = 0;
 
 	parse_args(argc, argv, &options);
+	if (slirp_config_from_options(&slirp_config, &options) < 0) {
+		exit_status = EXIT_FAILURE;
+		goto finish;
+	}
 	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, sv) < 0) {
 		perror("socketpair");
 		exit_status = EXIT_FAILURE;
@@ -409,16 +547,13 @@ int main(int argc, char *const argv[])
 		goto finish;
 	}
 	if (child_pid == 0) {
-		if (child
-		    (sv[1], options.target_pid, options.do_config_network, options.tapname, options.ready_fd,
-		     options.mtu, options.enable_ipv6) < 0) {
+		if (child(sv[1], options.target_pid, options.do_config_network, options.tapname, options.ready_fd,
+			  &slirp_config) < 0) {
 			exit_status = EXIT_FAILURE;
 			goto finish;
 		}
-		options_destroy(&options);
 	} else {
 		int child_wstatus, child_status;
-		struct slirp_config cfg = {.mtu = options.mtu,.enable_ipv6 = options.enable_ipv6,.no_host_loopback = options.no_host_loopback};
 		waitpid(child_pid, &child_wstatus, 0);
 		if (!WIFEXITED(child_wstatus)) {
 			fprintf(stderr, "child failed\n");
@@ -431,7 +566,7 @@ int main(int argc, char *const argv[])
 			exit_status = child_status;
 			goto finish;
 		}
-		if (parent(sv[0], options.exit_fd, options.api_socket, &cfg) < 0) {
+		if (parent(sv[0], options.exit_fd, options.api_socket, &slirp_config) < 0) {
 			fprintf(stderr, "parent failed\n");
 			exit_status = EXIT_FAILURE;
 			goto finish;

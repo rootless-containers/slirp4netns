@@ -17,14 +17,18 @@ Unlike **veth**(4), slirp4netns does not require the root privileges on the host
 
 Default configuration:
 
-* Gateway: 10.0.2.2, fd00::2
-* DNS: 10.0.2.3, fd00::3
-* Host: 10.0.2.2, 10.0.2.3, fd00::2, fd00::3
+* MTU:               1500
+* CIDR:              10.0.2.0/24
+* Gateway/Host:      10.0.2.2    (network address + 2)
+* DNS:               10.0.2.3    (network address + 3)
+* IPv6 CIDR:         fd00::/64
+* IPv6 Gateway/Host: fd00::2
+* IPv6 DNS:          fd00::3
 
 # OPTIONS
 
 **-c**, **--configure**
-bring up the interface. IP will be set to 10.0.2.100. IPv6 will be set to a random address.
+bring up the interface. IP will be set to 10.0.2.100 (network address + 100) by default. IPv6 will be set to a random address.
 
 **-e**, **--exit-fd=FD**
 specify the FD for terminating slirp4netns.
@@ -33,15 +37,18 @@ specify the FD for terminating slirp4netns.
 specify the FD to write to when the network is configured.
 
 **-m**, **--mtu=MTU**
-specify MTU (default=1500, max=65521).
+specify MTU (max=65521).
 
-**--no-host-loopback**
+**--no-host-loopback** (since v0.3.0)
 prohibit connecting to 127.0.0.1:\* on the host namespace
 
-**-a**, **--api-socket**
+**--cidr** (since v0.3.0)
+specify CIDR, e.g. 10.0.2.0/24
+
+**-a**, **--api-socket** (since v0.3.0)
 API socket path (experimental).
 
-**-6**, **--enable-ipv6**
+**-6**, **--enable-ipv6** (since v0.3.0)
 enable IPv6 (experimental).
 
 **-h**, **--help**
@@ -116,11 +123,11 @@ $ sudo sh -c "echo 0   2147483647  > /proc/sys/net/ipv4/ping_group_range"
 
 # FILTERING CONNECTIONS
 
-By default, ports listening on **INADDR_LOOPBACK** (**127.0.0.1**) on the host are accessible from the child namespace via **10.0.2.2**.
+By default, ports listening on **INADDR_LOOPBACK** (**127.0.0.1**) on the host are accessible from the child namespace via the gateway (default: **10.0.2.2**).
 **--no-host-loopback** can be used to prohibit connecting to **INADDR_LOOPBACK** on the host.
 
-However, a host loopback address might be still accessible via **10.0.2.3** if `/etc/resolv.conf` on the host refers to a loopback address.
-You may want to set up iptables for limiting access to **10.0.2.3** in such a case.
+However, a host loopback address might be still accessible via the built-in DNS (default: **10.0.2.3**) if `/etc/resolv.conf` on the host refers to a loopback address.
+You may want to set up iptables for limiting access to the built-in DNS in such a case.
 
 ```console
 unshared$ iptables -A OUTPUT -d 10.0.2.3 -p udp --dport 53 -j ACCEPT

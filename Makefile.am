@@ -5,7 +5,7 @@ AM_CFLAGS = -I $(abs_top_srcdir)/rd235_libslirp/include -I$(abs_top_srcdir)/rd23
 noinst_LIBRARIES = libqemu_slirp.a libslirp.a libparson.a
 
 AM_TESTS_ENVIRONMENT = PATH="$(abs_top_builddir):$(PATH)"
-TESTS = tests/test-slirp4netns.sh tests/test-slirp4netns-configure.sh tests/test-slirp4netns-exit-fd.sh tests/test-slirp4netns-ready-fd.sh tests/test-slirp4netns-api-socket.sh tests/test-slirp4netns-no-host-loopback.sh
+TESTS = tests/test-slirp4netns.sh tests/test-slirp4netns-configure.sh tests/test-slirp4netns-exit-fd.sh tests/test-slirp4netns-ready-fd.sh tests/test-slirp4netns-api-socket.sh tests/test-slirp4netns-no-host-loopback.sh tests/test-slirp4netns-cidr.sh
 
 EXTRA_DIST = \
 	slirp4netns.1.md \
@@ -95,7 +95,7 @@ lint-full:
 
 indent:
 # indent(1): "You must use the ‘-T’ option to tell indent the name of all the typenames in your program that are defined by typedef."
-	indent -linux -l120 -T ssize_t -T pid_t -T SLIRP -T JSON_Object -T JSON_Value $(slirp4netns_SOURCES)
+	indent -linux -l120 -T ssize_t -T pid_t -T SLIRP -T JSON_Object -T JSON_Value -T regex_t -T regmatch_t $(slirp4netns_SOURCES)
 	$(RM) *.c~
 
 
