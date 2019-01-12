@@ -4,7 +4,7 @@ set -xeuo pipefail
 . $(dirname $0)/../tests/common.sh
 
 port=12121
-nc -l 127.0.0.1 $port &
+ncat -l 127.0.0.1 $port &
 nc_pid=$!
 
 unshare -r -n sleep infinity &
@@ -26,7 +26,7 @@ function cleanup {
 trap cleanup EXIT
 
 set +e
-err=$(echo "should fail" | nsenter --preserve-credentials -U -n --target=$child nc -v 10.0.2.2 $port 2>&1)
+err=$(echo "should fail" | nsenter --preserve-credentials -U -n --target=$child ncat -v 10.0.2.2 $port 2>&1)
 set -e
 echo $err | grep "Network is unreachable"
 

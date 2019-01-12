@@ -22,20 +22,20 @@ function cleanup {
 trap cleanup EXIT
 
 
-result=$(echo 'badjson' | nc -U $apisocket)
+result=$(echo 'badjson' | ncat -U $apisocket)
 echo $result | jq .error.desc | grep "bad request: cannot parse JSON"
 
-result=$(echo '{"unexpectedjson": 42}' | nc -U $apisocket)
+result=$(echo '{"unexpectedjson": 42}' | ncat -U $apisocket)
 echo $result | jq .error.desc | grep "bad request: no execute found"
 
-result=$(echo '{"execute": "bad"}' | nc -U $apisocket)
+result=$(echo '{"execute": "bad"}' | ncat -U $apisocket)
 echo $result | jq .error.desc | grep "bad request: unknown execute"
 
-result=$(echo '{"execute": "add_hostfwd", "arguments":{"proto": "bad"}}' | nc -U $apisocket)
+result=$(echo '{"execute": "add_hostfwd", "arguments":{"proto": "bad"}}' | ncat -U $apisocket)
 echo $result | jq .error.desc | grep "bad request: add_hostfwd: bad arguments.proto"
 
 set +e
-result=$(cat /dev/urandom | nc -U $apisocket)
+result=$(cat /dev/zero | ncat -U $apisocket)
 set set -e
 echo $result | jq .error.desc | grep "bad request: too large message"
 
