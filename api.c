@@ -8,6 +8,7 @@
 #include "libslirp.h"
 #include "parson/parson.h"
 #include "api.h"
+#include "slirp4netns.h"
 
 int api_bindlisten(const char *api_socket)
 {
@@ -47,9 +48,10 @@ struct api_ctx {
 	size_t buflen;
 	 QTAILQ_HEAD(hostfwds, api_hostfwd) hostfwds;
 	int hostfwds_nextid;
+	struct slirp_config *cfg;
 };
 
-struct api_ctx *api_ctx_alloc(void)
+struct api_ctx *api_ctx_alloc(struct slirp_config *cfg)
 {
 	struct api_ctx *ctx = (struct api_ctx *)malloc(sizeof(*ctx));
 	if (ctx == NULL) {
@@ -62,6 +64,7 @@ struct api_ctx *api_ctx_alloc(void)
 		free(ctx);
 		return NULL;
 	}
+	ctx->cfg = cfg;
 	QTAILQ_INIT(&ctx->hostfwds);
 	ctx->hostfwds_nextid = 1;
 	return ctx;
@@ -114,6 +117,9 @@ static int api_handle_req_add_hostfwd(Slirp * slirp, int fd, struct api_ctx *ctx
 		free(fwd);
 		goto finish;
 	}
+	if (host_addr_s == NULL || host_addr_s[0] == '\0') {
+		host_addr_s = "0.0.0.0";
+	}
 	if (inet_pton(AF_INET, host_addr_s, &fwd->host_addr) != 1) {
 		const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: bad arguments.host_addr\"}}";
 		wrc = write(fd, err, strlen(err));
@@ -127,7 +133,10 @@ static int api_handle_req_add_hostfwd(Slirp * slirp, int fd, struct api_ctx *ctx
 		free(fwd);
 		goto finish;
 	}
-	if (inet_pton(AF_INET, guest_addr_s, &fwd->guest_addr) != 1) {
+
+	if (guest_addr_s == NULL || guest_addr_s[0] == '\0') {
+          fwd->guest_addr = ctx->cfg->recommended_vguest;
+	} else if (inet_pton(AF_INET, guest_addr_s, &fwd->guest_addr) != 1) {
 		const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: bad arguments.guest_addr\"}}";
 		wrc = write(fd, err, strlen(err));
 		free(fwd);
@@ -310,5 +319,6 @@ int api_handler(Slirp * slirp, int listenfd, struct api_ctx *ctx)
 	if (rc == 0 && wrc != 0) {
 		rc = wrc;
 	}
+	close(fd);
 	return rc;
 }

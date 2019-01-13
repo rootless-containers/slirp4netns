@@ -80,7 +80,7 @@ int do_slirp(int tapfd, int exitfd, const char *api_socket, struct slirp_config 
 		if ((apifd = api_bindlisten(api_socket)) < 0) {
 			goto err;
 		}
-		if ((apictx = api_ctx_alloc()) == NULL) {
+		if ((apictx = api_ctx_alloc(cfg)) == NULL) {
 			fprintf(stderr, "api_ctx_alloc failed\n");
 			goto err;
 		}
@@ -140,6 +140,7 @@ int do_slirp(int tapfd, int exitfd, const char *api_socket, struct slirp_config 
 	}
 	if (apictx != NULL) {
 		api_ctx_free(apictx);
+		unlink(api_socket);
 	}
 	if (pollfds.pfd != NULL) {
 		free(pollfds.pfd);

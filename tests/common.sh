@@ -66,6 +66,6 @@ function wait_for_file_content {
 function expose_tcp() {
     apisock=$1 hostport=$2 guestport=$3
     json="{\"execute\": \"add_hostfwd\", \"arguments\": {\"proto\": \"tcp\", \"host_addr\": \"0.0.0.0\", \"host_port\": $hostport, \"guest_addr\": \"10.0.2.100\", \"guest_port\": $guestport}}"
-    echo -n $json | nc -U $apisock
-    echo -n "{\"execute\": \"list_hostfwd\"}" | nc -U $apisock
+    echo -n $json | ncat -U $apisock
+    echo -n "{\"execute\": \"list_hostfwd\"}" | ncat -U $apisock
 }
