@@ -2,7 +2,7 @@
 
 slirp4netns provides user-mode networking ("slirp") for unprivileged network namespaces.
 
-Latest stable release: [v0.2.0](https://github.com/rootless-containers/slirp4netns/releases/tag/v0.2.0)
+Latest stable release: [v0.2.X](https://github.com/rootless-containers/slirp4netns/releases)
 
 ## Motivation
 
