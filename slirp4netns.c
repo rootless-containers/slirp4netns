@@ -76,11 +76,24 @@ int do_slirp(int tapfd, int exitfd, const char *api_socket, struct slirp_config 
 		g_array_append_val(&pollfds, exit_pollfd);
 		pollfds_exitfd_idx = n_fds - 1;
 	}
+	if (cfg->hostfwd_count > 0) {
+		if ((apictx = api_ctx_alloc(cfg)) == NULL) {
+			fprintf(stderr, "api_ctx_alloc failed\n");
+			goto err;
+		}
+		for (int i=0; i < cfg->hostfwd_count; i++) {
+			struct hostfwd_t f = cfg->forwards[i];
+			if (slirp_add_hostfwd(slirp, f.is_udp, f.hostaddr, f.hostport, f.guestaddr, f.guestport) < 0)
+				goto err;
+			api_add_to_list(apictx, f.is_udp, f.hostaddr, f.hostport, f.guestaddr, f.guestport);
+
+		}
+	}
 	if (api_socket != NULL) {
 		if ((apifd = api_bindlisten(api_socket)) < 0) {
 			goto err;
 		}
-		if ((apictx = api_ctx_alloc(cfg)) == NULL) {
+		if (apictx == NULL && (apictx = api_ctx_alloc(cfg)) == NULL) {
 			fprintf(stderr, "api_ctx_alloc failed\n");
 			goto err;
 		}
@@ -140,6 +153,8 @@ int do_slirp(int tapfd, int exitfd, const char *api_socket, struct slirp_config 
 	}
 	if (apictx != NULL) {
 		api_ctx_free(apictx);
+	}
+	if (api_socket != NULL) {
 		unlink(api_socket);
 	}
 	if (pollfds.pfd != NULL) {

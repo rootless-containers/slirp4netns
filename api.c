@@ -86,6 +86,27 @@ void api_ctx_free(struct api_ctx *ctx)
 	}
 }
 
+int api_add_to_list(struct api_ctx *ctx, bool is_udp, struct in_addr hostaddr, int hostport, struct in_addr guestaddr, int guestport) {
+	struct api_hostfwd *fwd = malloc(sizeof(*fwd));
+	if (fwd == NULL) {
+                perror("fatal: malloc");
+                exit(EXIT_FAILURE);
+        }
+	memset(fwd, 0, sizeof(*fwd));
+
+	fwd->is_udp = is_udp;
+	fwd->host_addr = hostaddr;
+	fwd->host_port = hostport;
+	fwd->guest_addr = guestaddr;
+        fwd->guest_port = guestport;
+
+	fwd->id = ctx->hostfwds_nextid;
+	ctx->hostfwds_nextid++;
+	QTAILQ_INSERT_TAIL(&ctx->hostfwds, fwd, entry);
+
+	return fwd->id;
+}
+
 /*
   Handler for add_hostfwd.
   e.g. {"execute": "add_hostfwd", "arguments": {"proto": "tcp", "host_addr": "0.0.0.0", "host_port": 8080, "guest_addr": "10.0.2.100", "guest_port": 80}}
@@ -99,69 +120,57 @@ static int api_handle_req_add_hostfwd(Slirp * slirp, int fd, struct api_ctx *ctx
 	const char *proto_s = json_object_dotget_string(jo, "arguments.proto");
 	const char *host_addr_s = json_object_dotget_string(jo, "arguments.host_addr");
 	const char *guest_addr_s = json_object_dotget_string(jo, "arguments.guest_addr");
-	struct api_hostfwd *fwd = malloc(sizeof(*fwd));
-	if (fwd == NULL) {
-		perror("fatal: malloc");
-		exit(EXIT_FAILURE);
-	}
-	memset(fwd, 0, sizeof(*fwd));
-	fwd->is_udp = -1;	/* TODO: support SCTP */
+	struct api_hostfwd fwd; // can be on stack - will be dynamicly added using api_add_to_list
+	fwd.is_udp = -1;	/* TODO: support SCTP */
 	if (strcmp(proto_s, "udp") == 0) {
-		fwd->is_udp = 1;
+		fwd.is_udp = 1;
 	} else if (strcmp(proto_s, "tcp") == 0) {
-		fwd->is_udp = 0;
+		fwd.is_udp = 0;
 	}
-	if (fwd->is_udp == -1) {
+	if (fwd.is_udp == -1) {
 		const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: bad arguments.proto\"}}";
 		wrc = write(fd, err, strlen(err));
-		free(fwd);
 		goto finish;
 	}
 	if (host_addr_s == NULL || host_addr_s[0] == '\0') {
 		host_addr_s = "0.0.0.0";
 	}
-	if (inet_pton(AF_INET, host_addr_s, &fwd->host_addr) != 1) {
+	if (inet_pton(AF_INET, host_addr_s, &fwd.host_addr) != 1) {
 		const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: bad arguments.host_addr\"}}";
 		wrc = write(fd, err, strlen(err));
-		free(fwd);
 		goto finish;
 	}
-	fwd->host_port = (int)json_object_dotget_number(jo, "arguments.host_port");
-	if (fwd->host_port == 0) {
+	fwd.host_port = (int)json_object_dotget_number(jo, "arguments.host_port");
+	if (fwd.host_port == 0) {
 		const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: bad arguments.host_port\"}}";
 		wrc = write(fd, err, strlen(err));
-		free(fwd);
 		goto finish;
 	}
 
 	if (guest_addr_s == NULL || guest_addr_s[0] == '\0') {
-          fwd->guest_addr = ctx->cfg->recommended_vguest;
-	} else if (inet_pton(AF_INET, guest_addr_s, &fwd->guest_addr) != 1) {
+          fwd.guest_addr = ctx->cfg->recommended_vguest;
+	} else if (inet_pton(AF_INET, guest_addr_s, &fwd.guest_addr) != 1) {
 		const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: bad arguments.guest_addr\"}}";
 		wrc = write(fd, err, strlen(err));
-		free(fwd);
 		goto finish;
 	}
-	fwd->guest_port = (int)json_object_dotget_number(jo, "arguments.guest_port");
-	if (fwd->guest_port == 0) {
+	fwd.guest_port = (int)json_object_dotget_number(jo, "arguments.guest_port");
+	if (fwd.guest_port == 0) {
 		const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: bad arguments.guest_port\"}}";
 		wrc = write(fd, err, strlen(err));
-		free(fwd);
 		goto finish;
 	}
 	if ((slirprc =
-	     slirp_add_hostfwd(slirp, fwd->is_udp, fwd->host_addr, fwd->host_port, fwd->guest_addr,
-			       fwd->guest_port)) < 0) {
+	     slirp_add_hostfwd(slirp, fwd.is_udp, fwd.host_addr, fwd.host_port, fwd.guest_addr,
+			       fwd.guest_port)) < 0) {
 		const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: slirp_add_hostfwd failed\"}}";
 		wrc = write(fd, err, strlen(err));
-		free(fwd);
 		goto finish;
 	}
-	fwd->id = ctx->hostfwds_nextid;
-	ctx->hostfwds_nextid++;
-	QTAILQ_INSERT_TAIL(&ctx->hostfwds, fwd, entry);
-	if (snprintf(idbuf, sizeof(idbuf), "{\"return\":{\"id\":%d}}", fwd->id) > sizeof(idbuf)) {
-		fprintf(stderr, "fatal: unexpected id=%d\n", fwd->id);
+	id = api_add_to_list(ctx, fwd.is_udp, fwd.host_addr, fwd.host_port, fwd.guest_addr,
+                               fwd.guest_port);
+	if (snprintf(idbuf, sizeof(idbuf), "{\"return\":{\"id\":%d}}", id) > sizeof(idbuf)) {
+		fprintf(stderr, "fatal: unexpected id=%d\n", id);
 		exit(EXIT_FAILURE);
 	}
 	wrc = write(fd, idbuf, strlen(idbuf));

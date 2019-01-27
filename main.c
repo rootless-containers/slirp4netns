@@ -16,6 +16,8 @@
 #include <net/if.h>
 #include <net/route.h>
 #include <getopt.h>
+#include <regex.h>
+#include <netdb.h>
 #include <stdbool.h>
 #include <regex.h>
 #include "slirp4netns.h"
@@ -270,6 +272,7 @@ static void usage(const char *argv0)
 	printf("--cidr=CIDR              specify network address CIDR (default=%s)\n", DEFAULT_CIDR);
 	printf("--disable-host-loopback  prohibit connecting to 127.0.0.1:* on the host namespace\n");
 	printf("-a, --api-socket=PATH    specify API socket path (experimental)\n");
+	printf("-f, --hostfwd=FWD        port forwarding - can appear multiple times FWD:[tcp|udp]:[hostaddr]:hostport-[guestaddr]:guestport (experimental)\n");
 	printf("-6, --enable-ipv6        enable IPv6 (experimental)\n");
 	printf("-h, --help               show this help and exit\n");
 	printf("-v, --version            show version and exit\n");
@@ -295,12 +298,16 @@ struct options {
 	char *cidr;		// --cidr
 	bool enable_ipv6;	// -6
 	char *api_socket;	// -a
+	unsigned int hostfwd_count;
+	struct hostfwd_t *forwards;
 };
 
 static void options_init(struct options *options)
 {
 	memset(options, 0, sizeof(*options));
 	options->exit_fd = options->ready_fd = -1;
+	options->forwards = NULL;
+	options->hostfwd_count = 0;
 	options->mtu = DEFAULT_MTU;
 }
 
@@ -318,7 +325,116 @@ static void options_destroy(struct options *options)
 		free(options->api_socket);
 		options->api_socket = NULL;
 	}
+	if (options->forwards != NULL) {
+		free(options->forwards);
+		options->hostfwd_count = 0;
+		options->forwards = NULL;
+	}
 	// options itself is not freed, because it can be on the stack.
+}
+
+static int hostname_to_addr(char *hostname, struct in_addr *addr) {
+	struct addrinfo *res;
+	int rc = getaddrinfo(hostname, NULL, NULL, &res);
+
+	if (rc != 0) {
+			return -1;
+	}
+
+	struct addrinfo *ai;
+
+	for (ai = res; ai; ai = ai->ai_next) {
+		// hostfwd doesn't support IPv6 :-(
+		if (ai->ai_family != PF_INET) {
+			continue;
+		}
+		// Use first IPv4 address
+		else {
+			struct sockaddr_in *sa = (struct sockaddr_in *) ai->ai_addr;
+			memcpy(addr, &(sa->sin_addr), sizeof(struct in_addr));
+			freeaddrinfo(res);
+			return 0;
+		}
+	}
+
+	// No IPv4 found
+	freeaddrinfo(res);
+	return -1;
+}
+
+static int parse_hostfwd(char *fwd_optarg, regex_t *preg, struct options *options) {
+	size_t nmatch = 6;
+	regmatch_t pmatch[6];
+	char src_hostname[256] = "\0";
+
+	long src_port;
+	char dest_hostname[256] = "\0";
+	long dest_port;
+	char *end_ptr;
+
+	int rc = regexec(preg, fwd_optarg, nmatch, pmatch, 0);
+	if (rc != 0) {
+		return rc;
+	}
+
+	options->forwards[options->hostfwd_count].is_udp = strncmp("udp", &fwd_optarg[pmatch[1].rm_so], 3) == 0;
+	int src_hostname_len = pmatch[2].rm_eo - pmatch[2].rm_so;
+	int dest_hostname_len = pmatch[4].rm_eo - pmatch[4].rm_so;
+
+	// hostnames longer than 256 chars
+	if (src_hostname_len > 256
+	 || dest_hostname_len > 256) {
+		return -1;
+	}
+
+	strncpy(src_hostname, &fwd_optarg[pmatch[2].rm_so], pmatch[2].rm_eo - pmatch[2].rm_so);
+
+	end_ptr = &fwd_optarg[pmatch[3].rm_eo];
+	src_port = strtol(&fwd_optarg[pmatch[3].rm_so], &end_ptr, 10);
+	if (src_port > 65535) {
+		return -2;
+	} else {
+		options->forwards[options->hostfwd_count].hostport = src_port;
+	}
+
+	strncpy(dest_hostname, &fwd_optarg[pmatch[4].rm_so], pmatch[4].rm_eo - pmatch[4].rm_so);
+
+	end_ptr = &fwd_optarg[pmatch[5].rm_eo];
+	dest_port = strtol(&fwd_optarg[pmatch[5].rm_so], &end_ptr, 10);
+	if (dest_port > 65535) {
+		return -2;
+	} else {
+		options->forwards[options->hostfwd_count].guestport = dest_port;
+	}
+
+	// default value for hostaddr - if empty
+	inet_aton("0.0.0.0", &(options->forwards[options->hostfwd_count].hostaddr));
+
+	if(src_hostname_len > 0) {
+		rc = hostname_to_addr(src_hostname, &(options->forwards[options->hostfwd_count].hostaddr));
+		if (rc != 0) {
+			return -3;
+		}
+	}
+
+	// default value for guestaddr - if empty
+	inet_aton("10.0.2.100", &(options->forwards[options->hostfwd_count].guestaddr));
+
+	if(dest_hostname_len > 0) {
+		rc = hostname_to_addr(dest_hostname, &(options->forwards[options->hostfwd_count].guestaddr));
+		if (rc != 0) {
+			return -3;
+		}
+	}
+
+	/*printf("DEBUG: count %d\n", options->hostfwd_count);
+	printf("DEBUG: Is udp %s\n", options->forwards[options->hostfwd_count].is_udp?"true":"false");
+	printf("DEBUG: Host: %s\n", inet_ntoa(options->forwards[options->hostfwd_count].hostaddr));
+	printf("DEBUG: Host Port: %d\n", options->forwards[options->hostfwd_count].hostport);
+	printf("DEBUG: Guest: %s\n", inet_ntoa(options->forwards[options->hostfwd_count].guestaddr));
+	printf("DEBUG: Guest Port: %d\n", options->forwards[options->hostfwd_count].guestport);*/
+
+	return 0;
 }
 
 // * caller does not need to call options_init()
@@ -327,6 +443,7 @@ static void options_destroy(struct options *options)
 static void parse_args(int argc, char *const argv[], struct options *options)
 {
 	int opt;
+	regex_t preg; // Used for hostfwd
 #define CIDR -42
 #define DISABLE_HOST_LOOPBACK -43
 #define _DEPRECATED_NO_HOST_LOOPBACK -10043	// deprecated in favor of disable-host-loopback
@@ -339,13 +456,14 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 		{"disable-host-loopback", no_argument, NULL, DISABLE_HOST_LOOPBACK},
 		{"no-host-loopback", no_argument, NULL, _DEPRECATED_NO_HOST_LOOPBACK},
 		{"api-socket", required_argument, NULL, 'a'},
+		{"hostfwd", required_argument, NULL, 'f'},
 		{"enable-ipv6", no_argument, NULL, '6'},
 		{"help", no_argument, NULL, 'h'},
 		{"version", no_argument, NULL, 'v'},
 		{0, 0, 0, 0},
 	};
 	options_init(options);
-	while ((opt = getopt_long(argc, argv, "ce:r:m:a:6hv", longopts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "ce:r:m:a:f:6hv", longopts, NULL)) != -1) {
 		switch (opt) {
 		case 'c':
 			options->do_config_network = true;
@@ -393,6 +511,31 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 			options->api_socket = strdup(optarg);
 			printf("WARNING: Support for API socket is experimental\n");
 			break;
+		case 'f':
+			if (options->hostfwd_count == 0) {
+				printf("WARNING: hostfwd is experimental\n");
+				int rc = regcomp(&preg, "^(tcp|udp|):([^:]*):([0-9]+)-([^:]*):([0-9]+)$", REG_EXTENDED);
+				if (rc != 0) {
+					perror("regcomp failed!");
+					exit(EXIT_FAILURE);
+				}
+			}
+
+			// allocate / reallocate
+			if (options->hostfwd_count % 10 == 0) {
+				int preallocate_count = ((options->hostfwd_count/10)+1)*10;
+				//printf("DEBUG: (re-)allocate %d\n", preallocate_count);
+				options->forwards = realloc(options->forwards, preallocate_count*sizeof(struct hostfwd_t));
+			}
+
+			int rc = parse_hostfwd(optarg, &preg, options);
+			if (rc != 0) {
+				perror("hostfwd failed");
+				usage(argv[0]);
+				exit(EXIT_FAILURE);
+			}
+			options->hostfwd_count++;
+			break;
 		case '6':
 			options->enable_ipv6 = true;
 			printf("WARNING: Support for IPv6 is experimental\n");
@@ -411,6 +554,9 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 #undef CIDR
 #undef DISABLE_HOST_LOOPBACK
 #undef _DEPRECATED_NO_HOST_LOOPBACK
+	if (options->hostfwd_count > 0) {
+		regfree(&preg);
+	}
 	if (options->ready_fd >= 0 && !options->do_config_network) {
 		fprintf(stderr, "the option -r FD requires -c\n");
 		exit(EXIT_FAILURE);
@@ -527,6 +673,8 @@ static int slirp_config_from_options(struct slirp_config *cfg, struct options *o
 		goto finish;
 	}
 	cfg->enable_ipv6 = cfg->enable_ipv6;
+	cfg->hostfwd_count = opt->hostfwd_count;
+	cfg->forwards = opt->hostfwd_count > 0?opt->forwards:NULL;
 	cfg->disable_host_loopback = opt->disable_host_loopback;
  finish:
 	return rc;
