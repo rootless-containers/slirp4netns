@@ -17,6 +17,7 @@ slirp4netns allows connecting a network namespace to the Internet in a completel
 * [Podman](https://github.com/containers/libpod)
 * [Buildah](https://github.com/containers/buildah)
 * [ctnr](https://github.com/mgoltzsche/ctnr) (via slirp-cni-plugin)
+* [Docker & Moby](https://get.docker.com/rootless) (optionally, via RootlessKit)
 
 * [RootlessKit](https://github.com/rootless-containers/rootlesskit)
 * [become-root](https://github.com/giuseppe/become-root)
@@ -44,18 +45,29 @@ $ sudo make install
 $ sudo dnf install slirp4netns
 ```
 
-#### [Arch Linux](https://aur.archlinux.org/packages/slirp4netns/):
+#### [RHEL/CentOS 7.6](https://copr.fedorainfracloud.org/coprs/vbatts/shadow-utils-newxidmap/)
 
-If you're running Arch Linux you can install `slirp4netns` (or [`slirp4netns-git`](https://aur.archlinux.org/packages/slirp4netns-git/)) from AUR. When you're using an AUR helper ([yay](https://github.com/Jguer/yay), for example) simply use:
+```console
+$ sudo curl -o /etc/yum.repos.d/vbatts-shadow-utils-newxidmap-epel-7.repo https://copr.fedorainfracloud.org/coprs/vbatts/shadow-utils-newxidmap/repo/epel-7/vbatts-shadow-utils-newxidmap-epel-7.repo
+$ sudo yum install slirp4netns
+```
 
-    yay -S slirp4netns
-    
-Otherwise make sure you have [base-devel](https://www.archlinux.org/groups/x86_64/base-devel/) installed and build a package manually:
+You might need to enable user namespaces manually:
+```console
+$ sudo sh -c 'echo "user.max_user_namespaces=28633" > /etc/sysctl.d/userns.conf'
+$ sudo sysctl -p /etc/sysctl.d/userns.conf
+```
 
-    cd $(mktemp -d)
-    curl -Lo PKGBUILD "https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=slirp4netns"
-    makepkg
-    sudo pacman -U slirp4netns-*.pkg.tar.*
+#### [Arch Linux](https://www.archlinux.org/packages/community/x86_64/slirp4netns/):
+
+```console
+$ sudo pacman -S slirp4netns
+```
+
+You might need to enable user namespaces manually:
+```console
+$ sudo sh -c "echo 1 > /proc/sys/kernel/unprivileged_userns_clone"
+```
 
 #### [openSUSE Tumbleweed](https://build.opensuse.org/package/show/openSUSE%3AFactory/slirp4netns)
 
@@ -77,10 +89,34 @@ $ sudo zypper addrepo --refresh http://download.opensuse.org/repositories/devel:
 $ sudo zypper install slirp4netns
 ```
 
-#### [Debian GNU/Linux Sid](https://packages.debian.org/sid/slirp4netns)
+#### [Debian GNU/Linux (10 or later)](https://packages.debian.org/buster/slirp4netns) & [Ubuntu (19.04 or later)](https://packages.ubuntu.com/disco/slirp4netns)
 
 ```console
 $ sudo apt install slirp4netns
+```
+
+#### [NixOS](https://github.com/NixOS/nixpkgs/tree/master/pkgs/tools/networking/slirp4netns)
+
+```console
+$ nix-env -i slirp4netns
+```
+
+#### [Gentoo Linux](https://packages.gentoo.org/packages/app-emulation/slirp4netns)
+
+```console
+$ sudo emerge app-emulation/slirp4netns
+```
+
+#### [Slackware](https://git.slackbuilds.org/slackbuilds/tree/network/slirp4netns)
+
+```console
+$ sudo sbopkg -i slirp4netns
+```
+
+#### [Void Linux](https://github.com/void-linux/void-packages/tree/master/srcpkgs/slirp4netns)
+
+```console
+$ sudo xbps-install slirp4netns
 ```
 
 ### Usage
