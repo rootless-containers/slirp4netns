@@ -13,7 +13,10 @@
 #define IF_AUTOCOMP	0x04	/* Autodetect (default) */
 #define IF_NOCIDCOMP	0x08	/* CID compression */
 
-/* Changed from QEMU: IF_MTU and IF_MRU are no longer hard-coded; see Slirp->if_mtu and Slirp->if_mru */
+#define IF_MTU_DEFAULT 1500
+#define IF_MTU_MAX 65521
+#define IF_MRU_DEFAULT 1500
+#define IF_MRU_MAX 65521
 #define	IF_COMP IF_AUTOCOMP	/* Flags for compression */
 
 /* 2 for alignment, 14 for ethernet */

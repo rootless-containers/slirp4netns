@@ -1,8 +1,8 @@
 bin_PROGRAMS = slirp4netns
 
-AM_CFLAGS = -I $(abs_top_srcdir)/rd235_libslirp/include -I$(abs_top_srcdir)/rd235_libslirp/src -I$(abs_top_srcdir)/qemu/include -I$(abs_top_srcdir)/qemu/slirp -I$(abs_top_srcdir)/parson
+AM_CFLAGS = @GLIB_CFLAGS@
 
-noinst_LIBRARIES = libqemu_slirp.a libslirp.a libparson.a
+noinst_LIBRARIES = libqemu_slirp.a libparson.a
 
 AM_TESTS_ENVIRONMENT = PATH="$(abs_top_builddir):$(PATH)"
 TESTS = tests/test-slirp4netns.sh tests/test-slirp4netns-configure.sh tests/test-slirp4netns-exit-fd.sh tests/test-slirp4netns-ready-fd.sh tests/test-slirp4netns-api-socket.sh tests/test-slirp4netns-disable-host-loopback.sh tests/test-slirp4netns-cidr.sh
@@ -14,30 +14,30 @@ EXTRA_DIST = \
 	tests/common.sh \
 	slirp4netns.h \
 	api.h \
-	qemu/include/qemu/queue.h \
-	qemu/slirp/slirp.h \
-	qemu/slirp/tcp_var.h \
-	qemu/slirp/ip6.h \
 	qemu/slirp/bootp.h \
-	qemu/slirp/tcp.h \
-	qemu/slirp/ip_icmp.h \
-	qemu/slirp/main.h \
-	qemu/slirp/udp.h \
-	qemu/slirp/tcp_timer.h \
-	qemu/slirp/socket.h \
-	qemu/slirp/sbuf.h \
-	qemu/slirp/slirp_config.h \
-	qemu/slirp/misc.h \
-	qemu/slirp/if.h \
-	qemu/slirp/dhcpv6.h \
-	qemu/slirp/mbuf.h \
 	qemu/slirp/debug.h \
-	qemu/slirp/libslirp.h \
-	qemu/slirp/ip.h \
+	qemu/slirp/dhcpv6.h \
+	qemu/slirp/if.h \
+	qemu/slirp/ip6.h \
 	qemu/slirp/ip6_icmp.h \
+	qemu/slirp/ip.h \
+	qemu/slirp/ip_icmp.h \
+	qemu/slirp/libslirp.h \
+	qemu/slirp/main.h \
+	qemu/slirp/mbuf.h \
+	qemu/slirp/misc.h \
+	qemu/slirp/ncsi-pkt.h \
+	qemu/slirp/qtailq.h \
+	qemu/slirp/sbuf.h \
+	qemu/slirp/slirp.h \
+	qemu/slirp/socket.h \
+	qemu/slirp/tftp.h \
+	qemu/slirp/tcp.h \
 	qemu/slirp/tcpip.h \
-	rd235_libslirp/include/qemu/osdep.h \
-	rd235_libslirp/src/qemu2libslirp.h \
+	qemu/slirp/tcp_timer.h \
+	qemu/slirp/tcp_var.h \
+	qemu/slirp/udp.h \
+	qemu/slirp/util.h \
 	parson/parson.h
 
 libqemu_slirp_a_SOURCES = \
@@ -55,6 +55,7 @@ libqemu_slirp_a_SOURCES = \
 			qemu/slirp/ip_output.c \
 			qemu/slirp/mbuf.c \
 			qemu/slirp/misc.c \
+			qemu/slirp/ncsi.c \
 			qemu/slirp/ndp_table.c \
 			qemu/slirp/sbuf.c \
 			qemu/slirp/slirp.c \
@@ -63,10 +64,10 @@ libqemu_slirp_a_SOURCES = \
 			qemu/slirp/tcp_output.c \
 			qemu/slirp/tcp_subr.c \
 			qemu/slirp/tcp_timer.c \
+			qemu/slirp/tftp.c \
 			qemu/slirp/udp6.c \
-			qemu/slirp/udp.c
-
-libslirp_a_SOURCES = rd235_libslirp/src/qemu2libslirp.c
+			qemu/slirp/udp.c \
+			qemu/slirp/util.c
 
 # define specific commit if git available or it was replaced during git-archive creation
 COMMIT := $(shell V=$Format:%H$ ; \
@@ -76,10 +77,12 @@ COMMIT := $(shell V=$Format:%H$ ; \
 DEFINE_COMMIT = -DCOMMIT="\"$(COMMIT)\""
 
 slirp4netns_CFLAGS = $(AM_CFLAGS) $(DEFINE_COMMIT)
+libqemu_slirp_a_CFLAGS = $(AM_CFLAGS) -I$(abs_top_builddir)/qemu/slirp
+libparson_a_CFLAGS = $(AM_CFLAGS) -I$(abs_top_builddir)/parson
 libparson_a_SOURCES = parson/parson.c
 
 slirp4netns_SOURCES = main.c slirp4netns.c api.c
-slirp4netns_LDADD = libslirp.a libqemu_slirp.a libparson.a
+slirp4netns_LDADD = libqemu_slirp.a libparson.a @GLIB_LIBS@ -lpthread
 man1_MANS = slirp4netns.1
 
 generate-man:
@@ -95,7 +98,13 @@ lint-full:
 
 indent:
 # indent(1): "You must use the ‘-T’ option to tell indent the name of all the typenames in your program that are defined by typedef."
-	indent -linux -l120 -T ssize_t -T pid_t -T SLIRP -T JSON_Object -T JSON_Value -T regex_t -T regmatch_t $(slirp4netns_SOURCES)
+	indent -linux -l120 \
+		-T ssize_t -T pid_t \
+		-T GArray -T GList -T GSList -T GPollFD -T gpointer -T gconstpointer \
+		-T Slirp -T SlirpCb -T SlirpConfig -T SlirpTimerCb \
+		-T JSON_Object -T JSON_Value \
+		-T regex_t -T regmatch_t \
+		$(slirp4netns_SOURCES)
 	$(RM) *.c~
 
 
@@ -106,8 +115,10 @@ benchmark:
 ci:
 	$(MAKE) indent
 	test -z "$(git diff)"
+# TODO: make sure ./qemu is synced with ./qemu_patches/sync.sh
+# (hard to verify during `make`, because sync.sh removes ./qemu/slirp/.deps)
 	$(MAKE) lint
-	$(MAKE) -j $(shell nproc) distcheck
+	$(MAKE) -j $(shell nproc) distcheck || ( find . -name test-suite.log | xargs cat; exit 1 )
 	PATH=$(shell pwd):$$PATH $(MAKE) benchmark MTU=1500
 	PATH=$(shell pwd):$$PATH $(MAKE) benchmark MTU=65520
 

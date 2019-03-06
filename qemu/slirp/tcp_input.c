@@ -38,7 +38,6 @@
  * terms and conditions of the copyright.
  */
 
-#include "qemu/osdep.h"
 #include "slirp.h"
 #include "ip_icmp.h"
 
@@ -60,27 +59,6 @@
  * Set DELACK for segments received in order, but ack immediately
  * when segments are out of order (so fast retransmit can work).
  */
-#ifdef TCP_ACK_HACK
-#define TCP_REASS(tp, ti, m, so, flags) {\
-       if ((ti)->ti_seq == (tp)->rcv_nxt && \
-           tcpfrag_list_empty(tp) && \
-           (tp)->t_state == TCPS_ESTABLISHED) {\
-               if (ti->ti_flags & TH_PUSH) \
-                       tp->t_flags |= TF_ACKNOW; \
-               else \
-                       tp->t_flags |= TF_DELACK; \
-               (tp)->rcv_nxt += (ti)->ti_len; \
-               flags = (ti)->ti_flags & TH_FIN; \
-               if (so->so_emu) { \
-		       if (tcp_emu((so),(m))) sbappend((so), (m)); \
-	       } else \
-	       	       sbappend((so), (m)); \
-	} else {\
-               (flags) = tcp_reass((tp), (ti), (m)); \
-               tp->t_flags |= TF_ACKNOW; \
-       } \
-}
-#else
 #define	TCP_REASS(tp, ti, m, so, flags) { \
 	if ((ti)->ti_seq == (tp)->rcv_nxt && \
         tcpfrag_list_empty(tp) && \
@@ -97,8 +75,8 @@
 		tp->t_flags |= TF_ACKNOW; \
 	} \
 }
-#endif
-static void tcp_dooptions(struct tcpcb *tp, u_char *cp, int cnt,
+
+static void tcp_dooptions(struct tcpcb *tp, uint8_t *cp, int cnt,
                           struct tcpiphdr *ti);
 static void tcp_xmit_timer(register struct tcpcb *tp, int rtt);
 
@@ -219,7 +197,7 @@ tcp_input(struct mbuf *m, int iphlen, struct socket *inso, unsigned short af)
 	struct ip save_ip, *ip;
 	struct ip6 save_ip6, *ip6;
 	register struct tcpiphdr *ti;
-	caddr_t optp = NULL;
+	char *optp = NULL;
 	int optlen = 0;
 	int len, tlen, off;
         register struct tcpcb *tp = NULL;
@@ -227,15 +205,17 @@ tcp_input(struct mbuf *m, int iphlen, struct socket *inso, unsigned short af)
         struct socket *so = NULL;
 	int todrop, acked, ourfinisacked, needoutput = 0;
 	int iss = 0;
-	u_long tiwin;
+	uint32_t tiwin;
+	int ret;
 	struct sockaddr_storage lhost, fhost;
 	struct sockaddr_in *lhost4, *fhost4;
 	struct sockaddr_in6 *lhost6, *fhost6;
+    struct gfwd_list *ex_ptr;
     Slirp *slirp;
 
 	DEBUG_CALL("tcp_input");
-	DEBUG_ARGS((dfd, " m = %p  iphlen = %2d  inso = %p\n",
-		    m, iphlen, inso));
+	DEBUG_ARG("m = %p  iphlen = %2d  inso = %p",
+              m, iphlen, inso);
 
 	/*
 	 * If called with m == 0, then we're continuing the connect
@@ -347,7 +327,7 @@ tcp_input(struct mbuf *m, int iphlen, struct socket *inso, unsigned short af)
 	ti->ti_len = tlen;
 	if (off > sizeof (struct tcphdr)) {
 	  optlen = off - sizeof (struct tcphdr);
-	  optp = mtod(m, caddr_t) + sizeof (struct tcpiphdr);
+	  optp = mtod(m, char *) + sizeof (struct tcpiphdr);
 	}
 	tiflags = ti->ti_flags;
 
@@ -408,14 +388,29 @@ findso:
 	 * as if it was LISTENING, and continue...
 	 */
         if (so == NULL) {
+          if (slirp->restricted) {
+            /* Any hostfwds will have an existing socket, so we only get here
+             * for non-hostfwd connections. These should be dropped, unless it
+             * happens to be a guestfwd.
+             */
+            for (ex_ptr = slirp->guestfwd_list; ex_ptr; ex_ptr = ex_ptr->ex_next) {
+                if (ex_ptr->ex_fport == ti->ti_dport &&
+                    ti->ti_dst.s_addr == ex_ptr->ex_addr.s_addr) {
+                    break;
+                }
+            }
+            if (!ex_ptr) {
+                goto dropwithreset;
+            }
+          }
+
 	  if ((tiflags & (TH_SYN|TH_FIN|TH_RST|TH_URG|TH_ACK)) != TH_SYN)
 	    goto dropwithreset;
 
-	  if ((so = socreate(slirp)) == NULL)
-	    goto dropwithreset;
+          so = socreate(slirp);
 	  if (tcp_attach(so) < 0) {
-	    free(so); /* Not sofree (if it failed, it's not insqued) */
-	    goto dropwithreset;
+            g_free(so); /* Not sofree (if it failed, it's not insqued) */
+            goto dropwithreset;
 	  }
 
 	  sbreserve(&so->so_snd, TCP_SNDSPACE);
@@ -464,7 +459,7 @@ findso:
 	 * Reset idle time and keep-alive timer.
 	 */
 	tp->t_idle = 0;
-	if (SO_OPTIONS)
+	if (slirp_do_keepalive)
 	   tp->t_timer[TCPT_KEEP] = TCPTV_KEEPINTVL;
 	else
 	   tp->t_timer[TCPT_KEEP] = TCPTV_KEEP_IDLE;
@@ -474,7 +469,7 @@ findso:
 	 * else do it below (after getting remote address).
 	 */
 	if (optp && tp->t_state != TCPS_LISTEN)
-		tcp_dooptions(tp, (u_char *)optp, optlen, ti);
+		tcp_dooptions(tp, (uint8_t *)optp, optlen, ti);
 
 	/*
 	 * Header prediction: check for the two common cases
@@ -510,7 +505,7 @@ findso:
 				    SEQ_GT(ti->ti_ack, tp->t_rtseq))
 					tcp_xmit_timer(tp, tp->t_rtt);
 				acked = ti->ti_ack - tp->snd_una;
-				sbdrop(&so->so_snd, acked);
+				sodrop(so, acked);
 				tp->snd_una = ti->ti_ack;
 				m_free(m);
 
@@ -619,6 +614,18 @@ findso:
 	         slirp->vnetwork_addr.s_addr) {
 	    if (so->so_faddr.s_addr != slirp->vhost_addr.s_addr &&
 		so->so_faddr.s_addr != slirp->vnameserver_addr.s_addr) {
+		/* May be an add exec */
+		for (ex_ptr = slirp->guestfwd_list; ex_ptr;
+		     ex_ptr = ex_ptr->ex_next) {
+		  if(ex_ptr->ex_fport == so->so_fport &&
+		     so->so_faddr.s_addr == ex_ptr->ex_addr.s_addr) {
+		    so->so_state |= SS_CTL;
+		    break;
+		  }
+		}
+		if (so->so_state & SS_CTL) {
+		    goto cont_input;
+		}
 	    }
 	    /* CTL_ALIAS: Do nothing, tcp_fconnect will be called on it */
 	  }
@@ -633,8 +640,7 @@ findso:
               (errno != EINPROGRESS) && (errno != EWOULDBLOCK)
           ) {
 	    uint8_t code;
-	    DEBUG_MISC((dfd, " tcp fconnect errno = %d-%s\n",
-			errno,strerror(errno)));
+	    DEBUG_MISC(" tcp fconnect errno = %d-%s", errno, strerror(errno));
 	    if(errno == ECONNREFUSED) {
 	      /* ACK the SYN, send RST to refuse the connection */
 	      tcp_respond(tp, ti, m, ti->ti_seq + 1, (tcp_seq) 0,
@@ -718,7 +724,7 @@ findso:
 	  tcp_template(tp);
 
 	  if (optp)
-	    tcp_dooptions(tp, (u_char *)optp, optlen, ti);
+	    tcp_dooptions(tp, (uint8_t *)optp, optlen, ti);
 
 	  if (iss)
 	    tp->iss = iss;
@@ -958,11 +964,26 @@ trimthenstep6:
 		 * The sent SYN is ack'ed with our sequence number +1
 		 * The first data byte already in the buffer will get
 		 * lost if no correction is made.  This is only needed for
-		 * SS_CTL (removed in slirrp4netns) since the buffer is empty otherwise.
+		 * SS_CTL since the buffer is empty otherwise.
 		 * tp->snd_una++; or:
 		 */
 		tp->snd_una=ti->ti_ack;
-		soisfconnected(so);
+		if (so->so_state & SS_CTL) {
+		  /* So tcp_ctl reports the right state */
+		  ret = tcp_ctl(so);
+		  if (ret == 1) {
+		    soisfconnected(so);
+		    so->so_state &= ~SS_CTL;   /* success XXX */
+		  } else if (ret == 2) {
+		    so->so_state &= SS_PERSISTENT_MASK;
+		    so->so_state |= SS_NOFDREF; /* CTL_CMD */
+		  } else {
+		    needoutput = 1;
+		    tp->t_state = TCPS_FIN_WAIT_1;
+		  }
+		} else {
+		  soisfconnected(so);
+		}
 
 		(void) tcp_reass(tp, (struct tcpiphdr *)0, (struct mbuf *)0);
 		tp->snd_wl1 = ti->ti_seq - 1;
@@ -988,8 +1009,7 @@ trimthenstep6:
 
 		if (SEQ_LEQ(ti->ti_ack, tp->snd_una)) {
 			if (ti->ti_len == 0 && tiwin == tp->snd_wnd) {
-			  DEBUG_MISC((dfd, " dup ack  m = %p  so = %p\n",
-				      m, so));
+			  DEBUG_MISC(" dup ack  m = %p  so = %p", m, so);
 				/*
 				 * If we have outstanding data (other than
 				 * a window probe), this is a completely
@@ -1019,7 +1039,7 @@ trimthenstep6:
 					tp->t_dupacks = 0;
 				else if (++tp->t_dupacks == TCPREXMTTHRESH) {
 					tcp_seq onxt = tp->snd_nxt;
-					u_int win =
+					unsigned win =
                                                 MIN(tp->snd_wnd, tp->snd_cwnd) /
                                                 2 / tp->t_maxseg;
 
@@ -1088,8 +1108,8 @@ trimthenstep6:
 		 * (maxseg^2 / cwnd per packet).
 		 */
 		{
-		  register u_int cw = tp->snd_cwnd;
-		  register u_int incr = tp->t_maxseg;
+		  register unsigned cw = tp->snd_cwnd;
+		  register unsigned incr = tp->t_maxseg;
 
 		  if (cw > tp->snd_ssthresh)
 		    incr = incr * incr / cw;
@@ -1097,10 +1117,10 @@ trimthenstep6:
 		}
 		if (acked > so->so_snd.sb_cc) {
 			tp->snd_wnd -= so->so_snd.sb_cc;
-			sbdrop(&so->so_snd, (int )so->so_snd.sb_cc);
+			sodrop(so, (int)so->so_snd.sb_cc);
 			ourfinisacked = 1;
 		} else {
-			sbdrop(&so->so_snd, acked);
+			sodrop(so, acked);
 			tp->snd_wnd -= acked;
 			ourfinisacked = 0;
 		}
@@ -1131,7 +1151,7 @@ trimthenstep6:
 			}
 			break;
 
-	 	/*
+		/*
 		 * In CLOSING STATE in addition to the processing for
 		 * the ESTABLISHED state if the ACK acknowledges our FIN
 		 * then enter the TIME-WAIT state, otherwise ignore
@@ -1281,7 +1301,7 @@ dodata:
 		}
 		switch (tp->t_state) {
 
-	 	/*
+		/*
 		 * In SYN_RECEIVED and ESTABLISHED STATES
 		 * enter the CLOSE_WAIT state.
 		 */
@@ -1293,7 +1313,7 @@ dodata:
 		    tp->t_state = TCPS_CLOSE_WAIT;
 		  break;
 
-	 	/*
+		/*
 		 * If still in FIN_WAIT_1 STATE FIN has not been acked so
 		 * enter the CLOSING state.
 		 */
@@ -1301,7 +1321,7 @@ dodata:
 			tp->t_state = TCPS_CLOSING;
 			break;
 
-	 	/*
+		/*
 		 * In FIN_WAIT_2 state enter the TIME_WAIT state,
 		 * starting the time-wait timer, turning off the other
 		 * standard timers.
@@ -1361,13 +1381,13 @@ drop:
 }
 
 static void
-tcp_dooptions(struct tcpcb *tp, u_char *cp, int cnt, struct tcpiphdr *ti)
+tcp_dooptions(struct tcpcb *tp, uint8_t *cp, int cnt, struct tcpiphdr *ti)
 {
 	uint16_t mss;
 	int opt, optlen;
 
 	DEBUG_CALL("tcp_dooptions");
-	DEBUG_ARGS((dfd, " tp = %p  cnt=%i\n", tp, cnt));
+	DEBUG_ARG("tp = %p  cnt=%i", tp, cnt);
 
 	for (; cnt > 0; cnt -= optlen, cp += optlen) {
 		opt = cp[0];
@@ -1397,45 +1417,6 @@ tcp_dooptions(struct tcpcb *tp, u_char *cp, int cnt, struct tcpiphdr *ti)
 		}
 	}
 }
-
-
-/*
- * Pull out of band byte out of a segment so
- * it doesn't appear in the user's data queue.
- * It is still reflected in the segment length for
- * sequencing purposes.
- */
-
-#ifdef notdef
-
-void
-tcp_pulloutofband(so, ti, m)
-	struct socket *so;
-	struct tcpiphdr *ti;
-	register struct mbuf *m;
-{
-	int cnt = ti->ti_urp - 1;
-
-	while (cnt >= 0) {
-		if (m->m_len > cnt) {
-			char *cp = mtod(m, caddr_t) + cnt;
-			struct tcpcb *tp = sototcpcb(so);
-
-			tp->t_iobc = *cp;
-			tp->t_oobflags |= TCPOOB_HAVEDATA;
-			memcpy(sp, cp+1, (unsigned)(m->m_len - cnt - 1));
-			m->m_len--;
-			return;
-		}
-		cnt -= m->m_len;
-		m = m->m_next; /* XXX WRONG! Fix it! */
-		if (m == 0)
-			break;
-	}
-	panic("tcp_pulloutofband");
-}
-
-#endif /* notdef */
 
 /*
  * Collect new round-trip time estimate
@@ -1530,7 +1511,7 @@ tcp_xmit_timer(register struct tcpcb *tp, int rtt)
  */
 
 int
-tcp_mss(struct tcpcb *tp, u_int offer)
+tcp_mss(struct tcpcb *tp, unsigned offer)
 {
 	struct socket *so = tp->t_socket;
 	int mss;
@@ -1556,7 +1537,7 @@ tcp_mss(struct tcpcb *tp, u_int offer)
             mss = MIN(mss, offer);
         mss = MAX(mss, 32);
 	if (mss < tp->t_maxseg || offer != 0)
-	   tp->t_maxseg = MIN(mss, TCP_MAXSEG_MAX);
+        tp->t_maxseg = MIN(mss, TCP_MAXSEG_MAX);
 
 	tp->snd_cwnd = mss;
 
@@ -1567,7 +1548,7 @@ tcp_mss(struct tcpcb *tp, u_int offer)
                                                (mss - (TCP_RCVSPACE % mss)) :
                                                0));
 
-	DEBUG_MISC((dfd, " returning mss = %d\n", mss));
+	DEBUG_MISC(" returning mss = %d", mss);
 
 	return mss;
 }

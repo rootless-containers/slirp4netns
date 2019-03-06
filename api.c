@@ -1,12 +1,10 @@
 #define _GNU_SOURCE
-#include <stdlib.h>
+#include <stdio.h>
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-
-#include "qemu/slirp/slirp.h"
-#include "libslirp.h"
+#include <sys/un.h>
+#include <glib.h>
 #include "parson/parson.h"
+#include "qemu/slirp/libslirp.h"
 #include "api.h"
 #include "slirp4netns.h"
 
@@ -34,7 +32,6 @@ int api_bindlisten(const char *api_socket)
 }
 
 struct api_hostfwd {
-	QTAILQ_ENTRY(api_hostfwd) entry;
 	int id;
 	int is_udp;
 	struct in_addr host_addr;
@@ -46,18 +43,17 @@ struct api_hostfwd {
 struct api_ctx {
 	uint8_t *buf;
 	size_t buflen;
-	 QTAILQ_HEAD(hostfwds, api_hostfwd) hostfwds;
+	GList *hostfwds;
 	int hostfwds_nextid;
-	struct slirp_config *cfg;
+	struct slirp4netns_config *cfg;
 };
 
-struct api_ctx *api_ctx_alloc(struct slirp_config *cfg)
+struct api_ctx *api_ctx_alloc(struct slirp4netns_config *cfg)
 {
-	struct api_ctx *ctx = (struct api_ctx *)malloc(sizeof(*ctx));
+	struct api_ctx *ctx = (struct api_ctx *)g_malloc0(sizeof(*ctx));
 	if (ctx == NULL) {
 		return NULL;
 	}
-	memset(ctx, 0, sizeof(*ctx));
 	ctx->buflen = 4096;
 	ctx->buf = malloc(ctx->buflen);	/* FIXME: realloc */
 	if (ctx->buf == NULL) {
@@ -65,7 +61,7 @@ struct api_ctx *api_ctx_alloc(struct slirp_config *cfg)
 		return NULL;
 	}
 	ctx->cfg = cfg;
-	QTAILQ_INIT(&ctx->hostfwds);
+	ctx->hostfwds = NULL;
 	ctx->hostfwds_nextid = 1;
 	return ctx;
 }
@@ -73,15 +69,10 @@ struct api_ctx *api_ctx_alloc(struct slirp_config *cfg)
 void api_ctx_free(struct api_ctx *ctx)
 {
 	if (ctx != NULL) {
-		struct api_hostfwd *fwd = NULL, *fwd_next = NULL;
 		if (ctx->buf != NULL) {
 			free(ctx->buf);
 		}
-		QTAILQ_FOREACH_SAFE(fwd, &ctx->hostfwds, entry, fwd_next) {
-			QTAILQ_REMOVE(&ctx->hostfwds, fwd, entry);
-			free(fwd);
-		}
-		/* TODO: free hostfwds */
+		g_list_free_full(ctx->hostfwds, g_free);
 		free(ctx);
 	}
 }
@@ -91,7 +82,7 @@ void api_ctx_free(struct api_ctx *ctx)
   e.g. {"execute": "add_hostfwd", "arguments": {"proto": "tcp", "host_addr": "0.0.0.0", "host_port": 8080, "guest_addr": "10.0.2.100", "guest_port": 80}}
   This function returns the return value of write(2), not the return value of slirp_add_hostfwd().
  */
-static int api_handle_req_add_hostfwd(Slirp * slirp, int fd, struct api_ctx *ctx, JSON_Object *jo)
+static int api_handle_req_add_hostfwd(Slirp *slirp, int fd, struct api_ctx *ctx, JSON_Object *jo)
 {
 	int wrc = 0, slirprc = 0;
 	int id = -1;
@@ -99,12 +90,11 @@ static int api_handle_req_add_hostfwd(Slirp * slirp, int fd, struct api_ctx *ctx
 	const char *proto_s = json_object_dotget_string(jo, "arguments.proto");
 	const char *host_addr_s = json_object_dotget_string(jo, "arguments.host_addr");
 	const char *guest_addr_s = json_object_dotget_string(jo, "arguments.guest_addr");
-	struct api_hostfwd *fwd = malloc(sizeof(*fwd));
+	struct api_hostfwd *fwd = g_malloc0(sizeof(*fwd));
 	if (fwd == NULL) {
 		perror("fatal: malloc");
 		exit(EXIT_FAILURE);
 	}
-	memset(fwd, 0, sizeof(*fwd));
 	fwd->is_udp = -1;	/* TODO: support SCTP */
 	if (strcmp(proto_s, "udp") == 0) {
 		fwd->is_udp = 1;
@@ -135,7 +125,7 @@ static int api_handle_req_add_hostfwd(Slirp * slirp, int fd, struct api_ctx *ctx
 	}
 
 	if (guest_addr_s == NULL || guest_addr_s[0] == '\0') {
-          fwd->guest_addr = ctx->cfg->recommended_vguest;
+		fwd->guest_addr = ctx->cfg->recommended_vguest;
 	} else if (inet_pton(AF_INET, guest_addr_s, &fwd->guest_addr) != 1) {
 		const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: bad arguments.guest_addr\"}}";
 		wrc = write(fd, err, strlen(err));
@@ -159,7 +149,7 @@ static int api_handle_req_add_hostfwd(Slirp * slirp, int fd, struct api_ctx *ctx
 	}
 	fwd->id = ctx->hostfwds_nextid;
 	ctx->hostfwds_nextid++;
-	QTAILQ_INSERT_TAIL(&ctx->hostfwds, fwd, entry);
+	ctx->hostfwds = g_list_append(ctx->hostfwds, fwd);
 	if (snprintf(idbuf, sizeof(idbuf), "{\"return\":{\"id\":%d}}", fwd->id) > sizeof(idbuf)) {
 		fprintf(stderr, "fatal: unexpected id=%d\n", fwd->id);
 		exit(EXIT_FAILURE);
@@ -169,11 +159,39 @@ static int api_handle_req_add_hostfwd(Slirp * slirp, int fd, struct api_ctx *ctx
 	return wrc;
 }
 
+static void api_handle_req_list_hostfwd_foreach(gpointer data, gpointer user_data)
+{
+	struct api_hostfwd *fwd = data;
+	JSON_Array *entries_array = (JSON_Array *) user_data;
+	JSON_Value *entry_value = json_value_init_object();
+	JSON_Object *entry_object = json_value_get_object(entry_value);
+	char host_addr[INET_ADDRSTRLEN], guest_addr[INET_ADDRSTRLEN];
+	if (inet_ntop(AF_INET, &fwd->host_addr, host_addr, sizeof(host_addr)) == NULL) {
+		perror("fatal: inet_ntop");
+		exit(EXIT_FAILURE);
+	}
+	if (inet_ntop(AF_INET, &fwd->guest_addr, guest_addr, sizeof(guest_addr)) == NULL) {
+		perror("fatal: inet_ntop");
+		exit(EXIT_FAILURE);
+	}
+	json_object_set_number(entry_object, "id", fwd->id);
+	json_object_set_string(entry_object, "proto", fwd->is_udp ? "udp" : "tcp");
+	json_object_set_string(entry_object, "host_addr", host_addr);
+	json_object_set_number(entry_object, "host_port", fwd->host_port);
+	json_object_set_string(entry_object, "guest_addr", guest_addr);
+	json_object_set_number(entry_object, "guest_port", fwd->guest_port);
+	/* json_array_append_value does not copy passed value */
+	if (json_array_append_value(entries_array, entry_value) != JSONSuccess) {
+		fprintf(stderr, "fatal: json_array_append_value\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 /*
   Handler for list_hostfwd.
   e.g. {"execute": "list_hostfwd"}
 */
-static int api_handle_req_list_hostfwd(Slirp * slirp, int fd, struct api_ctx *ctx, JSON_Object *jo)
+static int api_handle_req_list_hostfwd(Slirp *slirp, int fd, struct api_ctx *ctx, JSON_Object *jo)
 {
 	int wrc = 0;
 	struct api_hostfwd *fwd = NULL;
@@ -181,30 +199,7 @@ static int api_handle_req_list_hostfwd(Slirp * slirp, int fd, struct api_ctx *ct
 	JSON_Object *root_object = json_value_get_object(root_value);
 	JSON_Array *entries_array = json_array(entries_value);
 	char *serialized_string = NULL;
-	QTAILQ_FOREACH(fwd, &ctx->hostfwds, entry) {
-		JSON_Value *entry_value = json_value_init_object();
-		JSON_Object *entry_object = json_value_get_object(entry_value);
-		char host_addr[INET_ADDRSTRLEN], guest_addr[INET_ADDRSTRLEN];
-		if (inet_ntop(AF_INET, &fwd->host_addr, host_addr, sizeof(host_addr)) == NULL) {
-			perror("fatal: inet_ntop");
-			exit(EXIT_FAILURE);
-		}
-		if (inet_ntop(AF_INET, &fwd->guest_addr, guest_addr, sizeof(guest_addr)) == NULL) {
-			perror("fatal: inet_ntop");
-			exit(EXIT_FAILURE);
-		}
-		json_object_set_number(entry_object, "id", fwd->id);
-		json_object_set_string(entry_object, "proto", fwd->is_udp ? "udp" : "tcp");
-		json_object_set_string(entry_object, "host_addr", host_addr);
-		json_object_set_number(entry_object, "host_port", fwd->host_port);
-		json_object_set_string(entry_object, "guest_addr", guest_addr);
-		json_object_set_number(entry_object, "guest_port", fwd->guest_port);
-		/* json_array_append_value does not copy passed value */
-		if (json_array_append_value(entries_array, entry_value) != JSONSuccess) {
-			fprintf(stderr, "fatal: json_array_append_value\n");
-			exit(EXIT_FAILURE);
-		}
-	}
+	g_list_foreach(ctx->hostfwds, api_handle_req_list_hostfwd_foreach, entries_array);
 	json_object_set_value(root_object, "entries", entries_value);
 	serialized_string = json_serialize_to_string(root_value);
 	wrc = write(fd, serialized_string, strlen(serialized_string));
@@ -214,36 +209,42 @@ static int api_handle_req_list_hostfwd(Slirp * slirp, int fd, struct api_ctx *ct
 	return wrc;
 }
 
+static int api_handle_remove_list_hostfwd_find(gconstpointer gcp_fwd, gconstpointer gcp_id)
+{
+	struct api_hostfwd *fwd = (struct api_hostfwd *)gcp_fwd;
+	int id = *(int *)gcp_id;
+	return id == fwd->id;
+}
+
 /*
   Handler for remove_hostfwd.
   e.g. {"execute": "remove_hostfwd", "arguments": {"id": 42}}
 */
-static int api_handle_req_remove_hostfwd(Slirp * slirp, int fd, struct api_ctx *ctx, JSON_Object *jo)
+static int api_handle_req_remove_hostfwd(Slirp *slirp, int fd, struct api_ctx *ctx, JSON_Object *jo)
 {
-	const char *err = "{\"error\":{\"desc\":\"bad request: remove_hostfwd: bad arguments.id\"}}";
 	int wrc = 0;
-	struct api_hostfwd *fwd = NULL, *fwd_next = NULL;
 	int id = (int)json_object_dotget_number(jo, "arguments.id");
-	QTAILQ_FOREACH_SAFE(fwd, &ctx->hostfwds, entry, fwd_next) {
-		if (id == fwd->id) {
-			const char *api_ok = "{\"return\":{}}";
-			if (slirp_remove_hostfwd(slirp, fwd->is_udp, fwd->host_addr, fwd->host_port) < 0) {
-				err =
-				    "{\"error\":{\"desc\":\"bad request: remove_hostfwd: slirp_remove_hostfwd failed\"}}";
-				wrc = write(fd, err, strlen(err));
-				goto finish;
-			}
-			QTAILQ_REMOVE(&ctx->hostfwds, fwd, entry);
+	GList *found = g_list_find_custom(ctx->hostfwds, &id, api_handle_remove_list_hostfwd_find);
+	if (found == NULL) {
+		const char *err = "{\"error\":{\"desc\":\"bad request: remove_hostfwd: bad arguments.id\"}}";
+		wrc = write(fd, err, strlen(err));
+	} else {
+		struct api_hostfwd *fwd = found->data;
+		const char *api_ok = "{\"return\":{}}";
+		if (slirp_remove_hostfwd(slirp, fwd->is_udp, fwd->host_addr, fwd->host_port) < 0) {
+			const char *err =
+			    "{\"error\":{\"desc\":\"bad request: remove_hostfwd: slirp_remove_hostfwd failed\"}}";
+			wrc = write(fd, err, strlen(err));
+		} else {
+			ctx->hostfwds = g_list_remove(ctx->hostfwds, fwd);
+			g_free(fwd);
 			wrc = write(fd, api_ok, strlen(api_ok));
-			goto finish;
 		}
 	}
-	wrc = write(fd, err, strlen(err));
- finish:
 	return wrc;
 }
 
-static int api_handle_req(Slirp * slirp, int fd, struct api_ctx *ctx)
+static int api_handle_req(Slirp *slirp, int fd, struct api_ctx *ctx)
 {
 	JSON_Value *jv = NULL;
 	JSON_Object *jo = NULL;
@@ -287,7 +288,7 @@ static int api_handle_req(Slirp * slirp, int fd, struct api_ctx *ctx)
   API handler.
   This function returns the return value of either read(2) or write(2).
  */
-int api_handler(Slirp * slirp, int listenfd, struct api_ctx *ctx)
+int api_handler(Slirp *slirp, int listenfd, struct api_ctx *ctx)
 {
 	struct sockaddr_un addr;
 	socklen_t addrlen = sizeof(struct sockaddr_un);

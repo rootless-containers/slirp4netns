@@ -129,12 +129,10 @@ diddit:
 		}
 	}
 
-#ifndef FULL_BOLT
 	/*
 	 * This prevents us from malloc()ing too many mbufs
 	 */
 	if_start(ifm->slirp);
-#endif
 }
 
 /*
@@ -148,7 +146,7 @@ diddit:
  */
 void if_start(Slirp *slirp)
 {
-    uint64_t now = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
+    uint64_t now = slirp->cb->clock_get_ns(slirp->opaque);
     bool from_batchq = false;
     struct mbuf *ifm, *ifm_next, *ifqt;
 

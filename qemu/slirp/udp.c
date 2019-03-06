@@ -92,7 +92,7 @@ udp_input(register struct mbuf *m, int iphlen)
 	 * Get IP and UDP header together in first mbuf.
 	 */
 	ip = mtod(m, struct ip *);
-	uh = (struct udphdr *)((caddr_t)ip + iphlen);
+	uh = (struct udphdr *)((char *)ip + iphlen);
 
 	/*
 	 * Make mbuf data length reflect UDP length.
@@ -142,6 +142,19 @@ udp_input(register struct mbuf *m, int iphlen)
                 goto bad;
             }
 
+        /*
+         *  handle TFTP
+         */
+        if (ntohs(uh->uh_dport) == TFTP_SERVER &&
+            ip->ip_dst.s_addr == slirp->vhost_addr.s_addr) {
+            m->m_data += iphlen;
+            m->m_len -= iphlen;
+            tftp_input(&lhost, m);
+            m->m_data -= iphlen;
+            m->m_len += iphlen;
+            goto bad;
+        }
+
         if (slirp->restricted) {
             goto bad;
         }
@@ -157,12 +170,8 @@ udp_input(register struct mbuf *m, int iphlen)
 	   * create one
 	   */
 	  so = socreate(slirp);
-	  if (!so) {
-	      goto bad;
-	  }
 	  if (udp_attach(so, AF_INET) == -1) {
-	    DEBUG_MISC((dfd," udp_attach errno = %d-%s\n",
-			errno,strerror(errno)));
+	    DEBUG_MISC(" udp_attach errno = %d-%s", errno, strerror(errno));
 	    sofree(so);
 	    goto bad;
 	  }
@@ -198,7 +207,7 @@ udp_input(register struct mbuf *m, int iphlen)
 	  m->m_len += iphlen;
 	  m->m_data -= iphlen;
 	  *ip=save_ip;
-	  DEBUG_MISC((dfd,"udp tx errno = %d-%s\n",errno,strerror(errno)));
+	  DEBUG_MISC("udp tx errno = %d-%s", errno, strerror(errno));
 	  icmp_send_error(m, ICMP_UNREACH, ICMP_UNREACH_NET, 0,
 	                  strerror(errno));
 	  goto bad;
@@ -271,7 +280,7 @@ int udp_output(struct socket *so, struct mbuf *m,
 int
 udp_attach(struct socket *so, unsigned short af)
 {
-  so->s = qemu_socket(af, SOCK_DGRAM, 0);
+  so->s = slirp_socket(af, SOCK_DGRAM, 0);
   if (so->s != -1) {
     so->so_expire = curtime + SO_EXPIRE;
     insque(so, &so->slirp->udb);
@@ -282,6 +291,7 @@ udp_attach(struct socket *so, unsigned short af)
 void
 udp_detach(struct socket *so)
 {
+	so->slirp->cb->unregister_poll_fd(so->s, so->slirp->opaque);
 	closesocket(so->s);
 	sofree(so);
 }
@@ -299,7 +309,7 @@ udp_tos(struct socket *so)
 	while(udptos[i].tos) {
 		if ((udptos[i].fport && ntohs(so->so_fport) == udptos[i].fport) ||
 		    (udptos[i].lport && ntohs(so->so_lport) == udptos[i].lport)) {
-		    	so->so_emu = udptos[i].emu;
+			so->so_emu = udptos[i].emu;
 			return udptos[i].tos;
 		}
 		i++;
@@ -309,18 +319,15 @@ udp_tos(struct socket *so)
 }
 
 struct socket *
-udp_listen(Slirp *slirp, uint32_t haddr, u_int hport, uint32_t laddr,
-           u_int lport, int flags)
+udp_listen(Slirp *slirp, uint32_t haddr, unsigned hport, uint32_t laddr,
+           unsigned lport, int flags)
 {
 	struct sockaddr_in addr;
 	struct socket *so;
 	socklen_t addrlen = sizeof(struct sockaddr_in);
 
 	so = socreate(slirp);
-	if (!so) {
-	    return NULL;
-	}
-	so->s = qemu_socket(AF_INET,SOCK_DGRAM,0);
+	so->s = slirp_socket(AF_INET,SOCK_DGRAM,0);
         if (so->s < 0) {
             sofree(so);
             return NULL;
@@ -336,7 +343,7 @@ udp_listen(Slirp *slirp, uint32_t haddr, u_int hport, uint32_t laddr,
 		udp_detach(so);
 		return NULL;
 	}
-	socket_set_fast_reuse(so->s);
+	slirp_socket_set_fast_reuse(so->s);
 
 	getsockname(so->s,(struct sockaddr *)&addr,&addrlen);
 	so->fhost.sin = addr;

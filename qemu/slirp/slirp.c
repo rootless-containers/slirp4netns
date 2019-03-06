@@ -21,12 +21,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#include "qemu/osdep.h"
 #include "slirp.h"
+
+#ifdef WITH_QEMU
+#include "state.h"
+#endif
 
 #ifndef _WIN32
 #include <net/if.h>
 #endif
+
+int slirp_debug;
+
+/* Define to 1 if you want KEEPALIVE timers */
+bool slirp_do_keepalive;
 
 /* host loopback address */
 struct in_addr loopback_addr;
@@ -38,18 +46,15 @@ static const uint8_t special_ethaddr[ETH_ALEN] = {
     0x52, 0x55, 0x00, 0x00, 0x00, 0x00
 };
 
-u_int curtime;
-
-static QTAILQ_HEAD(slirp_instances, Slirp) slirp_instances =
-    QTAILQ_HEAD_INITIALIZER(slirp_instances);
+unsigned curtime;
 
 static struct in_addr dns_addr;
 #ifndef _WIN32
 static struct in6_addr dns6_addr;
 #endif
-static u_int dns_addr_time;
+static unsigned dns_addr_time;
 #ifndef _WIN32
-static u_int dns6_addr_time;
+static unsigned dns6_addr_time;
 #endif
 
 #define TIMEOUT_FAST 2  /* milliseconds */
@@ -84,7 +89,7 @@ int get_dns_addr(struct in_addr *pdns_addr)
     }
 
     if ((ret = GetNetworkParams(FixedInfo, &BufLen)) != ERROR_SUCCESS) {
-        printf("GetNetworkParams failed. ret = %08x\n", (u_int)ret );
+        printf("GetNetworkParams failed. ret = %08x\n", (unsigned)ret );
         if (FixedInfo) {
             GlobalFree(FixedInfo);
             FixedInfo = NULL;
@@ -118,7 +123,7 @@ static void winsock_cleanup(void)
 
 static int get_dns_addr_cached(void *pdns_addr, void *cached_addr,
                                socklen_t addrlen,
-                               struct stat *cached_stat, u_int *cached_time)
+                               struct stat *cached_stat, unsigned *cached_time)
 {
     struct stat old_stat;
     if (curtime - *cached_time < TIMEOUT_DEFAULT) {
@@ -141,7 +146,7 @@ static int get_dns_addr_cached(void *pdns_addr, void *cached_addr,
 
 static int get_dns_addr_resolv_conf(int af, void *pdns_addr, void *cached_addr,
                                     socklen_t addrlen, uint32_t *scope_id,
-                                    u_int *cached_time)
+                                    unsigned *cached_time)
 {
     char buff[512];
     char buff2[257];
@@ -154,9 +159,7 @@ static int get_dns_addr_resolv_conf(int af, void *pdns_addr, void *cached_addr,
     if (!f)
         return -1;
 
-#ifdef DEBUG
-    fprintf(stderr, "IP address of your DNS(s): ");
-#endif
+    DEBUG_MISC("IP address of your DNS(s):");
     while (fgets(buff, 512, f) != NULL) {
         if (sscanf(buff, "nameserver%*[ \t]%256s", buff2) == 1) {
             char *c = strchr(buff2, '%');
@@ -179,26 +182,18 @@ static int get_dns_addr_resolv_conf(int af, void *pdns_addr, void *cached_addr,
                 }
                 *cached_time = curtime;
             }
-#ifdef DEBUG
-            else
-                fprintf(stderr, ", ");
-#endif
+
             if (++found > 3) {
-#ifdef DEBUG
-                fprintf(stderr, "(more)");
-#endif
+                DEBUG_MISC("  (more)");
                 break;
-            }
-#ifdef DEBUG
-            else {
+            } else if (slirp_debug & DBG_MISC) {
                 char s[INET6_ADDRSTRLEN];
                 const char *res = inet_ntop(af, tmp_addr, s, sizeof(s));
                 if (!res) {
-                    res = "(string conversion error)";
+                    res = "  (string conversion error)";
                 }
-                fprintf(stderr, "%s", res);
+                DEBUG_MISC("  %s", res);
             }
-#endif
         }
     }
     fclose(f);
@@ -245,6 +240,7 @@ int get_dns6_addr(struct in6_addr *pdns6_addr, uint32_t *scope_id)
 static void slirp_init_once(void)
 {
     static int initialized;
+    const char *debug;
 #ifdef _WIN32
     WSADATA Data;
 #endif
@@ -261,29 +257,45 @@ static void slirp_init_once(void)
 
     loopback_addr.s_addr = htonl(INADDR_LOOPBACK);
     loopback_mask = htonl(IN_CLASSA_NET);
+
+    debug = g_getenv("SLIRP_DEBUG");
+    if (debug) {
+        const GDebugKey keys[] = {
+            { "call", DBG_CALL },
+            { "misc", DBG_MISC },
+            { "error", DBG_ERROR },
+            { "tftp", DBG_TFTP },
+        };
+        slirp_debug = g_parse_debug_string(debug, keys, G_N_ELEMENTS(keys));
+    }
+
+
 }
 
-/* Changed from QEMU: removed tftp, added if_mtu and if_mru */
-Slirp *slirp_init(int restricted, bool in_enabled, struct in_addr vnetwork,
-                  struct in_addr vnetmask, struct in_addr vhost,
-                  bool in6_enabled,
-                  struct in6_addr vprefix_addr6, uint8_t vprefix_len,
-                  struct in6_addr vhost6, const char *vhostname,
-                  const char *bootfile,
-                  struct in_addr vdhcp_start, struct in_addr vnameserver,
-                  struct in6_addr vnameserver6, const char **vdnssearch,
-                  const char *vdomainname, unsigned int if_mtu, unsigned int if_mru,
-                  bool disable_host_loopback, void *opaque)
+Slirp *slirp_initx(const SlirpConfig *cfg, const SlirpCb *callbacks, void *opaque)
 {
-    Slirp *slirp = g_malloc0(sizeof(Slirp));
+    Slirp *slirp;
+    if (cfg == NULL) {
+        return NULL;
+    }
+    if (cfg->if_mtu > IF_MTU_MAX) {
+        return NULL;
+    }
+    if (cfg->if_mru > IF_MRU_MAX) {
+        return NULL;
+    }
+
+    slirp = g_malloc0(sizeof(Slirp));
 
     slirp_init_once();
 
+    slirp->opaque = opaque;
+    slirp->cb = callbacks;
     slirp->grand = g_rand_new();
-    slirp->restricted = restricted;
+    slirp->restricted = cfg->restricted;
 
-    slirp->in_enabled = in_enabled;
-    slirp->in6_enabled = in6_enabled;
+    slirp->in_enabled = cfg->in_enabled;
+    slirp->in6_enabled = cfg->in6_enabled;
 
     if_init(slirp);
     ip_init(slirp);
@@ -292,40 +304,86 @@ Slirp *slirp_init(int restricted, bool in_enabled, struct in_addr vnetwork,
     /* Initialise mbufs *after* setting the MTU */
     m_init(slirp);
 
-    slirp->vnetwork_addr = vnetwork;
-    slirp->vnetwork_mask = vnetmask;
-    slirp->vhost_addr = vhost;
-    slirp->vprefix_addr6 = vprefix_addr6;
-    slirp->vprefix_len = vprefix_len;
-    slirp->vhost_addr6 = vhost6;
-    if (vhostname) {
-        pstrcpy(slirp->client_hostname, sizeof(slirp->client_hostname),
-                vhostname);
+    slirp->vnetwork_addr = cfg->vnetwork;
+    slirp->vnetwork_mask = cfg->vnetmask;
+    slirp->vhost_addr = cfg->vhost;
+    slirp->vprefix_addr6 = cfg->vprefix_addr6;
+    slirp->vprefix_len = cfg->vprefix_len;
+    slirp->vhost_addr6 = cfg->vhost6;
+    if (cfg->vhostname) {
+        slirp_pstrcpy(slirp->client_hostname, sizeof(slirp->client_hostname),
+                cfg->vhostname);
     }
-    slirp->bootp_filename = g_strdup(bootfile);
-    slirp->vdomainname = g_strdup(vdomainname);
-    slirp->vdhcp_startaddr = vdhcp_start;
-    slirp->vnameserver_addr = vnameserver;
-    slirp->vnameserver_addr6 = vnameserver6;
+    slirp->tftp_prefix = g_strdup(cfg->tftp_path);
+    slirp->bootp_filename = g_strdup(cfg->bootfile);
+    slirp->vdomainname = g_strdup(cfg->vdomainname);
+    slirp->vdhcp_startaddr = cfg->vdhcp_start;
+    slirp->vnameserver_addr = cfg->vnameserver;
+    slirp->vnameserver_addr6 = cfg->vnameserver6;
+    slirp->tftp_server_name = g_strdup(cfg->tftp_server_name);
 
-    if (vdnssearch) {
-        translate_dnssearch(slirp, vdnssearch);
+    if (cfg->vdnssearch) {
+        translate_dnssearch(slirp, cfg->vdnssearch);
     }
+    slirp->if_mtu = cfg->if_mtu == 0 ? IF_MTU_DEFAULT : cfg->if_mtu;
+    slirp->if_mru = cfg->if_mru == 0 ? IF_MRU_DEFAULT : cfg->if_mru;
+    slirp->disable_host_loopback = cfg->disable_host_loopback;
 
-    slirp->if_mtu = if_mtu == 0 ? 1500 : if_mtu;
-    slirp->if_mru = if_mru == 0 ? 1500 : if_mru;
-    slirp->disable_host_loopback = disable_host_loopback;
-    slirp->opaque = opaque;
-
-    QTAILQ_INSERT_TAIL(&slirp_instances, slirp, entry);
-
+#ifdef WITH_QEMU
+    slirp_state_register(slirp);
+#endif
     return slirp;
+}
+
+Slirp *slirp_init(int restricted, bool in_enabled, struct in_addr vnetwork,
+        struct in_addr vnetmask, struct in_addr vhost,
+        bool in6_enabled,
+        struct in6_addr vprefix_addr6, uint8_t vprefix_len,
+        struct in6_addr vhost6, const char *vhostname,
+        const char *tftp_server_name,
+        const char *tftp_path, const char *bootfile,
+        struct in_addr vdhcp_start, struct in_addr vnameserver,
+        struct in6_addr vnameserver6, const char **vdnssearch,
+        const char *vdomainname,
+        const SlirpCb *callbacks,
+        void *opaque)
+{
+    SlirpConfig cfg;
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.restricted = restricted;
+    cfg.in_enabled = in_enabled;
+    cfg.vnetwork = vnetwork;
+    cfg.vnetmask = vnetmask;
+    cfg.vhost = vhost;
+    cfg.in6_enabled = in6_enabled;
+    cfg.vprefix_addr6 = vprefix_addr6;
+    cfg.vprefix_len = vprefix_len;
+    cfg.vhost6 = vhost6;
+    cfg.vhostname = vhostname;
+    cfg.tftp_server_name = tftp_server_name;
+    cfg.tftp_path = tftp_path;
+    cfg.bootfile = bootfile;
+    cfg.vdhcp_start = vdhcp_start;
+    cfg.vnameserver = vnameserver;
+    cfg.vnameserver6 = vnameserver6;
+    cfg.vdnssearch = vdnssearch;
+    cfg.vdomainname = vdomainname;
+    return slirp_initx(&cfg, callbacks, opaque);
 }
 
 void slirp_cleanup(Slirp *slirp)
 {
-    QTAILQ_REMOVE(&slirp_instances, slirp, entry);
+    struct gfwd_list *e, *next;
 
+    for (e = slirp->guestfwd_list; e; e = next) {
+        next = e->ex_next;
+        g_free(e->ex_exec);
+        g_free(e);
+    }
+
+#ifdef WITH_QEMU
+    slirp_state_unregister(slirp);
+#endif
     ip_cleanup(slirp);
     ip6_cleanup(slirp);
     m_cleanup(slirp);
@@ -333,6 +391,7 @@ void slirp_cleanup(Slirp *slirp)
     g_rand_free(slirp->grand);
 
     g_free(slirp->vdnssearch);
+    g_free(slirp->tftp_prefix);
     g_free(slirp->bootp_filename);
     g_free(slirp->vdomainname);
     g_free(slirp);
@@ -341,9 +400,8 @@ void slirp_cleanup(Slirp *slirp)
 #define CONN_CANFSEND(so) (((so)->so_state & (SS_FCANTSENDMORE|SS_ISFCONNECTED)) == SS_ISFCONNECTED)
 #define CONN_CANFRCV(so) (((so)->so_state & (SS_FCANTRCVMORE|SS_ISFCONNECTED)) == SS_ISFCONNECTED)
 
-static void slirp_update_timeout(uint32_t *timeout)
+static void slirp_update_timeout(Slirp *slirp, uint32_t *timeout)
 {
-    Slirp *slirp;
     uint32_t t;
 
     if (*timeout <= TIMEOUT_FAST) {
@@ -355,411 +413,332 @@ static void slirp_update_timeout(uint32_t *timeout)
     /* If we have tcp timeout with slirp, then we will fill @timeout with
      * more precise value.
      */
-    QTAILQ_FOREACH(slirp, &slirp_instances, entry) {
-        if (slirp->time_fasttimo) {
-            *timeout = TIMEOUT_FAST;
-            return;
-        }
-        if (slirp->do_slowtimo) {
-            t = MIN(TIMEOUT_SLOW, t);
-        }
+    if (slirp->time_fasttimo) {
+        *timeout = TIMEOUT_FAST;
+        return;
+    }
+    if (slirp->do_slowtimo) {
+        t = MIN(TIMEOUT_SLOW, t);
     }
     *timeout = t;
 }
 
-void slirp_pollfds_fill(GArray *pollfds, uint32_t *timeout)
+void slirp_pollfds_fill(Slirp *slirp, uint32_t *timeout,
+                        SlirpAddPollCb add_poll, void *opaque)
 {
-    Slirp *slirp;
     struct socket *so, *so_next;
-
-    if (QTAILQ_EMPTY(&slirp_instances)) {
-        return;
-    }
 
     /*
      * First, TCP sockets
      */
 
-    QTAILQ_FOREACH(slirp, &slirp_instances, entry) {
-        /*
-         * *_slowtimo needs calling if there are IP fragments
-         * in the fragment queue, or there are TCP connections active
-         */
-        slirp->do_slowtimo = ((slirp->tcb.so_next != &slirp->tcb) ||
-                (&slirp->ipq.ip_link != slirp->ipq.ip_link.next));
+    /*
+     * *_slowtimo needs calling if there are IP fragments
+     * in the fragment queue, or there are TCP connections active
+     */
+    slirp->do_slowtimo = ((slirp->tcb.so_next != &slirp->tcb) ||
+                          (&slirp->ipq.ip_link != slirp->ipq.ip_link.next));
 
+    for (so = slirp->tcb.so_next; so != &slirp->tcb; so = so_next) {
+        int events = 0;
+
+        so_next = so->so_next;
+
+        so->pollfds_idx = -1;
+
+        /*
+         * See if we need a tcp_fasttimo
+         */
+        if (slirp->time_fasttimo == 0 &&
+            so->so_tcpcb->t_flags & TF_DELACK) {
+            slirp->time_fasttimo = curtime; /* Flag when want a fasttimo */
+        }
+
+        /*
+         * NOFDREF can include still connecting to local-host,
+         * newly socreated() sockets etc. Don't want to select these.
+         */
+        if (so->so_state & SS_NOFDREF || so->s == -1) {
+            continue;
+        }
+
+        /*
+         * Set for reading sockets which are accepting
+         */
+        if (so->so_state & SS_FACCEPTCONN) {
+            so->pollfds_idx = add_poll(so->s,
+                SLIRP_POLL_IN | SLIRP_POLL_HUP | SLIRP_POLL_ERR, opaque);
+            continue;
+        }
+
+        /*
+         * Set for writing sockets which are connecting
+         */
+        if (so->so_state & SS_ISFCONNECTING) {
+            so->pollfds_idx = add_poll(so->s,
+                SLIRP_POLL_OUT | SLIRP_POLL_ERR, opaque);
+            continue;
+        }
+
+        /*
+         * Set for writing if we are connected, can send more, and
+         * we have something to send
+         */
+        if (CONN_CANFSEND(so) && so->so_rcv.sb_cc) {
+            events |= SLIRP_POLL_OUT | SLIRP_POLL_ERR;
+        }
+
+        /*
+         * Set for reading (and urgent data) if we are connected, can
+         * receive more, and we have room for it XXX /2 ?
+         */
+        if (CONN_CANFRCV(so) &&
+            (so->so_snd.sb_cc < (so->so_snd.sb_datalen/2))) {
+            events |= SLIRP_POLL_IN | SLIRP_POLL_HUP |
+                      SLIRP_POLL_ERR | SLIRP_POLL_PRI;
+        }
+
+        if (events) {
+            so->pollfds_idx = add_poll(so->s, events, opaque);
+        }
+    }
+
+    /*
+     * UDP sockets
+     */
+    for (so = slirp->udb.so_next; so != &slirp->udb; so = so_next) {
+        so_next = so->so_next;
+
+        so->pollfds_idx = -1;
+
+        /*
+         * See if it's timed out
+         */
+        if (so->so_expire) {
+            if (so->so_expire <= curtime) {
+                udp_detach(so);
+                continue;
+            } else {
+                slirp->do_slowtimo = true; /* Let socket expire */
+            }
+        }
+
+        /*
+         * When UDP packets are received from over the
+         * link, they're sendto()'d straight away, so
+         * no need for setting for writing
+         * Limit the number of packets queued by this session
+         * to 4.  Note that even though we try and limit this
+         * to 4 packets, the session could have more queued
+         * if the packets needed to be fragmented
+         * (XXX <= 4 ?)
+         */
+        if ((so->so_state & SS_ISFCONNECTED) && so->so_queued <= 4) {
+            so->pollfds_idx = add_poll(so->s,
+                SLIRP_POLL_IN | SLIRP_POLL_HUP | SLIRP_POLL_ERR, opaque);
+        }
+    }
+
+    /*
+     * ICMP sockets
+     */
+    for (so = slirp->icmp.so_next; so != &slirp->icmp; so = so_next) {
+        so_next = so->so_next;
+
+        so->pollfds_idx = -1;
+
+        /*
+         * See if it's timed out
+         */
+        if (so->so_expire) {
+            if (so->so_expire <= curtime) {
+                icmp_detach(so);
+                continue;
+            } else {
+                slirp->do_slowtimo = true; /* Let socket expire */
+            }
+        }
+
+        if (so->so_state & SS_ISFCONNECTED) {
+            so->pollfds_idx = add_poll(so->s,
+                SLIRP_POLL_IN | SLIRP_POLL_HUP | SLIRP_POLL_ERR, opaque);
+        }
+    }
+
+    slirp_update_timeout(slirp, timeout);
+}
+
+void slirp_pollfds_poll(Slirp *slirp, int select_error,
+                        SlirpGetREventsCb get_revents, void *opaque)
+{
+    struct socket *so, *so_next;
+    int ret;
+
+    curtime = slirp->cb->clock_get_ns(slirp->opaque) / SCALE_MS;
+
+    /*
+     * See if anything has timed out
+     */
+    if (slirp->time_fasttimo &&
+        ((curtime - slirp->time_fasttimo) >= TIMEOUT_FAST)) {
+        tcp_fasttimo(slirp);
+        slirp->time_fasttimo = 0;
+    }
+    if (slirp->do_slowtimo &&
+        ((curtime - slirp->last_slowtimo) >= TIMEOUT_SLOW)) {
+        ip_slowtimo(slirp);
+        tcp_slowtimo(slirp);
+        slirp->last_slowtimo = curtime;
+    }
+
+    /*
+     * Check sockets
+     */
+    if (!select_error) {
+        /*
+         * Check TCP sockets
+         */
         for (so = slirp->tcb.so_next; so != &slirp->tcb;
-                so = so_next) {
-            int events = 0;
+             so = so_next) {
+            int revents;
 
             so_next = so->so_next;
 
-            so->pollfds_idx = -1;
-
-            /*
-             * See if we need a tcp_fasttimo
-             */
-            if (slirp->time_fasttimo == 0 &&
-                so->so_tcpcb->t_flags & TF_DELACK) {
-                slirp->time_fasttimo = curtime; /* Flag when want a fasttimo */
+            revents = 0;
+            if (so->pollfds_idx != -1) {
+                revents = get_revents(so->pollfds_idx, opaque);
             }
 
-            /*
-             * NOFDREF can include still connecting to local-host,
-             * newly socreated() sockets etc. Don't want to select these.
-             */
             if (so->so_state & SS_NOFDREF || so->s == -1) {
                 continue;
             }
 
             /*
-             * Set for reading sockets which are accepting
+             * Check for URG data
+             * This will soread as well, so no need to
+             * test for SLIRP_POLL_IN below if this succeeds
              */
-            if (so->so_state & SS_FACCEPTCONN) {
-                GPollFD pfd = {
-                    .fd = so->s,
-                    .events = G_IO_IN | G_IO_HUP | G_IO_ERR,
-                };
-                so->pollfds_idx = pollfds->len;
-                g_array_append_val(pollfds, pfd);
-                continue;
-            }
-
-            /*
-             * Set for writing sockets which are connecting
-             */
-            if (so->so_state & SS_ISFCONNECTING) {
-                GPollFD pfd = {
-                    .fd = so->s,
-                    .events = G_IO_OUT | G_IO_ERR,
-                };
-                so->pollfds_idx = pollfds->len;
-                g_array_append_val(pollfds, pfd);
-                continue;
-            }
-
-            /*
-             * Set for writing if we are connected, can send more, and
-             * we have something to send
-             */
-            if (CONN_CANFSEND(so) && so->so_rcv.sb_cc) {
-                events |= G_IO_OUT | G_IO_ERR;
-            }
-
-            /*
-             * Set for reading (and urgent data) if we are connected, can
-             * receive more, and we have room for it XXX /2 ?
-             */
-            if (CONN_CANFRCV(so) &&
-                (so->so_snd.sb_cc < (so->so_snd.sb_datalen/2))) {
-                events |= G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_PRI;
-            }
-
-            if (events) {
-                GPollFD pfd = {
-                    .fd = so->s,
-                    .events = events,
-                };
-                so->pollfds_idx = pollfds->len;
-                g_array_append_val(pollfds, pfd);
-            }
-        }
-
-        /*
-         * UDP sockets
-         */
-        for (so = slirp->udb.so_next; so != &slirp->udb;
-                so = so_next) {
-            so_next = so->so_next;
-
-            so->pollfds_idx = -1;
-
-            /*
-             * See if it's timed out
-             */
-            if (so->so_expire) {
-                if (so->so_expire <= curtime) {
-                    udp_detach(so);
-                    continue;
-                } else {
-                    slirp->do_slowtimo = true; /* Let socket expire */
-                }
-            }
-
-            /*
-             * When UDP packets are received from over the
-             * link, they're sendto()'d straight away, so
-             * no need for setting for writing
-             * Limit the number of packets queued by this session
-             * to 4.  Note that even though we try and limit this
-             * to 4 packets, the session could have more queued
-             * if the packets needed to be fragmented
-             * (XXX <= 4 ?)
-             */
-            if ((so->so_state & SS_ISFCONNECTED) && so->so_queued <= 4) {
-                GPollFD pfd = {
-                    .fd = so->s,
-                    .events = G_IO_IN | G_IO_HUP | G_IO_ERR,
-                };
-                so->pollfds_idx = pollfds->len;
-                g_array_append_val(pollfds, pfd);
-            }
-        }
-
-        /*
-         * ICMP sockets
-         */
-        for (so = slirp->icmp.so_next; so != &slirp->icmp;
-                so = so_next) {
-            so_next = so->so_next;
-
-            so->pollfds_idx = -1;
-
-            /*
-             * See if it's timed out
-             */
-            if (so->so_expire) {
-                if (so->so_expire <= curtime) {
-                    icmp_detach(so);
-                    continue;
-                } else {
-                    slirp->do_slowtimo = true; /* Let socket expire */
-                }
-            }
-
-            if (so->so_state & SS_ISFCONNECTED) {
-                GPollFD pfd = {
-                    .fd = so->s,
-                    .events = G_IO_IN | G_IO_HUP | G_IO_ERR,
-                };
-                so->pollfds_idx = pollfds->len;
-                g_array_append_val(pollfds, pfd);
-            }
-        }
-    }
-    slirp_update_timeout(timeout);
-}
-
-void slirp_pollfds_poll(GArray *pollfds, int select_error)
-{
-    Slirp *slirp;
-    struct socket *so, *so_next;
-    int ret;
-
-    if (QTAILQ_EMPTY(&slirp_instances)) {
-        return;
-    }
-
-    curtime = qemu_clock_get_ms(QEMU_CLOCK_REALTIME);
-
-    QTAILQ_FOREACH(slirp, &slirp_instances, entry) {
-        /*
-         * See if anything has timed out
-         */
-        if (slirp->time_fasttimo &&
-            ((curtime - slirp->time_fasttimo) >= TIMEOUT_FAST)) {
-            tcp_fasttimo(slirp);
-            slirp->time_fasttimo = 0;
-        }
-        if (slirp->do_slowtimo &&
-            ((curtime - slirp->last_slowtimo) >= TIMEOUT_SLOW)) {
-            ip_slowtimo(slirp);
-            tcp_slowtimo(slirp);
-            slirp->last_slowtimo = curtime;
-        }
-
-        /*
-         * Check sockets
-         */
-        if (!select_error) {
-            /*
-             * Check TCP sockets
-             */
-            for (so = slirp->tcb.so_next; so != &slirp->tcb;
-                    so = so_next) {
-                int revents;
-
-                so_next = so->so_next;
-
-                revents = 0;
-                if (so->pollfds_idx != -1) {
-                    revents = g_array_index(pollfds, GPollFD,
-                                            so->pollfds_idx).revents;
-                }
-
-                if (so->so_state & SS_NOFDREF || so->s == -1) {
+            if (revents & SLIRP_POLL_PRI) {
+                ret = sorecvoob(so);
+                if (ret < 0) {
+                    /* Socket error might have resulted in the socket being
+                     * removed, do not try to do anything more with it. */
                     continue;
                 }
-
+            }
+            /*
+             * Check sockets for reading
+             */
+            else if (revents &
+                     (SLIRP_POLL_IN | SLIRP_POLL_HUP | SLIRP_POLL_ERR)) {
                 /*
-                 * Check for URG data
-                 * This will soread as well, so no need to
-                 * test for G_IO_IN below if this succeeds
+                 * Check for incoming connections
                  */
-                if (revents & G_IO_PRI) {
-                    ret = sorecvoob(so);
-                    if (ret < 0) {
-                        /* Socket error might have resulted in the socket being
-                         * removed, do not try to do anything more with it. */
-                        continue;
-                    }
+                if (so->so_state & SS_FACCEPTCONN) {
+                    tcp_connect(so);
+                    continue;
+                } /* else */
+                ret = soread(so);
+
+                /* Output it if we read something */
+                if (ret > 0) {
+                    tcp_output(sototcpcb(so));
                 }
-                /*
-                 * Check sockets for reading
-                 */
-                else if (revents & (G_IO_IN | G_IO_HUP | G_IO_ERR)) {
-                    /*
-                     * Check for incoming connections
-                     */
-                    if (so->so_state & SS_FACCEPTCONN) {
-                        tcp_connect(so);
-                        continue;
-                    } /* else */
-                    ret = soread(so);
-
-                    /* Output it if we read something */
-                    if (ret > 0) {
-                        tcp_output(sototcpcb(so));
-                    }
-                    if (ret < 0) {
-                        /* Socket error might have resulted in the socket being
-                         * removed, do not try to do anything more with it. */
-                        continue;
-                    }
+                if (ret < 0) {
+                    /* Socket error might have resulted in the socket being
+                     * removed, do not try to do anything more with it. */
+                    continue;
                 }
+            }
 
+            /*
+             * Check sockets for writing
+             */
+            if (!(so->so_state & SS_NOFDREF) &&
+                (revents & (SLIRP_POLL_OUT | SLIRP_POLL_ERR))) {
                 /*
-                 * Check sockets for writing
+                 * Check for non-blocking, still-connecting sockets
                  */
-                if (!(so->so_state & SS_NOFDREF) &&
-                        (revents & (G_IO_OUT | G_IO_ERR))) {
-                    /*
-                     * Check for non-blocking, still-connecting sockets
-                     */
-                    if (so->so_state & SS_ISFCONNECTING) {
-                        /* Connected */
-                        so->so_state &= ~SS_ISFCONNECTING;
-
-                        ret = send(so->s, (const void *) &ret, 0, 0);
-                        if (ret < 0) {
-                            /* XXXXX Must fix, zero bytes is a NOP */
-                            if (errno == EAGAIN || errno == EWOULDBLOCK ||
-                                errno == EINPROGRESS || errno == ENOTCONN) {
-                                continue;
-                            }
-
-                            /* else failed */
-                            so->so_state &= SS_PERSISTENT_MASK;
-                            so->so_state |= SS_NOFDREF;
-                        }
-                        /* else so->so_state &= ~SS_ISFCONNECTING; */
-
-                        /*
-                         * Continue tcp_input
-                         */
-                        tcp_input((struct mbuf *)NULL, sizeof(struct ip), so,
-                                  so->so_ffamily);
-                        /* continue; */
-                    } else {
-                        ret = sowrite(so);
-                        if (ret > 0) {
-                            /* Call tcp_output in case we need to send a window
-                             * update to the guest, otherwise it will be stuck
-                             * until it sends a window probe. */
-                            tcp_output(sototcpcb(so));
-                        }
-                    }
-                }
-
-                /*
-                 * Probe a still-connecting, non-blocking socket
-                 * to check if it's still alive
-                 */
-#ifdef PROBE_CONN
                 if (so->so_state & SS_ISFCONNECTING) {
-                    ret = qemu_recv(so->s, &ret, 0, 0);
+                    /* Connected */
+                    so->so_state &= ~SS_ISFCONNECTING;
 
+                    ret = send(so->s, (const void *) &ret, 0, 0);
                     if (ret < 0) {
-                        /* XXX */
+                        /* XXXXX Must fix, zero bytes is a NOP */
                         if (errno == EAGAIN || errno == EWOULDBLOCK ||
                             errno == EINPROGRESS || errno == ENOTCONN) {
-                            continue; /* Still connecting, continue */
+                            continue;
                         }
 
                         /* else failed */
                         so->so_state &= SS_PERSISTENT_MASK;
                         so->so_state |= SS_NOFDREF;
-
-                        /* tcp_input will take care of it */
-                    } else {
-                        ret = send(so->s, &ret, 0, 0);
-                        if (ret < 0) {
-                            /* XXX */
-                            if (errno == EAGAIN || errno == EWOULDBLOCK ||
-                                errno == EINPROGRESS || errno == ENOTCONN) {
-                                continue;
-                            }
-                            /* else failed */
-                            so->so_state &= SS_PERSISTENT_MASK;
-                            so->so_state |= SS_NOFDREF;
-                        } else {
-                            so->so_state &= ~SS_ISFCONNECTING;
-                        }
-
                     }
+                    /* else so->so_state &= ~SS_ISFCONNECTING; */
+
+                    /*
+                     * Continue tcp_input
+                     */
                     tcp_input((struct mbuf *)NULL, sizeof(struct ip), so,
                               so->so_ffamily);
-                } /* SS_ISFCONNECTING */
-#endif
-            }
-
-            /*
-             * Now UDP sockets.
-             * Incoming packets are sent straight away, they're not buffered.
-             * Incoming UDP data isn't buffered either.
-             */
-            for (so = slirp->udb.so_next; so != &slirp->udb;
-                    so = so_next) {
-                int revents;
-
-                so_next = so->so_next;
-
-                revents = 0;
-                if (so->pollfds_idx != -1) {
-                    revents = g_array_index(pollfds, GPollFD,
-                            so->pollfds_idx).revents;
-                }
-
-                if (so->s != -1 &&
-                    (revents & (G_IO_IN | G_IO_HUP | G_IO_ERR))) {
-                    sorecvfrom(so);
-                }
-            }
-
-            /*
-             * Check incoming ICMP relies.
-             */
-            for (so = slirp->icmp.so_next; so != &slirp->icmp;
-                    so = so_next) {
-                    int revents;
-
-                    so_next = so->so_next;
-
-                    revents = 0;
-                    if (so->pollfds_idx != -1) {
-                        revents = g_array_index(pollfds, GPollFD,
-                                                so->pollfds_idx).revents;
+                    /* continue; */
+                } else {
+                    ret = sowrite(so);
+                    if (ret > 0) {
+                        /* Call tcp_output in case we need to send a window
+                         * update to the guest, otherwise it will be stuck
+                         * until it sends a window probe. */
+                        tcp_output(sototcpcb(so));
                     }
-
-                    if (so->s != -1 &&
-                        (revents & (G_IO_IN | G_IO_HUP | G_IO_ERR))) {
-                    icmp_receive(so);
                 }
             }
         }
 
-        if_start(slirp);
+        /*
+         * Now UDP sockets.
+         * Incoming packets are sent straight away, they're not buffered.
+         * Incoming UDP data isn't buffered either.
+         */
+        for (so = slirp->udb.so_next; so != &slirp->udb;
+             so = so_next) {
+            int revents;
+
+            so_next = so->so_next;
+
+            revents = 0;
+            if (so->pollfds_idx != -1) {
+                revents = get_revents(so->pollfds_idx, opaque);
+            }
+
+            if (so->s != -1 &&
+                (revents & (SLIRP_POLL_IN | SLIRP_POLL_HUP | SLIRP_POLL_ERR))) {
+                sorecvfrom(so);
+            }
+        }
+
+        /*
+         * Check incoming ICMP relies.
+         */
+        for (so = slirp->icmp.so_next; so != &slirp->icmp;
+             so = so_next) {
+            int revents;
+
+            so_next = so->so_next;
+
+            revents = 0;
+            if (so->pollfds_idx != -1) {
+                revents = get_revents(so->pollfds_idx, opaque);
+            }
+
+            if (so->s != -1 &&
+                (revents & (SLIRP_POLL_IN | SLIRP_POLL_HUP | SLIRP_POLL_ERR))) {
+                icmp_receive(so);
+            }
+        }
     }
+
+    if_start(slirp);
 }
 
 static void arp_input(Slirp *slirp, const uint8_t *pkt, int pkt_len)
@@ -769,6 +748,7 @@ static void arp_input(Slirp *slirp, const uint8_t *pkt, int pkt_len)
     struct ethhdr *reh = (struct ethhdr *)arp_reply;
     struct slirp_arphdr *rah = (struct slirp_arphdr *)(arp_reply + ETH_HLEN);
     int ar_op;
+    struct gfwd_list *ex_ptr;
 
     if (!slirp->in_enabled) {
         return;
@@ -788,6 +768,10 @@ static void arp_input(Slirp *slirp, const uint8_t *pkt, int pkt_len)
             if (ah->ar_tip == slirp->vnameserver_addr.s_addr ||
                 ah->ar_tip == slirp->vhost_addr.s_addr)
                 goto arp_ok;
+            for (ex_ptr = slirp->guestfwd_list; ex_ptr; ex_ptr = ex_ptr->ex_next) {
+                if (ex_ptr->ex_addr.s_addr == ah->ar_tip)
+                    goto arp_ok;
+            }
             return;
         arp_ok:
             memset(arp_reply, 0, sizeof(arp_reply));
@@ -809,7 +793,7 @@ static void arp_input(Slirp *slirp, const uint8_t *pkt, int pkt_len)
             rah->ar_sip = ah->ar_tip;
             memcpy(rah->ar_tha, ah->ar_sha, ETH_ALEN);
             rah->ar_tip = ah->ar_sip;
-            slirp_output(slirp->opaque, arp_reply, sizeof(arp_reply));
+            slirp_send_packet_all(slirp, arp_reply, sizeof(arp_reply));
         }
         break;
     case ARPOP_REPLY:
@@ -828,7 +812,7 @@ void slirp_input(Slirp *slirp, const uint8_t *pkt, int pkt_len)
     if (pkt_len < ETH_HLEN)
         return;
 
-    proto = ntohs(*(uint16_t *)(pkt + 12));
+    proto = (((uint16_t) pkt[12]) << 8) + pkt[13];
     switch(proto) {
     case ETH_P_ARP:
         arp_input(slirp, pkt, pkt_len);
@@ -854,6 +838,10 @@ void slirp_input(Slirp *slirp, const uint8_t *pkt, int pkt_len)
         } else if (proto == ETH_P_IPV6) {
             ip6_input(m);
         }
+        break;
+
+    case ETH_P_NCSI:
+        ncsi_input(slirp, pkt, pkt_len);
         break;
 
     default:
@@ -905,11 +893,12 @@ static int if_encap4(Slirp *slirp, struct mbuf *ifm, struct ethhdr *eh,
             /* target IP */
             rah->ar_tip = iph->ip_dst.s_addr;
             slirp->client_ipaddr = iph->ip_dst;
-            slirp_output(slirp->opaque, arp_req, sizeof(arp_req));
+            slirp_send_packet_all(slirp, arp_req, sizeof(arp_req));
             ifm->resolution_requested = true;
 
             /* Expire request and drop outgoing packet after 1 second */
-            ifm->expiration_date = qemu_clock_get_ns(QEMU_CLOCK_REALTIME) + 1000000000ULL;
+            ifm->expiration_date =
+                slirp->cb->clock_get_ns(slirp->opaque) + 1000000000ULL;
         }
         return 0;
     } else {
@@ -935,8 +924,7 @@ static int if_encap6(Slirp *slirp, struct mbuf *ifm, struct ethhdr *eh,
         if (!ifm->resolution_requested) {
             ndp_send_ns(slirp, ip6h->ip_dst);
             ifm->resolution_requested = true;
-            ifm->expiration_date =
-                qemu_clock_get_ns(QEMU_CLOCK_REALTIME) + 1000000000ULL;
+            ifm->expiration_date = slirp->cb->clock_get_ns(slirp->opaque) + 1000000000ULL;
         }
         return 0;
     } else {
@@ -953,7 +941,7 @@ static int if_encap6(Slirp *slirp, struct mbuf *ifm, struct ethhdr *eh,
  */
 int if_encap(Slirp *slirp, struct mbuf *ifm)
 {
-    uint8_t buf[65521 + 100]; // max MTU + 100
+    uint8_t buf[IF_MTU_MAX+100];
     struct ethhdr *eh = (struct ethhdr *)buf;
     uint8_t ethaddr[ETH_ALEN];
     const struct ip *iph = (const struct ip *)ifm->m_data;
@@ -984,14 +972,14 @@ int if_encap(Slirp *slirp, struct mbuf *ifm)
     }
 
     memcpy(eh->h_dest, ethaddr, ETH_ALEN);
-    DEBUG_ARGS((dfd, " src = %02x:%02x:%02x:%02x:%02x:%02x\n",
-                eh->h_source[0], eh->h_source[1], eh->h_source[2],
-                eh->h_source[3], eh->h_source[4], eh->h_source[5]));
-    DEBUG_ARGS((dfd, " dst = %02x:%02x:%02x:%02x:%02x:%02x\n",
-                eh->h_dest[0], eh->h_dest[1], eh->h_dest[2],
-                eh->h_dest[3], eh->h_dest[4], eh->h_dest[5]));
+    DEBUG_ARG("src = %02x:%02x:%02x:%02x:%02x:%02x",
+              eh->h_source[0], eh->h_source[1], eh->h_source[2],
+              eh->h_source[3], eh->h_source[4], eh->h_source[5]);
+    DEBUG_ARG("dst = %02x:%02x:%02x:%02x:%02x:%02x",
+              eh->h_dest[0], eh->h_dest[1], eh->h_dest[2],
+              eh->h_dest[3], eh->h_dest[4], eh->h_dest[5]);
     memcpy(buf + sizeof(struct ethhdr), ifm->m_data, ifm->m_len);
-    slirp_output(slirp->opaque, buf, ifm->m_len + ETH_HLEN);
+    slirp_send_packet_all(slirp, buf, ifm->m_len + ETH_HLEN);
     return 1;
 }
 
@@ -1011,7 +999,8 @@ int slirp_remove_hostfwd(Slirp *slirp, int is_udp, struct in_addr host_addr,
             getsockname(so->s, (struct sockaddr *)&addr, &addr_len) == 0 &&
             addr.sin_addr.s_addr == host_addr.s_addr &&
             addr.sin_port == port) {
-            close(so->s);
+            so->slirp->cb->unregister_poll_fd(so->s, so->slirp->opaque);
+            closesocket(so->s);
             sofree(so);
             return 0;
         }
@@ -1038,19 +1027,79 @@ int slirp_add_hostfwd(Slirp *slirp, int is_udp, struct in_addr host_addr,
     return 0;
 }
 
+static bool
+check_guestfwd(Slirp *slirp, struct in_addr *guest_addr, int guest_port)
+{
+    struct gfwd_list *tmp_ptr;
+
+    if (!guest_addr->s_addr) {
+        guest_addr->s_addr = slirp->vnetwork_addr.s_addr |
+            (htonl(0x0204) & ~slirp->vnetwork_mask.s_addr);
+    }
+    if ((guest_addr->s_addr & slirp->vnetwork_mask.s_addr) !=
+        slirp->vnetwork_addr.s_addr ||
+        guest_addr->s_addr == slirp->vhost_addr.s_addr ||
+        guest_addr->s_addr == slirp->vnameserver_addr.s_addr) {
+        return false;
+    }
+
+    /* check if the port is "bound" */
+    for (tmp_ptr = slirp->guestfwd_list; tmp_ptr; tmp_ptr = tmp_ptr->ex_next) {
+        if (guest_port == tmp_ptr->ex_fport &&
+            guest_addr->s_addr == tmp_ptr->ex_addr.s_addr)
+            return false;
+    }
+
+    return true;
+}
+
+int slirp_add_exec(Slirp *slirp, const char *cmdline,
+                   struct in_addr *guest_addr, int guest_port)
+{
+    if (!check_guestfwd(slirp, guest_addr, guest_port)) {
+        return -1;
+    }
+
+    add_exec(&slirp->guestfwd_list, cmdline, *guest_addr, htons(guest_port));
+    return 0;
+}
+
+int slirp_add_guestfwd(Slirp *slirp, SlirpWriteCb write_cb, void *opaque,
+                       struct in_addr *guest_addr, int guest_port)
+{
+    if (!check_guestfwd(slirp, guest_addr, guest_port)) {
+        return -1;
+    }
+
+    add_guestfwd(&slirp->guestfwd_list, write_cb, opaque,
+                 *guest_addr, htons(guest_port));
+    return 0;
+}
+
 ssize_t slirp_send(struct socket *so, const void *buf, size_t len, int flags)
 {
-    if (so->s == -1 && so->extra) {
+    if (so->s == -1 && so->guestfwd) {
         /* XXX this blocks entire thread. Rewrite to use
          * qemu_chr_fe_write and background I/O callbacks */
-        qemu_chr_fe_write_all(so->extra, buf, len);
+        so->guestfwd->write_cb(buf, len, so->guestfwd->opaque);
         return len;
+    }
+
+    if (so->s == -1) {
+        /*
+         * This should in theory not happen but it is hard to be
+         * sure because some code paths will end up with so->s == -1
+         * on a failure but don't dispose of the struct socket.
+         * Check specifically, so we don't pass -1 to send().
+         */
+        errno = EBADF;
+        return -1;
     }
 
     return send(so->s, buf, len, flags);
 }
 
-static struct socket *
+struct socket *
 slirp_find_ctl_socket(Slirp *slirp, struct in_addr guest_addr, int guest_port)
 {
     struct socket *so;
@@ -1096,4 +1145,16 @@ void slirp_socket_recv(Slirp *slirp, struct in_addr guest_addr, int guest_port,
 
     if (ret > 0)
         tcp_output(sototcpcb(so));
+}
+
+void slirp_send_packet_all(Slirp *slirp, const void *buf, size_t len)
+{
+    ssize_t ret = slirp->cb->send_packet(buf, len, slirp->opaque);
+
+    if (ret < 0) {
+        g_critical("Failed to send packet, ret: %ld", (long) ret);
+    } else if (ret < len) {
+        DEBUG_ERROR("send_packet() didn't send all data: %ld < %lu",
+                (long) ret, (unsigned long) len);
+    }
 }

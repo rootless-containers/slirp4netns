@@ -1,0 +1,292 @@
+From d197f5ebcf3c7940b0d5b18988cba029835264b8 Mon Sep 17 00:00:00 2001
+From: Akihiro Suda <suda.akihiro@lab.ntt.co.jp>
+Date: Wed, 6 Mar 2019 16:15:37 +0900
+Subject: [PATCH 2/3] slirp: allow custom MTU
+
+From slirp4netns project:
+* https://github.com/rootless-containers/slirp4netns/commit/ea630a7e945cf538184ff1b1b4bd7b8ddc01993e
+* https://github.com/rootless-containers/slirp4netns/commit/1508a66c93c223555f08651592dde3d2d708b166
+* https://github.com/rootless-containers/slirp4netns/commit/19f3f41df4066d6103e6f882500e24db7ea7d9e1
+* https://github.com/rootless-containers/slirp4netns/commit/a11abedafcc627ef0657999e63b211b0f26d4c02
+* https://github.com/rootless-containers/slirp4netns/commit/2adbd7c449944d3b837164c86eedd3dcabbba1a6
+
+Signed-off-by: Akihiro Suda <suda.akihiro@lab.ntt.co.jp>
+---
+ slirp/dhcpv6.c    |  2 +-
+ slirp/if.h        |  6 ++++--
+ slirp/ip6_icmp.c  |  4 ++--
+ slirp/ip6_input.c |  2 +-
+ slirp/ip_output.c |  4 ++--
+ slirp/libslirp.h  |  4 ++++
+ slirp/mbuf.c      |  8 ++++----
+ slirp/slirp.c     | 11 ++++++++++-
+ slirp/slirp.h     |  3 +++
+ slirp/tcp.h       | 18 +++---------------
+ slirp/tcp_input.c |  6 +++---
+ slirp/tcp_subr.c  |  2 +-
+ 12 files changed, 38 insertions(+), 32 deletions(-)
+
+diff --git a/slirp/dhcpv6.c b/slirp/dhcpv6.c
+index e655c7d5b1..3a1b4fcb30 100644
+--- a/slirp/dhcpv6.c
++++ b/slirp/dhcpv6.c
+@@ -159,7 +159,7 @@ static void dhcpv6_info_request(Slirp *slirp, struct sockaddr_in6 *srcsas,
+ 
+         *resp++ = OPTION_BOOTFILE_URL >> 8;     /* option-code high byte */
+         *resp++ = OPTION_BOOTFILE_URL;          /* option-code low byte */
+-        smaxlen = (uint8_t *)m->m_data + IF_MTU - (resp + 2);
++        smaxlen = (uint8_t *)m->m_data + slirp->if_mtu - (resp + 2);
+         slen = snprintf((char *)resp + 2, smaxlen,
+                         "tftp://[%02x%02x:%02x%02x:%02x%02x:%02x%02x:"
+                                 "%02x%02x:%02x%02x:%02x%02x:%02x%02x]/%s",
+diff --git a/slirp/if.h b/slirp/if.h
+index 69569c10df..4bbb9c75f8 100644
+--- a/slirp/if.h
++++ b/slirp/if.h
+@@ -13,8 +13,10 @@
+ #define IF_AUTOCOMP	0x04	/* Autodetect (default) */
+ #define IF_NOCIDCOMP	0x08	/* CID compression */
+ 
+-#define IF_MTU 1500
+-#define IF_MRU 1500
++#define IF_MTU_DEFAULT 1500
++#define IF_MTU_MAX 65521
++#define IF_MRU_DEFAULT 1500
++#define IF_MRU_MAX 65521
+ #define	IF_COMP IF_AUTOCOMP	/* Flags for compression */
+ 
+ /* 2 for alignment, 14 for ethernet */
+diff --git a/slirp/ip6_icmp.c b/slirp/ip6_icmp.c
+index c1e3d30470..5e0af223eb 100644
+--- a/slirp/ip6_icmp.c
++++ b/slirp/ip6_icmp.c
+@@ -92,7 +92,7 @@ void icmp6_send_error(struct mbuf *m, uint8_t type, uint8_t code)
+ 
+     rip->ip_nh = IPPROTO_ICMPV6;
+     const int error_data_len = MIN(m->m_len,
+-            IF_MTU - (sizeof(struct ip6) + ICMP6_ERROR_MINLEN));
++            slirp->if_mtu - (sizeof(struct ip6) + ICMP6_ERROR_MINLEN));
+     rip->ip_pl = htons(ICMP6_ERROR_MINLEN + error_data_len);
+     t->m_len = sizeof(struct ip6) + ntohs(rip->ip_pl);
+ 
+@@ -109,7 +109,7 @@ void icmp6_send_error(struct mbuf *m, uint8_t type, uint8_t code)
+         ricmp->icmp6_err.unused = 0;
+         break;
+     case ICMP6_TOOBIG:
+-        ricmp->icmp6_err.mtu = htonl(IF_MTU);
++        ricmp->icmp6_err.mtu = htonl(slirp->if_mtu);
+         break;
+     case ICMP6_PARAMPROB:
+         /* TODO: Handle this case */
+diff --git a/slirp/ip6_input.c b/slirp/ip6_input.c
+index 1b8c003c66..917580c0e1 100644
+--- a/slirp/ip6_input.c
++++ b/slirp/ip6_input.c
+@@ -43,7 +43,7 @@ void ip6_input(struct mbuf *m)
+         goto bad;
+     }
+ 
+-    if (ntohs(ip6->ip_pl) > IF_MTU) {
++    if (ntohs(ip6->ip_pl) > slirp->if_mtu) {
+         icmp6_send_error(m, ICMP6_TOOBIG, 0);
+         goto bad;
+     }
+diff --git a/slirp/ip_output.c b/slirp/ip_output.c
+index f6ec141df5..d342bff6ff 100644
+--- a/slirp/ip_output.c
++++ b/slirp/ip_output.c
+@@ -75,7 +75,7 @@ ip_output(struct socket *so, struct mbuf *m0)
+ 	/*
+ 	 * If small enough for interface, can just send directly.
+ 	 */
+-	if ((uint16_t)ip->ip_len <= IF_MTU) {
++	if ((uint16_t)ip->ip_len <= slirp->if_mtu) {
+ 		ip->ip_len = htons((uint16_t)ip->ip_len);
+ 		ip->ip_off = htons((uint16_t)ip->ip_off);
+ 		ip->ip_sum = 0;
+@@ -94,7 +94,7 @@ ip_output(struct socket *so, struct mbuf *m0)
+ 		goto bad;
+ 	}
+ 
+-	len = (IF_MTU - hlen) &~ 7;       /* ip databytes per packet */
++	len = (slirp->if_mtu - hlen) &~ 7;       /* ip databytes per packet */
+ 	if (len < 8) {
+ 		error = -1;
+ 		goto bad;
+diff --git a/slirp/libslirp.h b/slirp/libslirp.h
+index b20bd2a1a7..265f2934d2 100644
+--- a/slirp/libslirp.h
++++ b/slirp/libslirp.h
+@@ -80,6 +80,10 @@ typedef struct SlirpConfig{
+     struct in6_addr vnameserver6;
+     const char **vdnssearch;
+     const char *vdomainname;
++    /* Default: IF_MTU_DEFAULT */
++    int if_mtu;
++    /* Default: IF_MRU_DEFAULT */
++    int if_mru;
+ } SlirpConfig;
+ 
+ Slirp *slirp_initx(const SlirpConfig *cfg, const SlirpCb *callbacks, void *opaque);
+diff --git a/slirp/mbuf.c b/slirp/mbuf.c
+index 521c02c967..7a8f039559 100644
+--- a/slirp/mbuf.c
++++ b/slirp/mbuf.c
+@@ -22,8 +22,8 @@
+ /*
+  * Find a nice value for msize
+  */
+-#define SLIRP_MSIZE\
+-    (offsetof(struct mbuf, m_dat) + IF_MAXLINKHDR + TCPIPHDR_DELTA + IF_MTU)
++#define SLIRP_MSIZE(mtu)\
++    (offsetof(struct mbuf, m_dat) + IF_MAXLINKHDR + TCPIPHDR_DELTA + (mtu))
+ 
+ void
+ m_init(Slirp *slirp)
+@@ -70,7 +70,7 @@ m_get(Slirp *slirp)
+ 	DEBUG_CALL("m_get");
+ 
+ 	if (slirp->m_freelist.qh_link == &slirp->m_freelist) {
+-                m = g_malloc(SLIRP_MSIZE);
++                m = g_malloc(SLIRP_MSIZE(slirp->if_mtu));
+ 		slirp->mbuf_alloced++;
+ 		if (slirp->mbuf_alloced > MBUF_THRESH)
+ 			flags = M_DOFREE;
+@@ -85,7 +85,7 @@ m_get(Slirp *slirp)
+ 	m->m_flags = (flags | M_USEDLIST);
+ 
+ 	/* Initialise it */
+-	m->m_size = SLIRP_MSIZE - offsetof(struct mbuf, m_dat);
++	m->m_size = SLIRP_MSIZE(slirp->if_mtu) - offsetof(struct mbuf, m_dat);
+ 	m->m_data = m->m_dat;
+ 	m->m_len = 0;
+         m->m_nextpkt = NULL;
+diff --git a/slirp/slirp.c b/slirp/slirp.c
+index b803d6ba88..f8745f358b 100644
+--- a/slirp/slirp.c
++++ b/slirp/slirp.c
+@@ -278,6 +278,13 @@ Slirp *slirp_initx(const SlirpConfig *cfg, const SlirpCb *callbacks, void *opaqu
+     if (cfg == NULL) {
+         return NULL;
+     }
++    if (cfg->if_mtu > IF_MTU_MAX) {
++        return NULL;
++    }
++    if (cfg->if_mru > IF_MRU_MAX) {
++        return NULL;
++    }
++
+     slirp = g_malloc0(sizeof(Slirp));
+ 
+     slirp_init_once();
+@@ -318,6 +325,8 @@ Slirp *slirp_initx(const SlirpConfig *cfg, const SlirpCb *callbacks, void *opaqu
+     if (cfg->vdnssearch) {
+         translate_dnssearch(slirp, cfg->vdnssearch);
+     }
++    slirp->if_mtu = cfg->if_mtu == 0 ? IF_MTU_DEFAULT : cfg->if_mtu;
++    slirp->if_mru = cfg->if_mru == 0 ? IF_MRU_DEFAULT : cfg->if_mru;
+ 
+ #ifdef WITH_QEMU
+     slirp_state_register(slirp);
+@@ -931,7 +940,7 @@ static int if_encap6(Slirp *slirp, struct mbuf *ifm, struct ethhdr *eh,
+  */
+ int if_encap(Slirp *slirp, struct mbuf *ifm)
+ {
+-    uint8_t buf[1600];
++    uint8_t buf[IF_MTU_MAX+100];
+     struct ethhdr *eh = (struct ethhdr *)buf;
+     uint8_t ethaddr[ETH_ALEN];
+     const struct ip *iph = (const struct ip *)ifm->m_data;
+diff --git a/slirp/slirp.h b/slirp/slirp.h
+index 752a4cd8c8..60157d80ed 100644
+--- a/slirp/slirp.h
++++ b/slirp/slirp.h
+@@ -145,6 +145,9 @@ struct Slirp {
+     int restricted;
+     struct gfwd_list *guestfwd_list;
+ 
++    int if_mtu;
++    int if_mru;
++
+     /* mbuf states */
+     struct quehead m_freelist;
+     struct quehead m_usedlist;
+diff --git a/slirp/tcp.h b/slirp/tcp.h
+index 47aaea6c5b..c854771a44 100644
+--- a/slirp/tcp.h
++++ b/slirp/tcp.h
+@@ -40,8 +40,9 @@ typedef	uint32_t tcp_seq;
+ #define      PR_SLOWHZ       2               /* 2 slow timeouts per second (approx) */
+ #define      PR_FASTHZ       5               /* 5 fast timeouts per second (not important) */
+ 
+-#define TCP_SNDSPACE 8192
+-#define TCP_RCVSPACE 8192
++#define TCP_SNDSPACE 1024*128
++#define TCP_RCVSPACE 1024*128
++#define TCP_MAXSEG_MAX 32768
+ 
+ /*
+  * TCP header.
+@@ -98,19 +99,6 @@ struct tcphdr {
+ #define    TCPOLEN_TSTAMP_APPA		(TCPOLEN_TIMESTAMP+2) /* appendix A */
+ #endif
+ 
+-/*
+- * Default maximum segment size for TCP.
+- * With an IP MSS of 576, this is 536,
+- * but 512 is probably more convenient.
+- * This should be defined as MIN(512, IP_MSS - sizeof (struct tcpiphdr)).
+- *
+- * We make this 1460 because we only care about Ethernet in the qemu context.
+- */
+-#undef TCP_MSS
+-#define	TCP_MSS	1460
+-#undef TCP6_MSS
+-#define TCP6_MSS 1440
+-
+ #undef TCP_MAXWIN
+ #define	TCP_MAXWIN	65535	/* largest value for (unscaled) window */
+ 
+diff --git a/slirp/tcp_input.c b/slirp/tcp_input.c
+index 6749b32f5d..480c342132 100644
+--- a/slirp/tcp_input.c
++++ b/slirp/tcp_input.c
+@@ -1522,11 +1522,11 @@ tcp_mss(struct tcpcb *tp, unsigned offer)
+ 
+ 	switch (so->so_ffamily) {
+ 	case AF_INET:
+-            mss = MIN(IF_MTU, IF_MRU) - sizeof(struct tcphdr)
++            mss = MIN(so->slirp->if_mtu, so->slirp->if_mru) - sizeof(struct tcphdr)
+ 	                              - sizeof(struct ip);
+ 	    break;
+ 	case AF_INET6:
+-            mss = MIN(IF_MTU, IF_MRU) - sizeof(struct tcphdr)
++            mss = MIN(so->slirp->if_mtu, so->slirp->if_mru) - sizeof(struct tcphdr)
+ 	                              - sizeof(struct ip6);
+ 	    break;
+ 	default:
+@@ -1537,7 +1537,7 @@ tcp_mss(struct tcpcb *tp, unsigned offer)
+             mss = MIN(mss, offer);
+         mss = MAX(mss, 32);
+ 	if (mss < tp->t_maxseg || offer != 0)
+-	   tp->t_maxseg = mss;
++        tp->t_maxseg = MIN(mss, TCP_MAXSEG_MAX);
+ 
+ 	tp->snd_cwnd = mss;
+ 
+diff --git a/slirp/tcp_subr.c b/slirp/tcp_subr.c
+index 262a42d6c8..e6b85e399e 100644
+--- a/slirp/tcp_subr.c
++++ b/slirp/tcp_subr.c
+@@ -261,7 +261,7 @@ tcp_newtcpcb(struct socket *so)
+ 
+ 	memset((char *) tp, 0, sizeof(struct tcpcb));
+ 	tp->seg_next = tp->seg_prev = (struct tcpiphdr*)tp;
+-	tp->t_maxseg = (so->so_ffamily == AF_INET) ? TCP_MSS : TCP6_MSS;
++	tp->t_maxseg = MIN(so->slirp->if_mtu - ((so->so_ffamily == AF_INET) ? 40 : 60), TCP_MAXSEG_MAX);
+ 
+ 	tp->t_flags = TCP_DO_RFC1323 ? (TF_REQ_SCALE|TF_REQ_TSTMP) : 0;
+ 	tp->t_socket = so;
+-- 
+2.17.1
+
