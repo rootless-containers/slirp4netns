@@ -1,0 +1,127 @@
+# slirp4netns maintainers file (Moby-style TOML syntax)
+
+[Org]
+
+# Approvers (aka Core Maintainers) approve pull requests.
+# GitHub Team: rootless-containers/slirp4netns-approvers
+	[Org.Approvers]
+		people = [
+			"akihirosuda",
+			"cyphar",
+			"giuseppe",
+		]
+
+# Package maintainers maintain distro packages.
+# GitHub Team: rootless-containers/slirp4netns-package-maintainers
+	[Org.PackageMaintainers]
+
+# https://src.fedoraproject.org/rpms/slirp4netns
+# https://copr.fedorainfracloud.org/coprs/vbatts/shadow-utils-newxidmap/package/slirp4netns/
+		[Org.PackageMaintainers.Fedora]
+			people = [
+				"giuseppe",
+				"lsm5",
+				"rhatdan",
+				"vbatts",
+			]
+
+# https://www.archlinux.org/packages/community/x86_64/slirp4netns/
+		[Org.PackageMaintainers.Arch]
+			people = [
+				"barthalion",
+			]
+
+# https://build.opensuse.org/package/show/openSUSE%3AFactory/slirp4netns
+		[Org.PackageMaintainers.openSUSE]
+			people = [
+				"cyphar",
+				"saschagrunert",
+			]
+
+# https://packages.debian.org/buster/slirp4netns
+		[Org.PackageMaintainers.Debian]
+			people = [
+				"siretart",
+			]
+
+# https://github.com/NixOS/nixpkgs/tree/master/pkgs/tools/networking/slirp4netns
+ 		[Org.PackageMaintainers.NixOS]
+			people = [
+				"orivej-nixos",
+			]
+
+# https://packages.gentoo.org/packages/app-emulation/slirp4netns
+		[Org.PackageMaintainers.Gentoo]
+			people = [
+				"zmedico",
+				"g-braeunlich",
+			]
+
+# https://git.slackbuilds.org/slackbuilds/tree/network/slirp4netns
+		[Org.PackageMaintainers.Slackware]
+			people = [
+				"vbatts",
+			]
+
+# https://github.com/void-linux/void-packages/tree/master/srcpkgs/slirp4netns
+		[Org.PackageMaintainers.Void]
+			people = [
+				"cameronnemo",
+			]
+
+# alphabetical order
+[people]
+	[people.akihirosuda]
+	Name = "Akihiro Suda"
+	Email = "suda.akihiro@lab.ntt.co.jp"
+	GitHub = "AkihiroSuda"
+
+	[people.barthalion]
+	Name = "Bartłomiej Piotrowski"
+	GitHub = "barthalion"
+
+	[people.cameronnemo]
+	Name = "Cameron Nemo"
+	GitHub = "CameronNemo"
+
+	[people.cyphar]
+	Name = "Aleksa Sarai"
+	Email = "cyphar@cyphar.com"
+	GitHub = "cyphar"
+
+	[people.g-braeunlich]
+	Name = "Gerhard Bräunlich"
+	GitHub = "g-braeunlich"
+	
+	[people.giuseppe]
+	Name = "Giuseppe Scrivano"
+	Email = "giuseppe@scrivano.org"
+	GitHub = "giuseppe"
+
+	[people.lsm5]
+	Name = "Lokesh Mandvekar"
+	GitHub = "lsm5"
+
+	[people.rhatdan]
+	Name = "Daniel Walsh"
+	GitHub = "rhatdan"
+
+	[people.orivej-nixos]
+	Name = "Orivej Desh"
+	GitHub = "orivej-nixos"
+
+	[people.saschagrunert]
+	Name = "Sascha Grunert"
+	GitHub = "saschagrunert"
+
+	[people.siretart]
+	Name = "Reinhard Tartler"
+	GitHub = "siretart"
+
+	[people.vbatts]
+	Name = "Vincent Batts"
+	GitHub = "vbatts"
+
+	[people.zmedico]
+	Name = "Zac Medico"
+	GitHub = "zmedico"
