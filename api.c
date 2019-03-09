@@ -4,7 +4,7 @@
 #include <sys/un.h>
 #include <glib.h>
 #include "parson/parson.h"
-#include "qemu/slirp/libslirp.h"
+#include "qemu/slirp/src/libslirp.h"
 #include "api.h"
 #include "slirp4netns.h"
 

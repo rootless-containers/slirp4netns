@@ -1,4 +1,4 @@
-From 317a3a03785858f9bf08e1dfd198690b11156276 Mon Sep 17 00:00:00 2001
+From 353c5778d80c8b2583f737df73767f2253d67ca5 Mon Sep 17 00:00:00 2001
 From: Akihiro Suda <suda.akihiro@lab.ntt.co.jp>
 Date: Wed, 6 Mar 2019 17:04:14 +0900
 Subject: [PATCH 3/3] slirp: add disable_host_loopback (prohibit connections to
@@ -10,19 +10,19 @@ From slirp4netns project:
 
 Signed-off-by: Akihiro Suda <suda.akihiro@lab.ntt.co.jp>
 ---
- slirp/ip_icmp.c  |  5 +++-
- slirp/libslirp.h |  2 ++
- slirp/slirp.c    |  1 +
- slirp/slirp.h    |  2 ++
- slirp/socket.c   | 68 +++++++++++++++++++++++++++---------------------
- slirp/socket.h   |  2 +-
- slirp/tcp_subr.c |  4 ++-
+ slirp/src/ip_icmp.c  |  5 +++-
+ slirp/src/libslirp.h |  2 ++
+ slirp/src/slirp.c    |  1 +
+ slirp/src/slirp.h    |  2 ++
+ slirp/src/socket.c   | 68 +++++++++++++++++++++++++-------------------
+ slirp/src/socket.h   |  2 +-
+ slirp/src/tcp_subr.c |  4 ++-
  7 files changed, 52 insertions(+), 32 deletions(-)
 
-diff --git a/slirp/ip_icmp.c b/slirp/ip_icmp.c
+diff --git a/slirp/src/ip_icmp.c b/slirp/src/ip_icmp.c
 index 120108f582..89e22dc5b8 100644
---- a/slirp/ip_icmp.c
-+++ b/slirp/ip_icmp.c
+--- a/slirp/src/ip_icmp.c
++++ b/slirp/src/ip_icmp.c
 @@ -188,7 +188,10 @@ icmp_input(struct mbuf *m, int hlen)
  
        /* Send the packet */
@@ -35,11 +35,11 @@ index 120108f582..89e22dc5b8 100644
  
        if(sendto(so->s, icmp_ping_msg, strlen(icmp_ping_msg), 0,
  		(struct sockaddr *)&addr, sockaddr_size(&addr)) == -1) {
-diff --git a/slirp/libslirp.h b/slirp/libslirp.h
-index 265f2934d2..4b2a8d7c92 100644
---- a/slirp/libslirp.h
-+++ b/slirp/libslirp.h
-@@ -84,6 +84,8 @@ typedef struct SlirpConfig{
+diff --git a/slirp/src/libslirp.h b/slirp/src/libslirp.h
+index ecbf0cc4a1..a8aa93980d 100644
+--- a/slirp/src/libslirp.h
++++ b/slirp/src/libslirp.h
+@@ -86,6 +86,8 @@ typedef struct SlirpConfig{
      int if_mtu;
      /* Default: IF_MRU_DEFAULT */
      int if_mru;
@@ -48,22 +48,22 @@ index 265f2934d2..4b2a8d7c92 100644
  } SlirpConfig;
  
  Slirp *slirp_initx(const SlirpConfig *cfg, const SlirpCb *callbacks, void *opaque);
-diff --git a/slirp/slirp.c b/slirp/slirp.c
-index f8745f358b..a670dcc3f7 100644
---- a/slirp/slirp.c
-+++ b/slirp/slirp.c
-@@ -327,6 +327,7 @@ Slirp *slirp_initx(const SlirpConfig *cfg, const SlirpCb *callbacks, void *opaqu
+diff --git a/slirp/src/slirp.c b/slirp/src/slirp.c
+index cadc35aff0..8ceb566c89 100644
+--- a/slirp/src/slirp.c
++++ b/slirp/src/slirp.c
+@@ -324,6 +324,7 @@ Slirp *slirp_initx(const SlirpConfig *cfg, const SlirpCb *callbacks, void *opaqu
      }
      slirp->if_mtu = cfg->if_mtu == 0 ? IF_MTU_DEFAULT : cfg->if_mtu;
      slirp->if_mru = cfg->if_mru == 0 ? IF_MRU_DEFAULT : cfg->if_mru;
 +    slirp->disable_host_loopback = cfg->disable_host_loopback;
  
- #ifdef WITH_QEMU
-     slirp_state_register(slirp);
-diff --git a/slirp/slirp.h b/slirp/slirp.h
-index 60157d80ed..9bc0ff39df 100644
---- a/slirp/slirp.h
-+++ b/slirp/slirp.h
+     return slirp;
+ }
+diff --git a/slirp/src/slirp.h b/slirp/src/slirp.h
+index 538f1591ef..cfbaee5172 100644
+--- a/slirp/src/slirp.h
++++ b/slirp/src/slirp.h
 @@ -148,6 +148,8 @@ struct Slirp {
      int if_mtu;
      int if_mru;
@@ -73,11 +73,11 @@ index 60157d80ed..9bc0ff39df 100644
      /* mbuf states */
      struct quehead m_freelist;
      struct quehead m_usedlist;
-diff --git a/slirp/socket.c b/slirp/socket.c
-index 4876ea3f31..028f868fd3 100644
---- a/slirp/socket.c
-+++ b/slirp/socket.c
-@@ -653,7 +653,9 @@ sosendto(struct socket *so, struct mbuf *m)
+diff --git a/slirp/src/socket.c b/slirp/src/socket.c
+index f2428a3ae8..62a45589c0 100644
+--- a/slirp/src/socket.c
++++ b/slirp/src/socket.c
+@@ -661,7 +661,9 @@ sosendto(struct socket *so, struct mbuf *m)
  
  	addr = so->fhost.ss;
  	DEBUG_CALL(" sendto()ing)");
@@ -88,7 +88,7 @@ index 4876ea3f31..028f868fd3 100644
  
  	/* Don't care what port we get */
  	ret = sendto(so->s, m->m_data, m->m_len, 0,
-@@ -818,49 +820,57 @@ sofwdrain(struct socket *so)
+@@ -827,49 +829,57 @@ sofwdrain(struct socket *so)
  /*
   * Translate addr in host addr when it is a virtual address
   */
@@ -174,10 +174,10 @@ index 4876ea3f31..028f868fd3 100644
  }
  
  void sotranslate_in(struct socket *so, struct sockaddr_storage *addr)
-diff --git a/slirp/socket.h b/slirp/socket.h
+diff --git a/slirp/src/socket.h b/slirp/src/socket.h
 index e4d12cd591..f2ee452b41 100644
---- a/slirp/socket.h
-+++ b/slirp/socket.h
+--- a/slirp/src/socket.h
++++ b/slirp/src/socket.h
 @@ -153,7 +153,7 @@ struct iovec; /* For win32 */
  size_t sopreprbuf(struct socket *so, struct iovec *iov, int *np);
  int soreadbuf(struct socket *so, const char *buf, int size);
@@ -187,10 +187,10 @@ index e4d12cd591..f2ee452b41 100644
  void sotranslate_in(struct socket *, struct sockaddr_storage *);
  void sotranslate_accept(struct socket *);
  void sodrop(struct socket *, int num);
-diff --git a/slirp/tcp_subr.c b/slirp/tcp_subr.c
-index e6b85e399e..d17d09e08d 100644
---- a/slirp/tcp_subr.c
-+++ b/slirp/tcp_subr.c
+diff --git a/slirp/src/tcp_subr.c b/slirp/src/tcp_subr.c
+index 437a0b3306..234102c904 100644
+--- a/slirp/src/tcp_subr.c
++++ b/slirp/src/tcp_subr.c
 @@ -422,7 +422,9 @@ int tcp_fconnect(struct socket *so, unsigned short af)
  
      addr = so->fhost.ss;

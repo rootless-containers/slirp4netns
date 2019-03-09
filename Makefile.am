@@ -14,60 +14,66 @@ EXTRA_DIST = \
 	tests/common.sh \
 	slirp4netns.h \
 	api.h \
-	qemu/slirp/bootp.h \
-	qemu/slirp/debug.h \
-	qemu/slirp/dhcpv6.h \
-	qemu/slirp/if.h \
-	qemu/slirp/ip6.h \
-	qemu/slirp/ip6_icmp.h \
-	qemu/slirp/ip.h \
-	qemu/slirp/ip_icmp.h \
-	qemu/slirp/libslirp.h \
-	qemu/slirp/main.h \
-	qemu/slirp/mbuf.h \
-	qemu/slirp/misc.h \
-	qemu/slirp/ncsi-pkt.h \
-	qemu/slirp/qtailq.h \
-	qemu/slirp/sbuf.h \
-	qemu/slirp/slirp.h \
-	qemu/slirp/socket.h \
-	qemu/slirp/tftp.h \
-	qemu/slirp/tcp.h \
-	qemu/slirp/tcpip.h \
-	qemu/slirp/tcp_timer.h \
-	qemu/slirp/tcp_var.h \
-	qemu/slirp/udp.h \
-	qemu/slirp/util.h \
+	qemu/slirp/src/bootp.h \
+	qemu/slirp/src/debug.h \
+	qemu/slirp/src/dhcpv6.h \
+	qemu/slirp/src/if.h \
+	qemu/slirp/src/ip6.h \
+	qemu/slirp/src/ip6_icmp.h \
+	qemu/slirp/src/ip.h \
+	qemu/slirp/src/ip_icmp.h \
+	qemu/slirp/src/libslirp.h \
+	qemu/slirp/src/main.h \
+	qemu/slirp/src/mbuf.h \
+	qemu/slirp/src/misc.h \
+	qemu/slirp/src/ncsi-pkt.h \
+	qemu/slirp/src/qtailq.h \
+	qemu/slirp/src/sbuf.h \
+	qemu/slirp/src/slirp.h \
+	qemu/slirp/src/socket.h \
+	qemu/slirp/src/state.h \
+	qemu/slirp/src/stream.h \
+	qemu/slirp/src/tftp.h \
+	qemu/slirp/src/tcp.h \
+	qemu/slirp/src/tcpip.h \
+	qemu/slirp/src/tcp_timer.h \
+	qemu/slirp/src/tcp_var.h \
+	qemu/slirp/src/udp.h \
+	qemu/slirp/src/util.h \
+	qemu/slirp/src/vmstate.h \
 	parson/parson.h
 
 libqemu_slirp_a_SOURCES = \
-			qemu/slirp/arp_table.c \
-			qemu/slirp/bootp.c \
-			qemu/slirp/cksum.c \
-			qemu/slirp/dhcpv6.c \
-			qemu/slirp/dnssearch.c \
-			qemu/slirp/if.c \
-			qemu/slirp/ip6_icmp.c \
-			qemu/slirp/ip6_input.c \
-			qemu/slirp/ip6_output.c \
-			qemu/slirp/ip_icmp.c \
-			qemu/slirp/ip_input.c \
-			qemu/slirp/ip_output.c \
-			qemu/slirp/mbuf.c \
-			qemu/slirp/misc.c \
-			qemu/slirp/ncsi.c \
-			qemu/slirp/ndp_table.c \
-			qemu/slirp/sbuf.c \
-			qemu/slirp/slirp.c \
-			qemu/slirp/socket.c \
-			qemu/slirp/tcp_input.c \
-			qemu/slirp/tcp_output.c \
-			qemu/slirp/tcp_subr.c \
-			qemu/slirp/tcp_timer.c \
-			qemu/slirp/tftp.c \
-			qemu/slirp/udp6.c \
-			qemu/slirp/udp.c \
-			qemu/slirp/util.c
+			qemu/slirp/src/arp_table.c \
+			qemu/slirp/src/bootp.c \
+			qemu/slirp/src/cksum.c \
+			qemu/slirp/src/dhcpv6.c \
+			qemu/slirp/src/dnssearch.c \
+			qemu/slirp/src/if.c \
+			qemu/slirp/src/ip6_icmp.c \
+			qemu/slirp/src/ip6_input.c \
+			qemu/slirp/src/ip6_output.c \
+			qemu/slirp/src/ip_icmp.c \
+			qemu/slirp/src/ip_input.c \
+			qemu/slirp/src/ip_output.c \
+			qemu/slirp/src/mbuf.c \
+			qemu/slirp/src/misc.c \
+			qemu/slirp/src/ncsi.c \
+			qemu/slirp/src/ndp_table.c \
+			qemu/slirp/src/sbuf.c \
+			qemu/slirp/src/slirp.c \
+			qemu/slirp/src/socket.c \
+			qemu/slirp/src/state.c \
+			qemu/slirp/src/stream.c \
+			qemu/slirp/src/tcp_input.c \
+			qemu/slirp/src/tcp_output.c \
+			qemu/slirp/src/tcp_subr.c \
+			qemu/slirp/src/tcp_timer.c \
+			qemu/slirp/src/tftp.c \
+			qemu/slirp/src/udp6.c \
+			qemu/slirp/src/udp.c \
+			qemu/slirp/src/util.c \
+			qemu/slirp/src/vmstate.c
 
 # define specific commit if git available or it was replaced during git-archive creation
 COMMIT := $(shell V=$Format:%H$ ; \
@@ -77,7 +83,7 @@ COMMIT := $(shell V=$Format:%H$ ; \
 DEFINE_COMMIT = -DCOMMIT="\"$(COMMIT)\""
 
 slirp4netns_CFLAGS = $(AM_CFLAGS) $(DEFINE_COMMIT)
-libqemu_slirp_a_CFLAGS = $(AM_CFLAGS) -I$(abs_top_builddir)/qemu/slirp
+libqemu_slirp_a_CFLAGS = $(AM_CFLAGS) -I$(abs_top_builddir)/qemu/slirp/src
 libparson_a_CFLAGS = $(AM_CFLAGS) -I$(abs_top_builddir)/parson
 libparson_a_SOURCES = parson/parson.c
 
@@ -116,7 +122,7 @@ ci:
 	$(MAKE) indent
 	test -z "$(git diff)"
 # TODO: make sure ./qemu is synced with ./qemu_patches/sync.sh
-# (hard to verify during `make`, because sync.sh removes ./qemu/slirp/.deps)
+# (hard to verify during `make`, because sync.sh removes ./qemu/slirp/src/.deps)
 	$(MAKE) lint
 	$(MAKE) -j $(shell nproc) distcheck || ( find . -name test-suite.log | xargs cat; exit 1 )
 	PATH=$(shell pwd):$$PATH $(MAKE) benchmark MTU=1500

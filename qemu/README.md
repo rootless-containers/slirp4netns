@@ -1,11 +1,11 @@
 # DO NOT EDIT MANUALLY
 
-This directory was synced from QEMU `a3e3b0a7bd5de211a62cdf2d6c12b96d3c403560` (`https://github.com/qemu/qemu.git`),
+This directory was synced from QEMU `4c76137484878f42a2ce1ae1b888b6a7f66b4053` (`https://github.com/qemu/qemu.git`),
 with the following patches (sha256sum):
 ```
-149968a91324acb6bc72feaa3e4e9a193bc19421b682569db0eca7519d52af75  0001-slirp-add-slirp_initx-SlirpConfig-SlirpCb-void.patch
-f565a9166e6bbd8ac46fc5ee575087d71a0634caecc5ce5f29bc6cfaa99acbb8  0002-slirp-allow-custom-MTU.patch
-ac2d72e15445c8c5c687602f0b95715529d5d9064643d845a68c90eeb17f3b29  0003-slirp-add-disable_host_loopback-prohibit-connections.patch
+6bed7e4f10c4d462a84656b08441a740fb86c31a0b5394e4c89c06f6a8f44827  0001-slirp-add-slirp_initx-SlirpConfig-SlirpCb-void.patch
+ec3aaabaee978867456e245eaa2353e43dbdb64e1a4dbd5a1b6070176dfd581f  0002-slirp-allow-custom-MTU.patch
+a55b85550b07be4f99710ff6e9baa63294a33924f275c5be18f771736a9dcc56  0003-slirp-add-disable_host_loopback-prohibit-connections.patch
 ```
 
 Please do not edit the contents under this directory manually.

@@ -2,7 +2,7 @@
 set -eux -o pipefail
 QEMU_REPO=https://github.com/qemu/qemu.git
 # March 2019
-QEMU_COMMIT=a3e3b0a7bd5de211a62cdf2d6c12b96d3c403560
+QEMU_COMMIT=4c76137484878f42a2ce1ae1b888b6a7f66b4053
 cd $(dirname $0)/..
 slirp4netns_dir=$(pwd)
 slirp4netns_qemu_dir=$slirp4netns_dir/qemu
@@ -34,7 +34,7 @@ mkdir -p $qemu_dir
 rm -rf $slirp4netns_qemu_dir
 mkdir -p $slirp4netns_qemu_dir
 cp -a $qemu_dir/{COPYING*,LICENSE*,slirp} $slirp4netns_qemu_dir
-rm -f $slirp4netns_qemu_dir/slirp/{Makefile*,state*}
+rm -f $slirp4netns_qemu_dir/slirp/src/Makefile
 cat << EOF > $slirp4netns_qemu_dir/README.md
 # DO NOT EDIT MANUALLY
 

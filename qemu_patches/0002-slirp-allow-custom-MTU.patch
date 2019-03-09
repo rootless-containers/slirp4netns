@@ -1,4 +1,4 @@
-From d197f5ebcf3c7940b0d5b18988cba029835264b8 Mon Sep 17 00:00:00 2001
+From fc1f39e37bc3c4287098f52a17a6cb35ad7c5f33 Mon Sep 17 00:00:00 2001
 From: Akihiro Suda <suda.akihiro@lab.ntt.co.jp>
 Date: Wed, 6 Mar 2019 16:15:37 +0900
 Subject: [PATCH 2/3] slirp: allow custom MTU
@@ -12,24 +12,24 @@ From slirp4netns project:
 
 Signed-off-by: Akihiro Suda <suda.akihiro@lab.ntt.co.jp>
 ---
- slirp/dhcpv6.c    |  2 +-
- slirp/if.h        |  6 ++++--
- slirp/ip6_icmp.c  |  4 ++--
- slirp/ip6_input.c |  2 +-
- slirp/ip_output.c |  4 ++--
- slirp/libslirp.h  |  4 ++++
- slirp/mbuf.c      |  8 ++++----
- slirp/slirp.c     | 11 ++++++++++-
- slirp/slirp.h     |  3 +++
- slirp/tcp.h       | 18 +++---------------
- slirp/tcp_input.c |  6 +++---
- slirp/tcp_subr.c  |  2 +-
+ slirp/src/dhcpv6.c    |  2 +-
+ slirp/src/if.h        |  6 ++++--
+ slirp/src/ip6_icmp.c  |  4 ++--
+ slirp/src/ip6_input.c |  2 +-
+ slirp/src/ip_output.c |  4 ++--
+ slirp/src/libslirp.h  |  4 ++++
+ slirp/src/mbuf.c      |  8 ++++----
+ slirp/src/slirp.c     | 11 ++++++++++-
+ slirp/src/slirp.h     |  3 +++
+ slirp/src/tcp.h       | 18 +++---------------
+ slirp/src/tcp_input.c |  6 +++---
+ slirp/src/tcp_subr.c  |  2 +-
  12 files changed, 38 insertions(+), 32 deletions(-)
 
-diff --git a/slirp/dhcpv6.c b/slirp/dhcpv6.c
+diff --git a/slirp/src/dhcpv6.c b/slirp/src/dhcpv6.c
 index e655c7d5b1..3a1b4fcb30 100644
---- a/slirp/dhcpv6.c
-+++ b/slirp/dhcpv6.c
+--- a/slirp/src/dhcpv6.c
++++ b/slirp/src/dhcpv6.c
 @@ -159,7 +159,7 @@ static void dhcpv6_info_request(Slirp *slirp, struct sockaddr_in6 *srcsas,
  
          *resp++ = OPTION_BOOTFILE_URL >> 8;     /* option-code high byte */
@@ -39,10 +39,10 @@ index e655c7d5b1..3a1b4fcb30 100644
          slen = snprintf((char *)resp + 2, smaxlen,
                          "tftp://[%02x%02x:%02x%02x:%02x%02x:%02x%02x:"
                                  "%02x%02x:%02x%02x:%02x%02x:%02x%02x]/%s",
-diff --git a/slirp/if.h b/slirp/if.h
+diff --git a/slirp/src/if.h b/slirp/src/if.h
 index 69569c10df..4bbb9c75f8 100644
---- a/slirp/if.h
-+++ b/slirp/if.h
+--- a/slirp/src/if.h
++++ b/slirp/src/if.h
 @@ -13,8 +13,10 @@
  #define IF_AUTOCOMP	0x04	/* Autodetect (default) */
  #define IF_NOCIDCOMP	0x08	/* CID compression */
@@ -56,10 +56,10 @@ index 69569c10df..4bbb9c75f8 100644
  #define	IF_COMP IF_AUTOCOMP	/* Flags for compression */
  
  /* 2 for alignment, 14 for ethernet */
-diff --git a/slirp/ip6_icmp.c b/slirp/ip6_icmp.c
+diff --git a/slirp/src/ip6_icmp.c b/slirp/src/ip6_icmp.c
 index c1e3d30470..5e0af223eb 100644
---- a/slirp/ip6_icmp.c
-+++ b/slirp/ip6_icmp.c
+--- a/slirp/src/ip6_icmp.c
++++ b/slirp/src/ip6_icmp.c
 @@ -92,7 +92,7 @@ void icmp6_send_error(struct mbuf *m, uint8_t type, uint8_t code)
  
      rip->ip_nh = IPPROTO_ICMPV6;
@@ -78,10 +78,10 @@ index c1e3d30470..5e0af223eb 100644
          break;
      case ICMP6_PARAMPROB:
          /* TODO: Handle this case */
-diff --git a/slirp/ip6_input.c b/slirp/ip6_input.c
+diff --git a/slirp/src/ip6_input.c b/slirp/src/ip6_input.c
 index 1b8c003c66..917580c0e1 100644
---- a/slirp/ip6_input.c
-+++ b/slirp/ip6_input.c
+--- a/slirp/src/ip6_input.c
++++ b/slirp/src/ip6_input.c
 @@ -43,7 +43,7 @@ void ip6_input(struct mbuf *m)
          goto bad;
      }
@@ -91,10 +91,10 @@ index 1b8c003c66..917580c0e1 100644
          icmp6_send_error(m, ICMP6_TOOBIG, 0);
          goto bad;
      }
-diff --git a/slirp/ip_output.c b/slirp/ip_output.c
+diff --git a/slirp/src/ip_output.c b/slirp/src/ip_output.c
 index f6ec141df5..d342bff6ff 100644
---- a/slirp/ip_output.c
-+++ b/slirp/ip_output.c
+--- a/slirp/src/ip_output.c
++++ b/slirp/src/ip_output.c
 @@ -75,7 +75,7 @@ ip_output(struct socket *so, struct mbuf *m0)
  	/*
  	 * If small enough for interface, can just send directly.
@@ -113,11 +113,11 @@ index f6ec141df5..d342bff6ff 100644
  	if (len < 8) {
  		error = -1;
  		goto bad;
-diff --git a/slirp/libslirp.h b/slirp/libslirp.h
-index b20bd2a1a7..265f2934d2 100644
---- a/slirp/libslirp.h
-+++ b/slirp/libslirp.h
-@@ -80,6 +80,10 @@ typedef struct SlirpConfig{
+diff --git a/slirp/src/libslirp.h b/slirp/src/libslirp.h
+index a82c3fca38..ecbf0cc4a1 100644
+--- a/slirp/src/libslirp.h
++++ b/slirp/src/libslirp.h
+@@ -82,6 +82,10 @@ typedef struct SlirpConfig{
      struct in6_addr vnameserver6;
      const char **vdnssearch;
      const char *vdomainname;
@@ -128,10 +128,10 @@ index b20bd2a1a7..265f2934d2 100644
  } SlirpConfig;
  
  Slirp *slirp_initx(const SlirpConfig *cfg, const SlirpCb *callbacks, void *opaque);
-diff --git a/slirp/mbuf.c b/slirp/mbuf.c
+diff --git a/slirp/src/mbuf.c b/slirp/src/mbuf.c
 index 521c02c967..7a8f039559 100644
---- a/slirp/mbuf.c
-+++ b/slirp/mbuf.c
+--- a/slirp/src/mbuf.c
++++ b/slirp/src/mbuf.c
 @@ -22,8 +22,8 @@
  /*
   * Find a nice value for msize
@@ -161,11 +161,11 @@ index 521c02c967..7a8f039559 100644
  	m->m_data = m->m_dat;
  	m->m_len = 0;
          m->m_nextpkt = NULL;
-diff --git a/slirp/slirp.c b/slirp/slirp.c
-index b803d6ba88..f8745f358b 100644
---- a/slirp/slirp.c
-+++ b/slirp/slirp.c
-@@ -278,6 +278,13 @@ Slirp *slirp_initx(const SlirpConfig *cfg, const SlirpCb *callbacks, void *opaqu
+diff --git a/slirp/src/slirp.c b/slirp/src/slirp.c
+index a76e33f44c..cadc35aff0 100644
+--- a/slirp/src/slirp.c
++++ b/slirp/src/slirp.c
+@@ -275,6 +275,13 @@ Slirp *slirp_initx(const SlirpConfig *cfg, const SlirpCb *callbacks, void *opaqu
      if (cfg == NULL) {
          return NULL;
      }
@@ -179,16 +179,16 @@ index b803d6ba88..f8745f358b 100644
      slirp = g_malloc0(sizeof(Slirp));
  
      slirp_init_once();
-@@ -318,6 +325,8 @@ Slirp *slirp_initx(const SlirpConfig *cfg, const SlirpCb *callbacks, void *opaqu
+@@ -315,6 +322,8 @@ Slirp *slirp_initx(const SlirpConfig *cfg, const SlirpCb *callbacks, void *opaqu
      if (cfg->vdnssearch) {
          translate_dnssearch(slirp, cfg->vdnssearch);
      }
 +    slirp->if_mtu = cfg->if_mtu == 0 ? IF_MTU_DEFAULT : cfg->if_mtu;
 +    slirp->if_mru = cfg->if_mru == 0 ? IF_MRU_DEFAULT : cfg->if_mru;
  
- #ifdef WITH_QEMU
-     slirp_state_register(slirp);
-@@ -931,7 +940,7 @@ static int if_encap6(Slirp *slirp, struct mbuf *ifm, struct ethhdr *eh,
+     return slirp;
+ }
+@@ -923,7 +932,7 @@ static int if_encap6(Slirp *slirp, struct mbuf *ifm, struct ethhdr *eh,
   */
  int if_encap(Slirp *slirp, struct mbuf *ifm)
  {
@@ -197,10 +197,10 @@ index b803d6ba88..f8745f358b 100644
      struct ethhdr *eh = (struct ethhdr *)buf;
      uint8_t ethaddr[ETH_ALEN];
      const struct ip *iph = (const struct ip *)ifm->m_data;
-diff --git a/slirp/slirp.h b/slirp/slirp.h
-index 752a4cd8c8..60157d80ed 100644
---- a/slirp/slirp.h
-+++ b/slirp/slirp.h
+diff --git a/slirp/src/slirp.h b/slirp/src/slirp.h
+index 8068ba1d1e..538f1591ef 100644
+--- a/slirp/src/slirp.h
++++ b/slirp/src/slirp.h
 @@ -145,6 +145,9 @@ struct Slirp {
      int restricted;
      struct gfwd_list *guestfwd_list;
@@ -211,10 +211,10 @@ index 752a4cd8c8..60157d80ed 100644
      /* mbuf states */
      struct quehead m_freelist;
      struct quehead m_usedlist;
-diff --git a/slirp/tcp.h b/slirp/tcp.h
+diff --git a/slirp/src/tcp.h b/slirp/src/tcp.h
 index 47aaea6c5b..c854771a44 100644
---- a/slirp/tcp.h
-+++ b/slirp/tcp.h
+--- a/slirp/src/tcp.h
++++ b/slirp/src/tcp.h
 @@ -40,8 +40,9 @@ typedef	uint32_t tcp_seq;
  #define      PR_SLOWHZ       2               /* 2 slow timeouts per second (approx) */
  #define      PR_FASTHZ       5               /* 5 fast timeouts per second (not important) */
@@ -247,11 +247,11 @@ index 47aaea6c5b..c854771a44 100644
  #undef TCP_MAXWIN
  #define	TCP_MAXWIN	65535	/* largest value for (unscaled) window */
  
-diff --git a/slirp/tcp_input.c b/slirp/tcp_input.c
-index 6749b32f5d..480c342132 100644
---- a/slirp/tcp_input.c
-+++ b/slirp/tcp_input.c
-@@ -1522,11 +1522,11 @@ tcp_mss(struct tcpcb *tp, unsigned offer)
+diff --git a/slirp/src/tcp_input.c b/slirp/src/tcp_input.c
+index b10477fc57..2e84030b6c 100644
+--- a/slirp/src/tcp_input.c
++++ b/slirp/src/tcp_input.c
+@@ -1524,11 +1524,11 @@ tcp_mss(struct tcpcb *tp, unsigned offer)
  
  	switch (so->so_ffamily) {
  	case AF_INET:
@@ -265,7 +265,7 @@ index 6749b32f5d..480c342132 100644
  	                              - sizeof(struct ip6);
  	    break;
  	default:
-@@ -1537,7 +1537,7 @@ tcp_mss(struct tcpcb *tp, unsigned offer)
+@@ -1539,7 +1539,7 @@ tcp_mss(struct tcpcb *tp, unsigned offer)
              mss = MIN(mss, offer);
          mss = MAX(mss, 32);
  	if (mss < tp->t_maxseg || offer != 0)
@@ -274,10 +274,10 @@ index 6749b32f5d..480c342132 100644
  
  	tp->snd_cwnd = mss;
  
-diff --git a/slirp/tcp_subr.c b/slirp/tcp_subr.c
-index 262a42d6c8..e6b85e399e 100644
---- a/slirp/tcp_subr.c
-+++ b/slirp/tcp_subr.c
+diff --git a/slirp/src/tcp_subr.c b/slirp/src/tcp_subr.c
+index 1db59caa89..437a0b3306 100644
+--- a/slirp/src/tcp_subr.c
++++ b/slirp/src/tcp_subr.c
 @@ -261,7 +261,7 @@ tcp_newtcpcb(struct socket *so)
  
  	memset((char *) tp, 0, sizeof(struct tcpcb));
