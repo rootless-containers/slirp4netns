@@ -2,7 +2,7 @@
 # define SLIRP4NETNS_H
 #include <arpa/inet.h>
 
-struct slirp_config {
+struct slirp4netns_config {
 	unsigned int mtu;
 	struct in_addr vnetwork; // 10.0.2.0
 	struct in_addr vnetmask; // 255.255.255.0
@@ -13,6 +13,6 @@ struct slirp_config {
 	bool enable_ipv6;
 	bool disable_host_loopback;
 };
-int do_slirp(int tapfd, int exitfd, const char *api_socket, struct slirp_config *cfg);
+int do_slirp(int tapfd, int exitfd, const char *api_socket, struct slirp4netns_config *cfg);
 
 #endif

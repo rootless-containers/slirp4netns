@@ -100,7 +100,7 @@ static int sendfd(int sock, int fd)
 	return rc;
 }
 
-static int configure_network(const char *tapname, struct slirp_config *cfg)
+static int configure_network(const char *tapname, struct slirp4netns_config *cfg)
 {
 	struct rtentry route;
 	struct ifreq ifr;
@@ -166,7 +166,7 @@ static int configure_network(const char *tapname, struct slirp_config *cfg)
 }
 
 static int child(int sock, pid_t target_pid, bool do_config_network, const char *tapname, int ready_fd,
-		 struct slirp_config *cfg)
+		 struct slirp4netns_config *cfg)
 {
 	int rc, tapfd;
 	if ((rc = nsenter(target_pid)) < 0) {
@@ -227,7 +227,7 @@ static int recvfd(int sock)
 	return fd;
 }
 
-static int parent(int sock, int exit_fd, const char *api_socket, struct slirp_config *cfg)
+static int parent(int sock, int exit_fd, const char *api_socket, struct slirp4netns_config *cfg)
 {
 	int rc, tapfd;
 	if ((tapfd = recvfd(sock)) < 0) {
@@ -503,7 +503,7 @@ static int parse_cidr(struct in_addr *network, struct in_addr *netmask, const ch
 	return rc;
 }
 
-static int slirp_config_from_cidr(struct slirp_config *cfg, const char *cidr)
+static int slirp4netns_config_from_cidr(struct slirp4netns_config *cfg, const char *cidr)
 {
 	int rc;
 	rc = parse_cidr(&cfg->vnetwork, &cfg->vnetmask, cidr);
@@ -518,11 +518,11 @@ static int slirp_config_from_cidr(struct slirp_config *cfg, const char *cidr)
 	return rc;
 }
 
-static int slirp_config_from_options(struct slirp_config *cfg, struct options *opt)
+static int slirp4netns_config_from_options(struct slirp4netns_config *cfg, struct options *opt)
 {
 	int rc = 0;
 	cfg->mtu = opt->mtu;
-	rc = slirp_config_from_cidr(cfg, opt->cidr == NULL ? DEFAULT_CIDR : opt->cidr);
+	rc = slirp4netns_config_from_cidr(cfg, opt->cidr == NULL ? DEFAULT_CIDR : opt->cidr);
 	if (rc < 0) {
 		goto finish;
 	}
@@ -537,11 +537,11 @@ int main(int argc, char *const argv[])
 	int sv[2];
 	pid_t child_pid;
 	struct options options;
-	struct slirp_config slirp_config;
+	struct slirp4netns_config slirp4netns_config;
 	int exit_status = 0;
 
 	parse_args(argc, argv, &options);
-	if (slirp_config_from_options(&slirp_config, &options) < 0) {
+	if (slirp4netns_config_from_options(&slirp4netns_config, &options) < 0) {
 		exit_status = EXIT_FAILURE;
 		goto finish;
 	}
@@ -557,7 +557,7 @@ int main(int argc, char *const argv[])
 	}
 	if (child_pid == 0) {
 		if (child(sv[1], options.target_pid, options.do_config_network, options.tapname, options.ready_fd,
-			  &slirp_config) < 0) {
+			  &slirp4netns_config) < 0) {
 			exit_status = EXIT_FAILURE;
 			goto finish;
 		}
@@ -575,7 +575,7 @@ int main(int argc, char *const argv[])
 			exit_status = child_status;
 			goto finish;
 		}
-		if (parent(sv[0], options.exit_fd, options.api_socket, &slirp_config) < 0) {
+		if (parent(sv[0], options.exit_fd, options.api_socket, &slirp4netns_config) < 0) {
 			fprintf(stderr, "parent failed\n");
 			exit_status = EXIT_FAILURE;
 			goto finish;

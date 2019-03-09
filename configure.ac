@@ -30,5 +30,7 @@ AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 AC_CHECK_FUNCS([atexit clock_gettime inet_ntoa memmove memset socket strchr strdup strerror strstr strtol getopt_long])
 
+PKG_CHECK_MODULES(GLIB, glib-2.0)
+
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

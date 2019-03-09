@@ -27,6 +27,8 @@ slirp4netns allows connecting a network namespace to the Internet in a completel
 
 ### Install from source
 
+Build dependency: `glib2-devel` (`libglib2.0-dev`)
+
 ```console
 $ ./autogen.sh
 $ ./configure --prefix=/usr
@@ -170,6 +172,5 @@ The latest revision of slirp4netns is regularly benchmarked (`make benchmark`) o
 
 ## Acknowledgement
 
-* The files under [`qemu`](./qemu) directory were forked from [QEMU](https://github.com/qemu/qemu/commit/c447afd5783b9237fa51b7a85777007d8d568bfc).
-* The files under [`rd235_libslirp`](./rd235_libslirp) directory were forked from [rd235/libslirp](https://github.com/rd235/libslirp/commit/37fd650ad7fba7eb0360b1e1d0abf69cac6eb403).
+* The files under [`qemu`](./qemu) directory were forked from [QEMU](https://github.com/qemu/qemu) with the patches under [`qemu_patches`](./qemu_patches) directory.
 * The files under [`parson`](./parson) directory were copied from [kgabis/parson](https://github.com/kgabis/parson/commit/0a1896939faff5f69e179637fc49f678ff0128ba) without any modification.
