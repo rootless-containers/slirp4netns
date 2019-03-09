@@ -35,7 +35,7 @@ result=$(echo '{"execute": "add_hostfwd", "arguments":{"proto": "bad"}}' | ncat 
 echo $result | jq .error.desc | grep "bad request: add_hostfwd: bad arguments.proto"
 
 set +e
-result=$(cat /dev/zero | ncat -U $apisocket)
+result=$(cat /dev/zero | ncat -U $apisocket || true)
 set set -e
 echo $result | jq .error.desc | grep "bad request: too large message"
 
