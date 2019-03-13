@@ -15,12 +15,11 @@ slirp_pid=$!
 
 wait_for_network_device $child tun11
 
-function cleanup {
-    kill -9 $child $slirp_pid
-    rm -rf $tmpdir
+function cleanup() {
+	kill -9 $child $slirp_pid
+	rm -rf $tmpdir
 }
 trap cleanup EXIT
-
 
 result=$(echo 'badjson' | ncat -U $apisocket)
 echo $result | jq .error.desc | grep "bad request: cannot parse JSON"
@@ -38,5 +37,22 @@ set +e
 result=$(cat /dev/zero | ncat -U $apisocket || true)
 set set -e
 echo $result | jq .error.desc | grep "bad request: too large message"
+
+result=$(echo '{"execute": "add_hostfwd", "arguments":{"proto": "tcp","host_port":8080,"guest_port":80}}' | ncat -U $apisocket)
+[[ $(echo $result | jq .error) == null ]]
+id=$(echo $result | jq .return.id)
+[[ $id == 1 ]]
+
+result=$(echo '{"execute": "list_hostfwd"}' | ncat -U $apisocket)
+[[ $(echo $result | jq .error) == null ]]
+[[ $(echo $result | jq .return.entries[0].id) == $id ]]
+[[ $(echo $result | jq .return.entries[0].proto) == '"tcp"' ]]
+[[ $(echo $result | jq .return.entries[0].host_addr) == '"0.0.0.0"' ]]
+[[ $(echo $result | jq .return.entries[0].host_port) == 8080 ]]
+[[ $(echo $result | jq .return.entries[0].guest_addr) == '"10.0.2.100"' ]]
+[[ $(echo $result | jq .return.entries[0].guest_port) == 80 ]]
+
+result=$(echo '{"execute": "remove_hostfwd", "arguments":{"id": 1}}' | ncat -U $apisocket)
+[[ $(echo $result | jq .error) == null ]]
 
 # see also: benchmarks/benchmark-iperf3-reverse.sh

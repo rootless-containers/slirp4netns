@@ -214,7 +214,7 @@ static int api_handle_remove_list_hostfwd_find(gconstpointer gcp_fwd, gconstpoin
 {
 	struct api_hostfwd *fwd = (struct api_hostfwd *)gcp_fwd;
 	int id = *(int *)gcp_id;
-	return id == fwd->id;
+	return id == fwd->id ? 0 : 1;
 }
 
 /*
