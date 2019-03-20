@@ -270,7 +270,6 @@ Slirp *create_slirp(void *opaque, struct slirp4netns_config *s4nn)
 
 int do_slirp(int tapfd, int exitfd, const char *api_socket, struct slirp4netns_config *cfg)
 {
-	/* WIP BROKEN */
 	int ret = -1;
 	Slirp *slirp = NULL;
 	uint8_t *buf = NULL;
