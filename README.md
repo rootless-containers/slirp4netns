@@ -131,7 +131,7 @@ unshared$ echo $$ > /tmp/pid
 
 Terminal 2: Start slirp4netns
 ```console
-$ slirp4netns --configure --mtu=65520 $(cat /tmp/pid) tap0
+$ slirp4netns --configure --mtu=65520 --disable-host-loopback $(cat /tmp/pid) tap0
 starting slirp, MTU=65520
 ...
 ```
