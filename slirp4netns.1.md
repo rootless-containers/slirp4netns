@@ -46,7 +46,7 @@ specify CIDR, e.g. 10.0.2.0/24
 prohibit connecting to 127.0.0.1:\* on the host namespace
 
 **-a**, **--api-socket** (since v0.3.0)
-API socket path (experimental).
+API socket path
 
 **-6**, **--enable-ipv6**
 enable IPv6 (experimental).
@@ -134,7 +134,7 @@ unshared$ iptables -A OUTPUT -d 10.0.2.3 -p udp --dport 53 -j ACCEPT
 unshared$ iptables -A OUTPUT -d 10.0.2.3 -j DROP
 ```
 
-# API SOCKET (EXPERIMENTAL)
+# API SOCKET
 
 slirp4netns can provide QMP-like API server over an UNIX socket file:
 
