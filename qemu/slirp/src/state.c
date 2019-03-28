@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MIT */
 /*
  * libslirp
  *
@@ -23,7 +24,6 @@
  */
 #include "slirp.h"
 #include "vmstate.h"
-#include "state.h"
 #include "stream.h"
 
 static int slirp_tcp_post_load(void *opaque, int version)
