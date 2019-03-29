@@ -269,7 +269,7 @@ static void usage(const char *argv0)
 	printf("-m, --mtu=MTU            specify MTU (default=%d, max=65521)\n", DEFAULT_MTU);
 	printf("--cidr=CIDR              specify network address CIDR (default=%s)\n", DEFAULT_CIDR);
 	printf("--disable-host-loopback  prohibit connecting to 127.0.0.1:* on the host namespace\n");
-	printf("-a, --api-socket=PATH    specify API socket path (experimental)\n");
+	printf("-a, --api-socket=PATH    specify API socket path\n");
 	printf("-6, --enable-ipv6        enable IPv6 (experimental)\n");
 	printf("-h, --help               show this help and exit\n");
 	printf("-v, --version            show version and exit\n");
@@ -391,7 +391,6 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 			break;
 		case 'a':
 			options->api_socket = strdup(optarg);
-			printf("WARNING: Support for API socket is experimental\n");
 			break;
 		case '6':
 			options->enable_ipv6 = true;

@@ -2,7 +2,7 @@
 
 slirp4netns provides user-mode networking ("slirp") for unprivileged network namespaces.
 
-Latest stable release: [v0.2.X](https://github.com/rootless-containers/slirp4netns/releases)
+Latest stable release: [v0.3.X](https://github.com/rootless-containers/slirp4netns/releases)
 
 ## Motivation
 
@@ -131,7 +131,7 @@ unshared$ echo $$ > /tmp/pid
 
 Terminal 2: Start slirp4netns
 ```console
-$ slirp4netns --configure --mtu=65520 $(cat /tmp/pid) tap0
+$ slirp4netns --configure --mtu=65520 --disable-host-loopback $(cat /tmp/pid) tap0
 starting slirp, MTU=65520
 ...
 ```

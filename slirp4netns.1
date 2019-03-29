@@ -67,7 +67,7 @@ prohibit connecting to 127.0.0.1:* on the host namespace
 
 .PP
 \fB\-a\fP, \fB\-\-api\-socket\fP (since v0.3.0)
-API socket path (experimental).
+API socket path
 
 .PP
 \fB\-6\fP, \fB\-\-enable\-ipv6\fP
@@ -202,7 +202,7 @@ unshared$ iptables \-A OUTPUT \-d 10.0.2.3 \-j DROP
 .RE
 
 
-.SH API SOCKET (EXPERIMENTAL)
+.SH API SOCKET
 .PP
 slirp4netns can provide QMP\-like API server over an UNIX socket file:
 
@@ -228,6 +228,12 @@ $ echo \-n $json | nc \-U /tmp/slirp4netns.sock
 
 .fi
 .RE
+
+.PP
+If \fBhost\_addr\fP is not specified, then it defaults to "0.0.0.0".
+
+.PP
+If \fBguest\_addr\fP is not specified, then it will be set to the default address that corresponds to \-\-configure.
 
 .PP
 \fBlist\_hostfwd\fP: List exposed ports

@@ -31,7 +31,6 @@ EXTRA_DIST = \
 	qemu/slirp/src/sbuf.h \
 	qemu/slirp/src/slirp.h \
 	qemu/slirp/src/socket.h \
-	qemu/slirp/src/state.h \
 	qemu/slirp/src/stream.h \
 	qemu/slirp/src/tftp.h \
 	qemu/slirp/src/tcp.h \

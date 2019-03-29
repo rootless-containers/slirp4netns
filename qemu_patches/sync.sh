@@ -1,8 +1,8 @@
 #!/bin/bash
 set -eux -o pipefail
 QEMU_REPO=https://github.com/qemu/qemu.git
-# March 2019
-QEMU_COMMIT=4c76137484878f42a2ce1ae1b888b6a7f66b4053
+# v4.0.0-rc1 (March 2019)
+QEMU_COMMIT=49fc899f8d673dd9e73f3db0d9e9ea60b77c331b
 cd $(dirname $0)/..
 slirp4netns_dir=$(pwd)
 slirp4netns_qemu_dir=$slirp4netns_dir/qemu
