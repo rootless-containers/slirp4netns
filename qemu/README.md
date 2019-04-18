@@ -1,6 +1,6 @@
 # DO NOT EDIT MANUALLY
 
-This directory was synced from QEMU `49fc899f8d673dd9e73f3db0d9e9ea60b77c331b` (`https://github.com/qemu/qemu.git`),
+This directory was synced from QEMU `eeba63fc7fface36f438bcbc0d3b02e7dcb59983` (`https://github.com/qemu/qemu.git`),
 with the following patches (sha256sum):
 ```
 c0b2156997b9680e37388d3e01c730bb130f2ba65b7b20be7c1d77819dda2f24  0001-slirp-add-slirp_initx-SlirpConfig-SlirpCb-void.patch
