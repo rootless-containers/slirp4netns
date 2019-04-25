@@ -26,23 +26,33 @@
 #define DEFAULT_VDHCPSTART_OFFSET (15)	// 10.0.2.15
 #define DEFAULT_VNAMESERVER_OFFSET (3)	// 10.0.2.3
 #define DEFAULT_RECOMMENDED_VGUEST_OFFSET (100)	// 10.0.2.100
+#define DEFAULT_NETNS_TYPE ("pid")
 #define NETWORK_PREFIX_MIN (1)
 // >=26 is not supported because the recommended guest IP is set to network addr + 100 .
 #define NETWORK_PREFIX_MAX (25)
 
-static int nsenter(pid_t target_pid)
+static int nsenter(pid_t target_pid, char *netns, char *userns)
 {
-	char userns[32], netns[32];
 	int usernsfd, netnsfd;
-	snprintf(userns, sizeof(userns), "/proc/%d/ns/user", target_pid);
-	snprintf(netns, sizeof(netns), "/proc/%d/ns/net", target_pid);
-	if ((usernsfd = open(userns, O_RDONLY)) < 0) {
-		perror(userns);
-		return usernsfd;
+	if (!netns) {
+		if (asprintf(&netns, "/proc/%d/ns/net", target_pid) < 0) {
+			perror("cannot get netns path");
+			return -1;
+		}
+	}
+	if (!userns) {
+		if (asprintf(&userns, "/proc/%d/ns/user", target_pid) < 0) {
+			perror("cannot get userns path");
+			return -1;
+		}
 	}
 	if ((netnsfd = open(netns, O_RDONLY)) < 0) {
 		perror(netns);
 		return netnsfd;
+	}
+	if ((usernsfd = open(userns, O_RDONLY)) < 0) {
+		perror(userns);
+		return usernsfd;
 	}
 	setns(usernsfd, CLONE_NEWUSER);
 	if (setns(netnsfd, CLONE_NEWNET) < 0) {
@@ -51,6 +61,8 @@ static int nsenter(pid_t target_pid)
 	}
 	close(usernsfd);
 	close(netnsfd);
+	free(netns);
+	free(userns);
 	return 0;
 }
 
@@ -165,11 +177,11 @@ static int configure_network(const char *tapname, struct slirp4netns_config *cfg
 	return 0;
 }
 
-static int child(int sock, pid_t target_pid, bool do_config_network, const char *tapname, int ready_fd,
+static int child(int sock, pid_t target_pid, bool do_config_network, const char *tapname, int ready_fd, char *netns_path, char *userns_path,
 		 struct slirp4netns_config *cfg)
 {
 	int rc, tapfd;
-	if ((rc = nsenter(target_pid)) < 0) {
+	if ((rc = nsenter(target_pid, netns_path, userns_path)) < 0) {
 		return rc;
 	}
 	if ((tapfd = open_tap(tapname)) < 0) {
@@ -261,7 +273,7 @@ static int parent(int sock, int exit_fd, const char *api_socket, struct slirp4ne
 
 static void usage(const char *argv0)
 {
-	printf("Usage: %s [OPTION]... PID TAPNAME\n", argv0);
+	printf("Usage: %s [OPTION]... PID|PATH TAPNAME\n", argv0);
 	printf("User-mode networking for unprivileged network namespaces.\n\n");
 	printf("-c, --configure          bring up the interface\n");
 	printf("-e, --exit-fd=FD         specify the FD for terminating slirp4netns\n");
@@ -269,6 +281,8 @@ static void usage(const char *argv0)
 	printf("-m, --mtu=MTU            specify MTU (default=%d, max=65521)\n", DEFAULT_MTU);
 	printf("--cidr=CIDR              specify network address CIDR (default=%s)\n", DEFAULT_CIDR);
 	printf("--disable-host-loopback  prohibit connecting to 127.0.0.1:* on the host namespace\n");
+	printf("--netns-type=TYPE 	 specify network namespace type ([path|pid], default=%s)\n", DEFAULT_NETNS_TYPE);
+	printf("--userns-path=PATH	 specify user namespace path\n");
 	printf("-a, --api-socket=PATH    specify API socket path\n");
 	printf("-6, --enable-ipv6        enable IPv6 (experimental)\n");
 	printf("-h, --help               show this help and exit\n");
@@ -295,6 +309,9 @@ struct options {
 	char *cidr;		// --cidr
 	bool enable_ipv6;	// -6
 	char *api_socket;	// -a
+	char *netns_type;	// argv[1]
+	char *netns_path;	// --netns-path
+	char *userns_path;	// --userns-path
 };
 
 static void options_init(struct options *options)
@@ -318,6 +335,12 @@ static void options_destroy(struct options *options)
 		free(options->api_socket);
 		options->api_socket = NULL;
 	}
+	if (options->netns_type != NULL) {
+		free(options->netns_type);
+		options->netns_type = NULL;
+	}
+	// options->netns_path and options->userns_path are
+	// getting freed in the nsenter function
 	// options itself is not freed, because it can be on the stack.
 }
 
@@ -329,6 +352,8 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 	int opt;
 #define CIDR -42
 #define DISABLE_HOST_LOOPBACK -43
+#define NETNS_TYPE -44
+#define USERNS_PATH -45
 #define _DEPRECATED_NO_HOST_LOOPBACK -10043	// deprecated in favor of disable-host-loopback
 	const struct option longopts[] = {
 		{"configure", no_argument, NULL, 'c'},
@@ -338,6 +363,8 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 		{"cidr", required_argument, NULL, CIDR},
 		{"disable-host-loopback", no_argument, NULL, DISABLE_HOST_LOOPBACK},
 		{"no-host-loopback", no_argument, NULL, _DEPRECATED_NO_HOST_LOOPBACK},
+		{"netns-type", required_argument, NULL, NETNS_TYPE},
+		{"userns-path", required_argument, NULL, USERNS_PATH},
 		{"api-socket", required_argument, NULL, 'a'},
 		{"enable-ipv6", no_argument, NULL, '6'},
 		{"help", no_argument, NULL, 'h'},
@@ -389,6 +416,17 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 		case DISABLE_HOST_LOOPBACK:
 			options->disable_host_loopback = true;
 			break;
+		case NETNS_TYPE:
+			options->netns_type = strdup(optarg);
+			break;
+		case USERNS_PATH:
+			options->userns_path = strdup(optarg);
+			if (access(options->userns_path, F_OK) == -1) {
+				fprintf(stderr, "userns path doesn't exist: %s\n", options->userns_path);
+				usage(argv[0]);
+				exit(EXIT_FAILURE);
+			}
+			break;
 		case 'a':
 			options->api_socket = strdup(optarg);
 			break;
@@ -409,6 +447,8 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 	}
 #undef CIDR
 #undef DISABLE_HOST_LOOPBACK
+#undef NETNS_TYPE
+#undef USERNS_PATH
 #undef _DEPRECATED_NO_HOST_LOOPBACK
 	if (options->ready_fd >= 0 && !options->do_config_network) {
 		fprintf(stderr, "the option -r FD requires -c\n");
@@ -422,12 +462,21 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 		usage(argv[0]);
 		exit(EXIT_FAILURE);
 	}
-	errno = 0;
-	options->target_pid = strtol(argv[optind], NULL, 10);
-	if (errno != 0) {
-		perror("strtol");
-		usage(argv[0]);
-		exit(EXIT_FAILURE);
+	if (!options->netns_type || strcmp(options->netns_type, DEFAULT_NETNS_TYPE) == 0) {
+		errno = 0;
+		options->target_pid = strtol(argv[optind], NULL, 10);
+		if (errno != 0) {
+			perror("strtol");
+			usage(argv[0]);
+			exit(EXIT_FAILURE);
+		}
+	} else {
+		options->netns_path = strdup(argv[optind]);
+		if (access(options->netns_path, F_OK) == -1) {
+			perror("existing path expected when --netns-type=path");
+			usage(argv[0]);
+			exit(EXIT_FAILURE);
+		}
 	}
 	options->tapname = strdup(argv[optind + 1]);
 }
@@ -555,7 +604,7 @@ int main(int argc, char *const argv[])
 		goto finish;
 	}
 	if (child_pid == 0) {
-		if (child(sv[1], options.target_pid, options.do_config_network, options.tapname, options.ready_fd,
+		if (child(sv[1], options.target_pid, options.do_config_network, options.tapname, options.ready_fd, options.netns_path, options.userns_path,
 			  &slirp4netns_config) < 0) {
 			exit_status = EXIT_FAILURE;
 			goto finish;

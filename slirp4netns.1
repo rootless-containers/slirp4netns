@@ -1,4 +1,3 @@
-.nh
 .TH SLIRP4NETNS 1 "July 2018" "Rootless Containers" "User Commands"
 
 .SH NAME
@@ -8,7 +7,7 @@ slirp4netns \- User\-mode networking for unprivileged network namespaces
 
 .SH SYNOPSIS
 .PP
-slirp4netns [OPTION]... PID TAPNAME
+slirp4netns [OPTION]... PID|PATH TAPNAME
 
 
 .SH DESCRIPTION
@@ -20,8 +19,6 @@ Unlike \fBveth\fP(4), slirp4netns does not require the root privileges on the ho
 
 .PP
 Default configuration:
-
-.RS
 .IP \(bu 2
 MTU:               1500
 .IP \(bu 2
@@ -36,8 +33,6 @@ IPv6 CIDR:         fd00::/64
 IPv6 Gateway/Host: fd00::2
 .IP \(bu 2
 IPv6 DNS:          fd00::3
-
-.RE
 
 
 .SH OPTIONS
@@ -72,6 +67,14 @@ API socket path
 .PP
 \fB\-6\fP, \fB\-\-enable\-ipv6\fP
 enable IPv6 (experimental).
+
+.PP
+\fB\-\-netns\-type=TYPE\fP
+specify network namespace type ([path|pid], default=pid)
+
+.PP
+\fB\-\-userns\-path=PATH\fP
+specify user namespace path
 
 .PP
 \fB\-h\fP, \fB\-\-help\fP
@@ -265,8 +268,6 @@ $ echo \-n $json | nc \-U /tmp/slirp4netns.sock
 
 .PP
 Remarks:
-
-.RS
 .IP \(bu 2
 Client needs to \fBshutdown\fP the socket with \fBSHUT\_WR\fP after sending every request.
 i.e. No support for keep\-alive and timeout.
@@ -277,6 +278,33 @@ A request must be less than 4095 bytes.
 .IP \(bu 2
 JSON responses may contain \fBerror\fP instead of \fBreturn\fP\&.
 
+
+.SH DEFINED NAMESPACE PATHS
+.PP
+A user can define a network namespace path as opposed to the default process ID:
+
+.PP
+.RS
+
+.nf
+$ slirp4netns \-\-netns\-type=path ... /path/to/netns tap0
+
+.fi
+.RE
+
+.PP
+Currently, the \fBnetns\-type=TYPE\fP argument supports \fBpath\fP or \fBpid\fP args with the default being \fBpid\fP\&.
+
+.PP
+Additionally, a \fB\-\-userns\-path=PATH\fP argument can be included to override any user namespace path defaults
+
+.PP
+.RS
+
+.nf
+$ slirp4netns \-\-netns\-type=path \-\-userns\-path=/path/to/userns /path/to/netns tap0
+
+.fi
 .RE
 
 
@@ -287,4 +315,5 @@ JSON responses may contain \fBerror\fP instead of \fBreturn\fP\&.
 
 .SH AVAILABILITY
 .PP
-The slirp4netns command is available from \fBhttps://github.com/rootless\-containers/slirp4netns\fP under GNU GENERAL PUBLIC LICENSE Version 2.
+The slirp4netns command is available from \fB
+\[la]https://github.com/rootless-containers/slirp4netns\[ra]\fP under GNU GENERAL PUBLIC LICENSE Version 2.

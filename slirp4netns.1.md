@@ -7,7 +7,7 @@ slirp4netns - User-mode networking for unprivileged network namespaces
 
 # SYNOPSIS
 
-slirp4netns [OPTION]... PID TAPNAME
+slirp4netns [OPTION]... PID|PATH TAPNAME
 
 # DESCRIPTION
 
@@ -50,6 +50,12 @@ API socket path
 
 **-6**, **--enable-ipv6**
 enable IPv6 (experimental).
+
+**--netns-type=TYPE**
+specify network namespace type ([path|pid], default=pid)
+
+**--userns-path=PATH**
+specify user namespace path
 
 **-h**, **--help**
 show help and exit
@@ -177,6 +183,19 @@ Remarks:
 * slirp4netns "stops the world" during processing API requests.
 * A request must be less than 4095 bytes.
 * JSON responses may contain **error** instead of **return**.
+
+# DEFINED NAMESPACE PATHS 
+A user can define a network namespace path as opposed to the default process ID:
+
+```console
+$ slirp4netns --netns-type=path ... /path/to/netns tap0
+```
+Currently, the **netns-type=TYPE** argument supports **path** or **pid** args with the default being **pid**.
+
+Additionally, a **--userns-path=PATH** argument can be included to override any user namespace path defaults
+```console
+$ slirp4netns --netns-type=path --userns-path=/path/to/userns /path/to/netns tap0
+```
 
 # SEE ALSO
 
