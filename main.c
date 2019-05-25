@@ -33,14 +33,14 @@
 
 static int nsenter(pid_t target_pid, char *netns, char *userns)
 {
-	int usernsfd, netnsfd;
+	int usernsfd = -1, netnsfd;
 	if (!netns) {
 		if (asprintf(&netns, "/proc/%d/ns/net", target_pid) < 0) {
 			perror("cannot get netns path");
 			return -1;
 		}
 	}
-	if (!userns) {
+	if (!userns && target_pid) {
 		if (asprintf(&userns, "/proc/%d/ns/user", target_pid) < 0) {
 			perror("cannot get userns path");
 			return -1;
@@ -50,16 +50,19 @@ static int nsenter(pid_t target_pid, char *netns, char *userns)
 		perror(netns);
 		return netnsfd;
 	}
-	if ((usernsfd = open(userns, O_RDONLY)) < 0) {
+	if (userns && (usernsfd = open(userns, O_RDONLY)) < 0) {
 		perror(userns);
 		return usernsfd;
 	}
-	setns(usernsfd, CLONE_NEWUSER);
+
+	if (usernsfd != -1) {
+		setns(usernsfd, CLONE_NEWUSER);
+		close(usernsfd);
+	}
 	if (setns(netnsfd, CLONE_NEWNET) < 0) {
 		perror("setns(CLONE_NEWNET)");
 		return -1;
 	}
-	close(usernsfd);
 	close(netnsfd);
 	free(netns);
 	free(userns);
