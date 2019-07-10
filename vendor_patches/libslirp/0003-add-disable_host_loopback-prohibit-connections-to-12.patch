@@ -1,0 +1,186 @@
+From 18abf482f7e9d82a11a9e675bbc5de1987b2ee40 Mon Sep 17 00:00:00 2001
+From: Akihiro Suda <akihiro.suda.cz@hco.ntt.co.jp>
+Date: Wed, 10 Jul 2019 15:16:58 +0900
+Subject: [PATCH 3/3] add disable_host_loopback (prohibit connections to
+ 127.0.0.1)
+
+From https://github.com/rootless-containers/slirp4netns/blob/4889f5299f407d7d7566c76a3b8b5f71c99b6db5/qemu_patches/0003-slirp-add-disable_host_loopback-prohibit-connections.patch
+
+Original commits:
+* https://github.com/rootless-containers/slirp4netns/commit/6325473781bb344c225f54e2d28800fb0619d7ee
+* https://github.com/rootless-containers/slirp4netns/commit/13b24026867d4c30d5d1465ac82e3bb890bf4caa
+
+Signed-off-by: Akihiro Suda <akihiro.suda.cz@hco.ntt.co.jp>
+---
+ src/ip_icmp.c  |  6 +++++-
+ src/libslirp.h |  2 ++
+ src/slirp.c    |  1 +
+ src/slirp.h    |  2 ++
+ src/socket.c   | 30 ++++++++++++++++++++----------
+ src/socket.h   |  2 +-
+ src/tcp_subr.c |  4 +++-
+ 7 files changed, 34 insertions(+), 13 deletions(-)
+
+diff --git a/src/ip_icmp.c b/src/ip_icmp.c
+index 7590cff..5f96f54 100644
+--- a/src/ip_icmp.c
++++ b/src/ip_icmp.c
+@@ -190,7 +190,11 @@ void icmp_input(struct mbuf *m, int hlen)
+ 
+             /* Send the packet */
+             addr = so->fhost.ss;
+-            sotranslate_out(so, &addr);
++            if (sotranslate_out(so, &addr) < 0) {
++                icmp_send_error(m, ICMP_UNREACH, ICMP_UNREACH_NET, 0,
++                                strerror(errno));
++                udp_detach(so);
++            }
+ 
+             if (sendto(so->s, icmp_ping_msg, strlen(icmp_ping_msg), 0,
+                        (struct sockaddr *)&addr, sockaddr_size(&addr)) == -1) {
+diff --git a/src/libslirp.h b/src/libslirp.h
+index 6ab9bfd..33cd479 100644
+--- a/src/libslirp.h
++++ b/src/libslirp.h
+@@ -89,6 +89,8 @@ typedef struct SlirpConfig {
+     int if_mtu;
+     /* Default: IF_MRU_DEFAULT */
+     int if_mru;
++    /* Prohibit connecting to 127.0.0.1:* */
++    bool disable_host_loopback;
+ } SlirpConfig;
+ 
+ Slirp *slirp_initx(const SlirpConfig *cfg, const SlirpCb *callbacks,
+diff --git a/src/slirp.c b/src/slirp.c
+index 84fd0b8..ab636ac 100644
+--- a/src/slirp.c
++++ b/src/slirp.c
+@@ -323,6 +323,7 @@ Slirp *slirp_initx(const SlirpConfig *cfg, const SlirpCb *callbacks,
+     }
+     slirp->if_mtu = cfg->if_mtu == 0 ? IF_MTU_DEFAULT : cfg->if_mtu;
+     slirp->if_mru = cfg->if_mru == 0 ? IF_MRU_DEFAULT : cfg->if_mru;
++    slirp->disable_host_loopback = cfg->disable_host_loopback;
+ 
+     return slirp;
+ }
+diff --git a/src/slirp.h b/src/slirp.h
+index 5fbee5c..ea8e8c5 100644
+--- a/src/slirp.h
++++ b/src/slirp.h
+@@ -147,6 +147,8 @@ struct Slirp {
+     int if_mtu;
+     int if_mru;
+ 
++    bool disable_host_loopback;
++
+     /* mbuf states */
+     struct quehead m_freelist;
+     struct quehead m_usedlist;
+diff --git a/src/socket.c b/src/socket.c
+index 34daffc..d96d8c4 100644
+--- a/src/socket.c
++++ b/src/socket.c
+@@ -657,7 +657,9 @@ int sosendto(struct socket *so, struct mbuf *m)
+ 
+     addr = so->fhost.ss;
+     DEBUG_CALL(" sendto()ing)");
+-    sotranslate_out(so, &addr);
++    if (sotranslate_out(so, &addr) < 0) {
++        return -1;
++    }
+ 
+     /* Don't care what port we get */
+     ret = sendto(so->s, m->m_data, m->m_len, 0, (struct sockaddr *)&addr,
+@@ -818,8 +820,9 @@ void sofwdrain(struct socket *so)
+ /*
+  * Translate addr in host addr when it is a virtual address
+  */
+-void sotranslate_out(struct socket *so, struct sockaddr_storage *addr)
++int sotranslate_out(struct socket *so, struct sockaddr_storage *addr)
+ {
++    int rc = 0;
+     Slirp *slirp = so->slirp;
+     struct sockaddr_in *sin = (struct sockaddr_in *)addr;
+     struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)addr;
+@@ -830,18 +833,19 @@ void sotranslate_out(struct socket *so, struct sockaddr_storage *addr)
+             slirp->vnetwork_addr.s_addr) {
+             /* It's an alias */
+             if (so->so_faddr.s_addr == slirp->vnameserver_addr.s_addr) {
+-                if (get_dns_addr(&sin->sin_addr) < 0) {
+-                    sin->sin_addr = loopback_addr;
++                if (get_dns_addr(&sin->sin_addr) >= 0) {
++                    goto ret;
+                 }
++            }
++            if (slirp->disable_host_loopback) {
++                rc = -1;
++                errno = EPERM;
++                goto ret;
+             } else {
+                 sin->sin_addr = loopback_addr;
+             }
+         }
+-
+-        DEBUG_MISC(" addr.sin_port=%d, addr.sin_addr.s_addr=%.16s",
+-                   ntohs(sin->sin_port), inet_ntoa(sin->sin_addr));
+         break;
+-
+     case AF_INET6:
+         if (in6_equal_net(&so->so_faddr6, &slirp->vprefix_addr6,
+                           slirp->vprefix_len)) {
+@@ -849,9 +853,13 @@ void sotranslate_out(struct socket *so, struct sockaddr_storage *addr)
+                 uint32_t scope_id;
+                 if (get_dns6_addr(&sin6->sin6_addr, &scope_id) >= 0) {
+                     sin6->sin6_scope_id = scope_id;
+-                } else {
+-                    sin6->sin6_addr = in6addr_loopback;
++                    goto ret;
+                 }
++            }
++            if (slirp->disable_host_loopback) {
++                rc = -1;
++                errno = EPERM;
++                goto ret;
+             } else {
+                 sin6->sin6_addr = in6addr_loopback;
+             }
+@@ -861,6 +869,8 @@ void sotranslate_out(struct socket *so, struct sockaddr_storage *addr)
+     default:
+         break;
+     }
++ret:
++    return rc;
+ }
+ 
+ void sotranslate_in(struct socket *so, struct sockaddr_storage *addr)
+diff --git a/src/socket.h b/src/socket.h
+index d07f56d..a6a1e5e 100644
+--- a/src/socket.h
++++ b/src/socket.h
+@@ -155,7 +155,7 @@ struct iovec; /* For win32 */
+ size_t sopreprbuf(struct socket *so, struct iovec *iov, int *np);
+ int soreadbuf(struct socket *so, const char *buf, int size);
+ 
+-void sotranslate_out(struct socket *, struct sockaddr_storage *);
++int sotranslate_out(struct socket *, struct sockaddr_storage *);
+ void sotranslate_in(struct socket *, struct sockaddr_storage *);
+ void sotranslate_accept(struct socket *);
+ void sodrop(struct socket *, int num);
+diff --git a/src/tcp_subr.c b/src/tcp_subr.c
+index c5d7389..dc03ad6 100644
+--- a/src/tcp_subr.c
++++ b/src/tcp_subr.c
+@@ -420,7 +420,9 @@ int tcp_fconnect(struct socket *so, unsigned short af)
+ 
+         addr = so->fhost.ss;
+         DEBUG_CALL(" connect()ing");
+-        sotranslate_out(so, &addr);
++        if (sotranslate_out(so, &addr) < 0) {
++            return -1;
++        }
+ 
+         /* We don't care what port we get */
+         ret = connect(s, (struct sockaddr *)&addr, sockaddr_size(&addr));
+-- 
+2.20.1
+

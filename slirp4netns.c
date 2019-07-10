@@ -7,7 +7,7 @@
 
 #include <glib.h>
 
-#include "qemu/slirp/src/libslirp.h"
+#include "vendor/libslirp/src/libslirp.h"
 #include "api.h"
 #include "slirp4netns.h"
 
