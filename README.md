@@ -171,6 +171,4 @@ slirp4netns is faster than [vde_plug](https://github.com/rd235/vdeplug_slirp) an
 The latest revision of slirp4netns is regularly benchmarked (`make benchmark`) on Travis: https://travis-ci.org/rootless-containers/slirp4netns
 
 ## Acknowledgement
-
-* The files under [`qemu`](./qemu) directory were forked from [QEMU](https://github.com/qemu/qemu) with the patches under [`qemu_patches`](./qemu_patches) directory.
-* The files under [`parson`](./parson) directory were copied from [kgabis/parson](https://github.com/kgabis/parson/commit/0a1896939faff5f69e179637fc49f678ff0128ba) without any modification.
+See [`vendor/README.md`](./vendor/README.md).
