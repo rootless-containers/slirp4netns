@@ -24,7 +24,7 @@ git clone $LIBSLIRP_REPO $tmp_git/libslirp
 	# run make to generate src/libslirp-version.h
 	make
 	mkdir -p $tmp_vendor/libslirp/src
-	cp -a COPYRIGHT README.md $tmp_vendor/libslirp
+	cp -a .clang-format COPYRIGHT README.md $tmp_vendor/libslirp
 	cp -a src/{*.c,*.h} $tmp_vendor/libslirp/src
 )
 
