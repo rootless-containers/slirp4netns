@@ -4,8 +4,8 @@ set -eux -o pipefail
 LIBSLIRP_COMMIT=113a219a69adc730ffa860c3f432049f8aa8f714
 LIBSLIRP_REPO=https://gitlab.freedesktop.org/slirp/libslirp.git
 
-# May 14, 2019
-PARSON_COMMIT=33e5519d0ae68784c91c92af2f48a5b07dc14490
+# Jul 12, 2019
+PARSON_COMMIT=c5bb9557fe98367aa8e041c65863909f12ee76b2
 PARSON_REPO=https://github.com/kgabis/parson.git
 
 # prepare

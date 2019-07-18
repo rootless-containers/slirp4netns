@@ -2,7 +2,7 @@
 
 Vendored components:
 * libslirp: https://gitlab.freedesktop.org/slirp/libslirp.git (`113a219a69adc730ffa860c3f432049f8aa8f714`)
-* parson: https://github.com/kgabis/parson.git (`33e5519d0ae68784c91c92af2f48a5b07dc14490`)
+* parson: https://github.com/kgabis/parson.git (`c5bb9557fe98367aa8e041c65863909f12ee76b2`)
 
 Applied patches (sha256sum):
 ```
