@@ -100,6 +100,8 @@ generate-man:
 
 CLANGTIDY = clang-tidy -warnings-as-errors='*'
 
+CLANGFORMAT = clang-format
+
 lint:
 	$(CLANGTIDY) $(slirp4netns_SOURCES) -- $(AM_CFLAGS)
 
@@ -107,16 +109,7 @@ lint-full:
 	$(CLANGTIDY) $(slirp4netns_SOURCES) $(libslirp_a_SOURCES) $(libparson_a_SOURCES) -- $(AM_CFLAGS)
 
 indent:
-# indent(1): "You must use the ‘-T’ option to tell indent the name of all the typenames in your program that are defined by typedef."
-	indent -linux -l120 \
-		-T ssize_t -T pid_t \
-		-T GArray -T GList -T GSList -T GPollFD -T gpointer -T gconstpointer \
-		-T Slirp -T SlirpCb -T SlirpConfig -T SlirpTimerCb \
-		-T JSON_Object -T JSON_Value \
-		-T regex_t -T regmatch_t \
-		$(slirp4netns_SOURCES)
-	$(RM) *.c~
-
+	$(CLANGFORMAT) -i $(slirp4netns_SOURCES)
 
 benchmark:
 	benchmarks/benchmark-iperf3.sh
