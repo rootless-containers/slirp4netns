@@ -1,3 +1,4 @@
+.nh
 .TH SLIRP4NETNS 1 "July 2018" "Rootless Containers" "User Commands"
 
 .SH NAME
@@ -19,6 +20,8 @@ Unlike \fBveth\fP(4), slirp4netns does not require the root privileges on the ho
 
 .PP
 Default configuration:
+
+.RS
 .IP \(bu 2
 MTU:               1500
 .IP \(bu 2
@@ -34,6 +37,8 @@ IPv6 Gateway/Host: fd00::2
 .IP \(bu 2
 IPv6 DNS:          fd00::3
 
+.RE
+
 
 .SH OPTIONS
 .PP
@@ -46,7 +51,9 @@ specify the FD for terminating slirp4netns.
 
 .PP
 \fB\-r\fP, \fB\-\-ready\-fd=FD\fP
-specify the FD to write to when the network is configured.
+specify the FD to write to when the initialization steps are finished.
+Prior to v0.4.0, the FD was written after the network configuration (\fB\-c\fP)
+but before the API socket configuration (\fB\-a\fP).
 
 .PP
 \fB\-m\fP, \fB\-\-mtu=MTU\fP
@@ -268,6 +275,8 @@ $ echo \-n $json | nc \-U /tmp/slirp4netns.sock
 
 .PP
 Remarks:
+
+.RS
 .IP \(bu 2
 Client needs to \fBshutdown\fP the socket with \fBSHUT\_WR\fP after sending every request.
 i.e. No support for keep\-alive and timeout.
@@ -277,6 +286,8 @@ slirp4netns "stops the world" during processing API requests.
 A request must be less than 4095 bytes.
 .IP \(bu 2
 JSON responses may contain \fBerror\fP instead of \fBreturn\fP\&.
+
+.RE
 
 
 .SH DEFINED NAMESPACE PATHS
@@ -315,5 +326,4 @@ $ slirp4netns \-\-netns\-type=path \-\-userns\-path=/path/to/userns /path/to/net
 
 .SH AVAILABILITY
 .PP
-The slirp4netns command is available from \fB
-\[la]https://github.com/rootless-containers/slirp4netns\[ra]\fP under GNU GENERAL PUBLIC LICENSE Version 2.
+The slirp4netns command is available from \fBhttps://github.com/rootless\-containers/slirp4netns\fP under GNU GENERAL PUBLIC LICENSE Version 2.

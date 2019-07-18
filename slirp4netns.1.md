@@ -34,7 +34,9 @@ bring up the interface. IP will be set to 10.0.2.100 (network address + 100) by 
 specify the FD for terminating slirp4netns.
 
 **-r**, **--ready-fd=FD**
-specify the FD to write to when the network is configured.
+specify the FD to write to when the initialization steps are finished.
+Prior to v0.4.0, the FD was written after the network configuration (**-c**)
+but before the API socket configuration (**-a**).
 
 **-m**, **--mtu=MTU**
 specify MTU (max=65521).

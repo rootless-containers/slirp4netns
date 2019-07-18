@@ -13,6 +13,6 @@ struct slirp4netns_config {
 	bool enable_ipv6;
 	bool disable_host_loopback;
 };
-int do_slirp(int tapfd, int exitfd, const char *api_socket, struct slirp4netns_config *cfg);
+int do_slirp(int tapfd, int readyfd, int exitfd, const char *api_socket, struct slirp4netns_config *cfg);
 
 #endif

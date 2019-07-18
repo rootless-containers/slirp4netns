@@ -183,8 +183,8 @@ static int configure_network(const char *tapname,
 }
 
 static int child(int sock, pid_t target_pid, bool do_config_network,
-                 const char *tapname, int ready_fd, char *netns_path,
-                 char *userns_path, struct slirp4netns_config *cfg)
+                 const char *tapname, char *netns_path, char *userns_path,
+                 struct slirp4netns_config *cfg)
 {
     int rc, tapfd;
     if ((rc = nsenter(target_pid, netns_path, userns_path)) < 0) {
@@ -195,12 +195,6 @@ static int child(int sock, pid_t target_pid, bool do_config_network,
     }
     if (do_config_network && configure_network(tapname, cfg) < 0) {
         return -1;
-    }
-    if (ready_fd >= 0) {
-        do
-            rc = write(ready_fd, "1", 1);
-        while (rc < 0 && errno == EINTR);
-        close(ready_fd);
     }
     if (sendfd(sock, tapfd) < 0) {
         close(tapfd);
@@ -245,7 +239,7 @@ static int recvfd(int sock)
     return fd;
 }
 
-static int parent(int sock, int exit_fd, const char *api_socket,
+static int parent(int sock, int ready_fd, int exit_fd, const char *api_socket,
                   struct slirp4netns_config *cfg)
 {
     int rc, tapfd;
@@ -270,7 +264,7 @@ static int parent(int sock, int exit_fd, const char *api_socket,
             "--disable-host-loopback to prohibit connecting to 127.0.0.1:*)\n",
             inet_ntoa(cfg->vhost));
     }
-    if ((rc = do_slirp(tapfd, exit_fd, api_socket, cfg)) < 0) {
+    if ((rc = do_slirp(tapfd, ready_fd, exit_fd, api_socket, cfg)) < 0) {
         fprintf(stderr, "do_slirp failed\n");
         close(tapfd);
         return rc;
@@ -470,10 +464,6 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 #undef NETNS_TYPE
 #undef USERNS_PATH
 #undef _DEPRECATED_NO_HOST_LOOPBACK
-    if (options->ready_fd >= 0 && !options->do_config_network) {
-        fprintf(stderr, "the option -r FD requires -c\n");
-        exit(EXIT_FAILURE);
-    }
     if (options->mtu == 0 || options->mtu > 65521) {
         fprintf(stderr, "MTU must be a positive integer (< 65522)\n");
         exit(EXIT_FAILURE);
@@ -637,8 +627,8 @@ int main(int argc, char *const argv[])
     }
     if (child_pid == 0) {
         if (child(sv[1], options.target_pid, options.do_config_network,
-                  options.tapname, options.ready_fd, options.netns_path,
-                  options.userns_path, &slirp4netns_config) < 0) {
+                  options.tapname, options.netns_path, options.userns_path,
+                  &slirp4netns_config) < 0) {
             exit_status = EXIT_FAILURE;
             goto finish;
         }
@@ -656,7 +646,7 @@ int main(int argc, char *const argv[])
             exit_status = child_status;
             goto finish;
         }
-        if (parent(sv[0], options.exit_fd, options.api_socket,
+        if (parent(sv[0], options.ready_fd, options.exit_fd, options.api_socket,
                    &slirp4netns_config) < 0) {
             fprintf(stderr, "parent failed\n");
             exit_status = EXIT_FAILURE;

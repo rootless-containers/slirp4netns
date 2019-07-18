@@ -275,7 +275,7 @@ Slirp *create_slirp(void *opaque, struct slirp4netns_config *s4nn)
 
 #define ETH_BUF_SIZE (65536)
 
-int do_slirp(int tapfd, int exitfd, const char *api_socket,
+int do_slirp(int tapfd, int readyfd, int exitfd, const char *api_socket,
              struct slirp4netns_config *cfg)
 {
     int ret = -1;
@@ -325,6 +325,13 @@ int do_slirp(int tapfd, int exitfd, const char *api_socket,
         pollfds_apifd_idx = n_fds - 1;
     }
     signal(SIGPIPE, SIG_IGN);
+    if (readyfd >= 0) {
+        int rc = -1;
+        do
+            rc = write(readyfd, "1", 1);
+        while (rc < 0 && errno == EINTR);
+        close(readyfd);
+    }
     while (1) {
         int pollout;
         GPollFD *pollfds_data;
