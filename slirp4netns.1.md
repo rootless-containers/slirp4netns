@@ -53,10 +53,10 @@ API socket path
 **-6**, **--enable-ipv6**
 enable IPv6 (experimental).
 
-**--netns-type=TYPE**
+**--netns-type=TYPE** (since v0.4.0)
 specify network namespace type ([path|pid], default=pid)
 
-**--userns-path=PATH**
+**--userns-path=PATH** (since v0.4.0)
 specify user namespace path
 
 **-h**, **--help**
