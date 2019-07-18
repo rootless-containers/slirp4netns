@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 #define _GNU_SOURCE
 #include "config.h"
 #include <stdio.h>

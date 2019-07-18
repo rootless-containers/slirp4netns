@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 #define _GNU_SOURCE
 #include <errno.h>
 #include <signal.h>
@@ -80,7 +81,8 @@ static void libslirp_register_poll_fd(int fd, void *opaque)
     /*
      * NOP
      *
-     * This is NOP on QEMU upstream on Linux as well, see:
+     * This is NOP on QEMU@4c76137484878f42a2ce1ae1b888b6a7f66b4053 on Linux as
+     * well, see:
      *  * qemu/net/slirp.c:          net_slirp_register_poll_fd (calls
      * qemu_fd_register)
      *  * qemu/stubs/fd-register.c:  qemu_fd_register (NOP on Linux)
@@ -96,7 +98,8 @@ static void libslirp_unregister_poll_fd(int fd, void *opaque)
     /*
      * NOP
      *
-     * This is NOP on QEMU upstream as well, see:
+     * This is NOP on QEMU@4c76137484878f42a2ce1ae1b888b6a7f66b4053 as well,
+     * see:
      *  * qemu/net/slirp.c:          net_slirp_unregister_poll_fd (NOP)
      */
 }
@@ -107,7 +110,8 @@ static void libslirp_notify(void *opaque)
     /*
      * NOP
      *
-     * This can be NOP on QEMU upstream as well, see:
+     * This can be NOP on QEMU@4c76137484878f42a2ce1ae1b888b6a7f66b4053 as well,
+     * see:
      *  * qemu/net/slirp.c:          net_slirp_notify (calls qemu_notify_event)
      *  * qemu/stubs/notify-event.c: qemu_notify_event (NOP)
      *
@@ -141,6 +145,7 @@ static int libslirp_poll_to_gio(int events)
 /*
  * implements SlirpAddPollCb used in slirp_pollfds_fill.
  * originally from qemu/net/slirp.c:net_slirp_add_poll
+ * (4c76137484878f42a2ce1ae1b888b6a7f66b4053)
  */
 static int libslirp_add_poll(int fd, int events, void *opaque)
 {
@@ -178,6 +183,7 @@ static int libslirp_gio_to_poll(int events)
 /*
  * implements SlirpGetREventsCB used in slirp_pollfds_poll
  * originally from qemu/net/slirp.c:net_slirp_get_revents
+ * (4c76137484878f42a2ce1ae1b888b6a7f66b4053)
  */
 static int libslirp_get_revents(int idx, void *opaque)
 {

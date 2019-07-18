@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 #ifndef SLIRP4NETNS_H
 # define SLIRP4NETNS_H
 #include <arpa/inet.h>

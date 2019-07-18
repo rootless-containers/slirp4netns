@@ -172,3 +172,6 @@ The latest revision of slirp4netns is regularly benchmarked (`make benchmark`) o
 
 ## Acknowledgement
 See [`vendor/README.md`](./vendor/README.md).
+
+## License
+[GPL-2.0-or-later](COPYING)
