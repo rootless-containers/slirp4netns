@@ -130,6 +130,16 @@ static int configure_network(const char *tapname,
         return -1;
     }
 
+    // set loopback device to UP
+    struct ifreq ifr_lo = {
+	    .ifr_name = "lo",
+	    .ifr_flags = IFF_UP | IFF_RUNNING
+    };
+    if (ioctl(sockfd, SIOCSIFFLAGS, &ifr_lo) < 0) {
+        perror("cannot set device up");
+        return -1;
+    }
+
     memset(&ifr, 0, sizeof(ifr));
     ifr.ifr_flags = IFF_UP | IFF_RUNNING;
     strncpy(ifr.ifr_name, tapname, sizeof(ifr.ifr_name) - 1);
