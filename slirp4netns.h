@@ -13,6 +13,7 @@ struct slirp4netns_config {
 	struct in_addr recommended_vguest; // 10.0.2.100 (slirp itself is unaware of vguest)
 	bool enable_ipv6;
 	bool disable_host_loopback;
+	bool create_sandbox;
 };
 int do_slirp(int tapfd, int readyfd, int exitfd, const char *api_socket, struct slirp4netns_config *cfg);
 
