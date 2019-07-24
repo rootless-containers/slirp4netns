@@ -634,10 +634,12 @@ int main(int argc, char *const argv[])
             goto finish;
         }
     } else {
-        int child_wstatus, child_status;
-        waitpid(child_pid, &child_wstatus, 0);
-        if (!WIFEXITED(child_wstatus)) {
-            fprintf(stderr, "child failed\n");
+        int ret, child_wstatus, child_status;
+        do
+            ret = waitpid(child_pid, &child_wstatus, 0);
+        while (ret < 0 && errno == EINTR);
+        if (ret < 0) {
+            fprintf(stderr, "waitpid failed\n");
             exit_status = EXIT_FAILURE;
             goto finish;
         }
