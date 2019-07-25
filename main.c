@@ -132,10 +132,8 @@ static int configure_network(const char *tapname,
     }
 
     // set loopback device to UP
-    struct ifreq ifr_lo = {
-	    .ifr_name = "lo",
-	    .ifr_flags = IFF_UP | IFF_RUNNING
-    };
+    struct ifreq ifr_lo = { .ifr_name = "lo",
+                            .ifr_flags = IFF_UP | IFF_RUNNING };
     if (ioctl(sockfd, SIOCSIFFLAGS, &ifr_lo) < 0) {
         perror("cannot set device up");
         return -1;

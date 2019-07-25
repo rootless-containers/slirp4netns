@@ -117,7 +117,7 @@ benchmark:
 
 ci:
 	$(MAKE) indent
-	test -z "$(git diff)"
+	git diff --exit-code
 # TODO: make sure ./vendor is synced with ./vendor.sh
 # (hard to verify during `make`, because vendor.sh removes ./vendor/libslirp/src/.deps)
 	$(MAKE) lint
