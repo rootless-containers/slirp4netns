@@ -28,13 +28,16 @@ Default configuration:
 # OPTIONS
 
 **-c**, **--configure**
-bring up the interface. IP will be set to 10.0.2.100 (network address + 100) by default. IPv6 will be set to a random address.
+bring up the TAP interface. IP will be set to 10.0.2.100 (network address + 100) by default. IPv6 will be set to a random address.
+Starting with v0.4.0, the loopback interface (**lo**) is brought up as well.
 
 **-e**, **--exit-fd=FD**
 specify the FD for terminating slirp4netns.
+When the FD is specified, slirp4netns exits when a **poll(2)** event happens on the FD.
 
 **-r**, **--ready-fd=FD**
 specify the FD to write to when the initialization steps are finished.
+When the FD is specified, slirp4netns writes **"1"** to the FD and close the FD.
 Prior to v0.4.0, the FD was written after the network configuration (**-c**)
 but before the API socket configuration (**-a**).
 
@@ -180,10 +183,10 @@ $ echo -n $json | nc -U /tmp/slirp4netns.sock
 
 Remarks:
 
-* Client needs to **shutdown** the socket with **SHUT_WR** after sending every request.
+* Client needs to **shutdown(2)** the socket with **SHUT_WR** after sending every request.
   i.e. No support for keep-alive and timeout.
 * slirp4netns "stops the world" during processing API requests.
-* A request must be less than 4095 bytes.
+* A request must be less than 4096 bytes.
 * JSON responses may contain **error** instead of **return**.
 
 # DEFINED NAMESPACE PATHS 
