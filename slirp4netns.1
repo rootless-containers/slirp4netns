@@ -43,15 +43,18 @@ IPv6 DNS:          fd00::3
 .SH OPTIONS
 .PP
 \fB\-c\fP, \fB\-\-configure\fP
-bring up the interface. IP will be set to 10.0.2.100 (network address + 100) by default. IPv6 will be set to a random address.
+bring up the TAP interface. IP will be set to 10.0.2.100 (network address + 100) by default. IPv6 will be set to a random address.
+Starting with v0.4.0, the loopback interface (\fBlo\fP) is brought up as well.
 
 .PP
 \fB\-e\fP, \fB\-\-exit\-fd=FD\fP
 specify the FD for terminating slirp4netns.
+When the FD is specified, slirp4netns exits when a \fBpoll(2)\fP event happens on the FD.
 
 .PP
 \fB\-r\fP, \fB\-\-ready\-fd=FD\fP
 specify the FD to write to when the initialization steps are finished.
+When the FD is specified, slirp4netns writes \fB"1"\fP to the FD and close the FD.
 Prior to v0.4.0, the FD was written after the network configuration (\fB\-c\fP)
 but before the API socket configuration (\fB\-a\fP).
 
@@ -278,12 +281,12 @@ Remarks:
 
 .RS
 .IP \(bu 2
-Client needs to \fBshutdown\fP the socket with \fBSHUT\_WR\fP after sending every request.
+Client needs to \fBshutdown(2)\fP the socket with \fBSHUT\_WR\fP after sending every request.
 i.e. No support for keep\-alive and timeout.
 .IP \(bu 2
 slirp4netns "stops the world" during processing API requests.
 .IP \(bu 2
-A request must be less than 4095 bytes.
+A request must be less than 4096 bytes.
 .IP \(bu 2
 JSON responses may contain \fBerror\fP instead of \fBreturn\fP\&.
 
