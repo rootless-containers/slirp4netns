@@ -33,10 +33,11 @@
 // + 100 .
 #define NETWORK_PREFIX_MAX (25)
 
-static int nsenter(pid_t target_pid, char *netns, char *userns)
+static int nsenter(pid_t target_pid, char *netns, char *userns,
+                   bool only_userns)
 {
-    int usernsfd = -1, netnsfd;
-    if (!netns) {
+    int usernsfd = -1, netnsfd = -1;
+    if (!only_userns && !netns) {
         if (asprintf(&netns, "/proc/%d/ns/net", target_pid) < 0) {
             perror("cannot get netns path");
             return -1;
@@ -48,7 +49,7 @@ static int nsenter(pid_t target_pid, char *netns, char *userns)
             return -1;
         }
     }
-    if ((netnsfd = open(netns, O_RDONLY)) < 0) {
+    if (!only_userns && (netnsfd = open(netns, O_RDONLY)) < 0) {
         perror(netns);
         return netnsfd;
     }
@@ -58,10 +59,14 @@ static int nsenter(pid_t target_pid, char *netns, char *userns)
     }
 
     if (usernsfd != -1) {
-        setns(usernsfd, CLONE_NEWUSER);
+        int r = setns(usernsfd, CLONE_NEWUSER);
+        if (only_userns && r < 0) {
+            perror("setns(CLONE_NEWUSER)");
+            return -1;
+        }
         close(usernsfd);
     }
-    if (setns(netnsfd, CLONE_NEWNET) < 0) {
+    if (netnsfd != -1 && setns(netnsfd, CLONE_NEWNET) < 0) {
         perror("setns(CLONE_NEWNET)");
         return -1;
     }
@@ -194,7 +199,7 @@ static int child(int sock, pid_t target_pid, bool do_config_network,
                  struct slirp4netns_config *cfg)
 {
     int rc, tapfd;
-    if ((rc = nsenter(target_pid, netns_path, userns_path)) < 0) {
+    if ((rc = nsenter(target_pid, netns_path, userns_path, false)) < 0) {
         return rc;
     }
     if ((tapfd = open_tap(tapname)) < 0) {
@@ -247,7 +252,7 @@ static int recvfd(int sock)
 }
 
 static int parent(int sock, int ready_fd, int exit_fd, const char *api_socket,
-                  struct slirp4netns_config *cfg)
+                  struct slirp4netns_config *cfg, pid_t target_pid)
 {
     int rc, tapfd;
     if ((tapfd = recvfd(sock)) < 0) {
@@ -270,6 +275,22 @@ static int parent(int sock, int ready_fd, int exit_fd, const char *api_socket,
             "WARNING: 127.0.0.1:* on the host is accessible as %s (set "
             "--disable-host-loopback to prohibit connecting to 127.0.0.1:*)\n",
             inet_ntoa(cfg->vhost));
+    }
+    if (cfg->create_sandbox && geteuid() != 0) {
+        if ((rc = nsenter(target_pid, NULL, NULL, true)) < 0) {
+            close(tapfd);
+            return rc;
+        }
+        if ((rc = setegid(0)) < 0) {
+            fprintf(stderr, "setegid(0)\n");
+            close(tapfd);
+            return rc;
+        }
+        if ((rc = seteuid(0)) < 0) {
+            fprintf(stderr, "seteuid(0)\n");
+            close(tapfd);
+            return rc;
+        }
     }
     if ((rc = do_slirp(tapfd, ready_fd, exit_fd, api_socket, cfg)) < 0) {
         fprintf(stderr, "do_slirp failed\n");
@@ -693,7 +714,7 @@ int main(int argc, char *const argv[])
             goto finish;
         }
         if (parent(sv[0], options.ready_fd, options.exit_fd, options.api_socket,
-                   &slirp4netns_config) < 0) {
+                   &slirp4netns_config, options.target_pid) < 0) {
             fprintf(stderr, "parent failed\n");
             exit_status = EXIT_FAILURE;
             goto finish;
