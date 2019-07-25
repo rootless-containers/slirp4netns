@@ -649,7 +649,13 @@ int main(int argc, char *const argv[])
             ret = waitpid(child_pid, &child_wstatus, 0);
         while (ret < 0 && errno == EINTR);
         if (ret < 0) {
-            fprintf(stderr, "waitpid failed\n");
+            perror("waitpid");
+            exit_status = EXIT_FAILURE;
+            goto finish;
+        }
+        if (!WIFEXITED(child_wstatus)) {
+            fprintf(stderr, "child failed(wstatus=%d, !WIFEXITED)\n",
+                    child_wstatus);
             exit_status = EXIT_FAILURE;
             goto finish;
         }
