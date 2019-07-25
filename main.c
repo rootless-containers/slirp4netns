@@ -372,6 +372,7 @@ static void options_destroy(struct options *options)
 static void parse_args(int argc, char *const argv[], struct options *options)
 {
     int opt;
+    char *strtol_e = NULL;
     char *optarg_cidr = NULL;
     char *optarg_netns_type = NULL;
     char *optarg_userns_path = NULL;
@@ -408,25 +409,26 @@ static void parse_args(int argc, char *const argv[], struct options *options)
             break;
         case 'e':
             errno = 0;
-            options->exit_fd = strtol(optarg, NULL, 10);
-            if (errno) {
-                perror("strtol");
+            options->exit_fd = strtol(optarg, &strtol_e, 10);
+            if (errno || *strtol_e != '\0' || options->exit_fd < 0) {
+                fprintf(stderr, "exit-fd must be a non-negative integer\n");
                 goto error;
             }
             break;
         case 'r':
             errno = 0;
-            options->ready_fd = strtol(optarg, NULL, 10);
-            if (errno) {
-                perror("strtol");
+            options->ready_fd = strtol(optarg, &strtol_e, 10);
+            if (errno || *strtol_e != '\0' || options->ready_fd < 0) {
+                fprintf(stderr, "ready-fd must be a non-negative integer\n");
                 goto error;
             }
             break;
         case 'm':
             errno = 0;
-            options->mtu = strtol(optarg, NULL, 10);
-            if (errno) {
-                perror("strtol");
+            options->mtu = strtol(optarg, &strtol_e, 10);
+            if (errno || *strtol_e != '\0' || options->mtu <= 0 ||
+                options->mtu > 65521) {
+                fprintf(stderr, "MTU must be a positive integer (< 65522)\n");
                 goto error;
             }
             break;
@@ -491,19 +493,15 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 #undef NETNS_TYPE
 #undef USERNS_PATH
 #undef _DEPRECATED_NO_HOST_LOOPBACK
-    if (options->mtu == 0 || options->mtu > 65521) {
-        fprintf(stderr, "MTU must be a positive integer (< 65522)\n");
-        goto error;
-    }
     if (argc - optind < 2) {
         goto error;
     }
     if (!options->netns_type ||
         strcmp(options->netns_type, DEFAULT_NETNS_TYPE) == 0) {
         errno = 0;
-        options->target_pid = strtol(argv[optind], NULL, 10);
-        if (errno != 0) {
-            perror("strtol");
+        options->target_pid = strtol(argv[optind], &strtol_e, 10);
+        if (errno || *strtol_e != '\0' || options->target_pid <= 0) {
+            fprintf(stderr, "PID must be a positive integer\n");
             goto error;
         }
     } else {
