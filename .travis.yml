@@ -6,5 +6,5 @@ services:
 
 script:
   - docker build -t slirp4netns-tests -f Dockerfile.tests .
-  - docker run --security-opt seccomp="unconfined" -ti --rm -v /dev:/dev slirp4netns-tests
+  - docker run --security-opt seccomp="unconfined" --rm -v /dev:/dev slirp4netns-tests
   - docker build -q -f Dockerfile.buildtests .
