@@ -372,6 +372,10 @@ static void options_destroy(struct options *options)
 static void parse_args(int argc, char *const argv[], struct options *options)
 {
     int opt;
+    char *optarg_cidr = NULL;
+    char *optarg_netns_type = NULL;
+    char *optarg_userns_path = NULL;
+    char *optarg_api_socket = NULL;
 #define CIDR -42
 #define DISABLE_HOST_LOOPBACK -43
 #define NETNS_TYPE -44
@@ -395,6 +399,7 @@ static void parse_args(int argc, char *const argv[], struct options *options)
         { 0, 0, 0, 0 },
     };
     options_init(options);
+    /* NOTE: clang-tidy hates strdup(optarg) in the while loop (#112) */
     while ((opt = getopt_long(argc, argv, "ce:r:m:a:6hv", longopts, NULL)) !=
            -1) {
         switch (opt) {
@@ -426,7 +431,7 @@ static void parse_args(int argc, char *const argv[], struct options *options)
             }
             break;
         case CIDR:
-            options->cidr = strdup(optarg);
+            optarg_cidr = optarg;
             break;
         case _DEPRECATED_NO_HOST_LOOPBACK:
             // There was no tagged release with support for --no-host-loopback.
@@ -439,18 +444,18 @@ static void parse_args(int argc, char *const argv[], struct options *options)
             options->disable_host_loopback = true;
             break;
         case NETNS_TYPE:
-            options->netns_type = strdup(optarg);
+            optarg_netns_type = optarg;
             break;
         case USERNS_PATH:
-            options->userns_path = strdup(optarg);
-            if (access(options->userns_path, F_OK) == -1) {
+            optarg_userns_path = optarg;
+            if (access(optarg_userns_path, F_OK) == -1) {
                 fprintf(stderr, "userns path doesn't exist: %s\n",
-                        options->userns_path);
+                        optarg_userns_path);
                 goto error;
             }
             break;
         case 'a':
-            options->api_socket = strdup(optarg);
+            optarg_api_socket = optarg;
             break;
         case '6':
             options->enable_ipv6 = true;
@@ -468,6 +473,18 @@ static void parse_args(int argc, char *const argv[], struct options *options)
             goto error;
             break;
         }
+    }
+    if (optarg_cidr != NULL) {
+        options->cidr = strdup(optarg_cidr);
+    }
+    if (optarg_netns_type != NULL) {
+        options->netns_type = strdup(optarg_netns_type);
+    }
+    if (optarg_userns_path != NULL) {
+        options->userns_path = strdup(optarg_userns_path);
+    }
+    if (optarg_api_socket != NULL) {
+        options->api_socket = strdup(optarg_api_socket);
     }
 #undef CIDR
 #undef DISABLE_HOST_LOOPBACK
