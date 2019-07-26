@@ -66,8 +66,6 @@ static int nsenter(pid_t target_pid, char *netns, char *userns)
         return -1;
     }
     close(netnsfd);
-    free(netns);
-    free(userns);
     return 0;
 }
 
@@ -358,9 +356,14 @@ static void options_destroy(struct options *options)
         free(options->netns_type);
         options->netns_type = NULL;
     }
-    // options->netns_path and options->userns_path are
-    // getting freed in the nsenter function
-    // options itself is not freed, because it can be on the stack.
+    if (options->netns_path != NULL) {
+        free(options->netns_path);
+        options->netns_path = NULL;
+    }
+    if (options->userns_path != NULL) {
+        free(options->userns_path);
+        options->userns_path = NULL;
+    }
 }
 
 // * caller does not need to call options_init()
@@ -369,6 +372,11 @@ static void options_destroy(struct options *options)
 static void parse_args(int argc, char *const argv[], struct options *options)
 {
     int opt;
+    char *strtol_e = NULL;
+    char *optarg_cidr = NULL;
+    char *optarg_netns_type = NULL;
+    char *optarg_userns_path = NULL;
+    char *optarg_api_socket = NULL;
 #define CIDR -42
 #define DISABLE_HOST_LOOPBACK -43
 #define NETNS_TYPE -44
@@ -392,6 +400,7 @@ static void parse_args(int argc, char *const argv[], struct options *options)
         { 0, 0, 0, 0 },
     };
     options_init(options);
+    /* NOTE: clang-tidy hates strdup(optarg) in the while loop (#112) */
     while ((opt = getopt_long(argc, argv, "ce:r:m:a:6hv", longopts, NULL)) !=
            -1) {
         switch (opt) {
@@ -400,33 +409,31 @@ static void parse_args(int argc, char *const argv[], struct options *options)
             break;
         case 'e':
             errno = 0;
-            options->exit_fd = strtol(optarg, NULL, 10);
-            if (errno) {
-                perror("strtol");
-                usage(argv[0]);
-                exit(EXIT_FAILURE);
+            options->exit_fd = strtol(optarg, &strtol_e, 10);
+            if (errno || *strtol_e != '\0' || options->exit_fd < 0) {
+                fprintf(stderr, "exit-fd must be a non-negative integer\n");
+                goto error;
             }
             break;
         case 'r':
             errno = 0;
-            options->ready_fd = strtol(optarg, NULL, 10);
-            if (errno) {
-                perror("strtol");
-                usage(argv[0]);
-                exit(EXIT_FAILURE);
+            options->ready_fd = strtol(optarg, &strtol_e, 10);
+            if (errno || *strtol_e != '\0' || options->ready_fd < 0) {
+                fprintf(stderr, "ready-fd must be a non-negative integer\n");
+                goto error;
             }
             break;
         case 'm':
             errno = 0;
-            options->mtu = strtol(optarg, NULL, 10);
-            if (errno) {
-                perror("strtol");
-                usage(argv[0]);
-                exit(EXIT_FAILURE);
+            options->mtu = strtol(optarg, &strtol_e, 10);
+            if (errno || *strtol_e != '\0' || options->mtu <= 0 ||
+                options->mtu > 65521) {
+                fprintf(stderr, "MTU must be a positive integer (< 65522)\n");
+                goto error;
             }
             break;
         case CIDR:
-            options->cidr = strdup(optarg);
+            optarg_cidr = optarg;
             break;
         case _DEPRECATED_NO_HOST_LOOPBACK:
             // There was no tagged release with support for --no-host-loopback.
@@ -439,19 +446,18 @@ static void parse_args(int argc, char *const argv[], struct options *options)
             options->disable_host_loopback = true;
             break;
         case NETNS_TYPE:
-            options->netns_type = strdup(optarg);
+            optarg_netns_type = optarg;
             break;
         case USERNS_PATH:
-            options->userns_path = strdup(optarg);
-            if (access(options->userns_path, F_OK) == -1) {
+            optarg_userns_path = optarg;
+            if (access(optarg_userns_path, F_OK) == -1) {
                 fprintf(stderr, "userns path doesn't exist: %s\n",
-                        options->userns_path);
-                usage(argv[0]);
-                exit(EXIT_FAILURE);
+                        optarg_userns_path);
+                goto error;
             }
             break;
         case 'a':
-            options->api_socket = strdup(optarg);
+            optarg_api_socket = optarg;
             break;
         case '6':
             options->enable_ipv6 = true;
@@ -460,45 +466,57 @@ static void parse_args(int argc, char *const argv[], struct options *options)
         case 'h':
             usage(argv[0]);
             exit(EXIT_SUCCESS);
+            break;
         case 'v':
             version();
             exit(EXIT_SUCCESS);
+            break;
         default:
-            usage(argv[0]);
-            exit(EXIT_FAILURE);
+            goto error;
+            break;
         }
+    }
+    if (optarg_cidr != NULL) {
+        options->cidr = strdup(optarg_cidr);
+    }
+    if (optarg_netns_type != NULL) {
+        options->netns_type = strdup(optarg_netns_type);
+    }
+    if (optarg_userns_path != NULL) {
+        options->userns_path = strdup(optarg_userns_path);
+    }
+    if (optarg_api_socket != NULL) {
+        options->api_socket = strdup(optarg_api_socket);
     }
 #undef CIDR
 #undef DISABLE_HOST_LOOPBACK
 #undef NETNS_TYPE
 #undef USERNS_PATH
 #undef _DEPRECATED_NO_HOST_LOOPBACK
-    if (options->mtu == 0 || options->mtu > 65521) {
-        fprintf(stderr, "MTU must be a positive integer (< 65522)\n");
-        exit(EXIT_FAILURE);
-    }
     if (argc - optind < 2) {
-        usage(argv[0]);
-        exit(EXIT_FAILURE);
+        goto error;
     }
     if (!options->netns_type ||
         strcmp(options->netns_type, DEFAULT_NETNS_TYPE) == 0) {
         errno = 0;
-        options->target_pid = strtol(argv[optind], NULL, 10);
-        if (errno != 0) {
-            perror("strtol");
-            usage(argv[0]);
-            exit(EXIT_FAILURE);
+        options->target_pid = strtol(argv[optind], &strtol_e, 10);
+        if (errno || *strtol_e != '\0' || options->target_pid <= 0) {
+            fprintf(stderr, "PID must be a positive integer\n");
+            goto error;
         }
     } else {
         options->netns_path = strdup(argv[optind]);
         if (access(options->netns_path, F_OK) == -1) {
             perror("existing path expected when --netns-type=path");
-            usage(argv[0]);
-            exit(EXIT_FAILURE);
+            goto error;
         }
     }
     options->tapname = strdup(argv[optind + 1]);
+    return;
+error:
+    usage(argv[0]);
+    options_destroy(options);
+    exit(EXIT_FAILURE);
 }
 
 static int from_regmatch(char *buf, size_t buf_len, regmatch_t match,
