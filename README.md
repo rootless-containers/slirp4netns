@@ -13,12 +13,17 @@ slirp4netns allows connecting a network namespace to the Internet in a completel
 
 ## Projects using slirp4netns
 
+Kubernetes distributions:
 * [Usernetes](https://github.com/rootless-containers/usernetes) (via RootlessKit)
+* [k3s](https://k3s.io) (via RootlessKit)
+
+Container engines:
 * [Podman](https://github.com/containers/libpod)
 * [Buildah](https://github.com/containers/buildah)
 * [ctnr](https://github.com/mgoltzsche/ctnr) (via slirp-cni-plugin)
 * [Docker & Moby](https://get.docker.com/rootless) (optionally, via RootlessKit)
 
+Tools:
 * [RootlessKit](https://github.com/rootless-containers/rootlesskit)
 * [become-root](https://github.com/giuseppe/become-root)
 * [slirp-cni-plugin](https://github.com/mgoltzsche/slirp-cni-plugin)
@@ -27,7 +32,11 @@ slirp4netns allows connecting a network namespace to the Internet in a completel
 
 ### Install from source
 
-Build dependency: `glib2-devel` (`libglib2.0-dev`)
+Build dependencies:
+* `glib2-devel` (`libglib2.0-dev`)
+* `libcap-devel` (`libcap-dev`)
+
+Install steps:
 
 ```console
 $ ./autogen.sh
@@ -45,6 +54,12 @@ $ sudo make install
 
 ```console
 $ sudo dnf install slirp4netns
+```
+
+#### RHEL/CentOS 7.7
+
+```console
+$ sudo yum install slirp4netns
 ```
 
 #### [RHEL/CentOS 7.6](https://copr.fedorainfracloud.org/coprs/vbatts/shadow-utils-newxidmap/)
