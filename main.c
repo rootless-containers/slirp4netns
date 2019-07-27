@@ -33,10 +33,11 @@
 // + 100 .
 #define NETWORK_PREFIX_MAX (25)
 
-static int nsenter(pid_t target_pid, char *netns, char *userns)
+static int nsenter(pid_t target_pid, char *netns, char *userns,
+                   bool only_userns)
 {
-    int usernsfd = -1, netnsfd;
-    if (!netns) {
+    int usernsfd = -1, netnsfd = -1;
+    if (!only_userns && !netns) {
         if (asprintf(&netns, "/proc/%d/ns/net", target_pid) < 0) {
             perror("cannot get netns path");
             return -1;
@@ -48,7 +49,7 @@ static int nsenter(pid_t target_pid, char *netns, char *userns)
             return -1;
         }
     }
-    if ((netnsfd = open(netns, O_RDONLY)) < 0) {
+    if (!only_userns && (netnsfd = open(netns, O_RDONLY)) < 0) {
         perror(netns);
         return netnsfd;
     }
@@ -58,10 +59,14 @@ static int nsenter(pid_t target_pid, char *netns, char *userns)
     }
 
     if (usernsfd != -1) {
-        setns(usernsfd, CLONE_NEWUSER);
+        int r = setns(usernsfd, CLONE_NEWUSER);
+        if (only_userns && r < 0) {
+            perror("setns(CLONE_NEWUSER)");
+            return -1;
+        }
         close(usernsfd);
     }
-    if (setns(netnsfd, CLONE_NEWNET) < 0) {
+    if (netnsfd != -1 && setns(netnsfd, CLONE_NEWNET) < 0) {
         perror("setns(CLONE_NEWNET)");
         return -1;
     }
@@ -194,7 +199,7 @@ static int child(int sock, pid_t target_pid, bool do_config_network,
                  struct slirp4netns_config *cfg)
 {
     int rc, tapfd;
-    if ((rc = nsenter(target_pid, netns_path, userns_path)) < 0) {
+    if ((rc = nsenter(target_pid, netns_path, userns_path, false)) < 0) {
         return rc;
     }
     if ((tapfd = open_tap(tapname)) < 0) {
@@ -247,7 +252,7 @@ static int recvfd(int sock)
 }
 
 static int parent(int sock, int ready_fd, int exit_fd, const char *api_socket,
-                  struct slirp4netns_config *cfg)
+                  struct slirp4netns_config *cfg, pid_t target_pid)
 {
     int rc, tapfd;
     if ((tapfd = recvfd(sock)) < 0) {
@@ -270,6 +275,22 @@ static int parent(int sock, int ready_fd, int exit_fd, const char *api_socket,
             "WARNING: 127.0.0.1:* on the host is accessible as %s (set "
             "--disable-host-loopback to prohibit connecting to 127.0.0.1:*)\n",
             inet_ntoa(cfg->vhost));
+    }
+    if (cfg->create_sandbox && geteuid() != 0) {
+        if ((rc = nsenter(target_pid, NULL, NULL, true)) < 0) {
+            close(tapfd);
+            return rc;
+        }
+        if ((rc = setegid(0)) < 0) {
+            fprintf(stderr, "setegid(0)\n");
+            close(tapfd);
+            return rc;
+        }
+        if ((rc = seteuid(0)) < 0) {
+            fprintf(stderr, "seteuid(0)\n");
+            close(tapfd);
+            return rc;
+        }
     }
     if ((rc = do_slirp(tapfd, ready_fd, exit_fd, api_socket, cfg)) < 0) {
         fprintf(stderr, "do_slirp failed\n");
@@ -300,6 +321,8 @@ static void usage(const char *argv0)
            "default=%s)\n",
            DEFAULT_NETNS_TYPE);
     printf("--userns-path=PATH	 specify user namespace path\n");
+    printf("--create-sandbox         create a new mount namespace and drop all "
+           "capabilities except CAP_NET_BIND_SERVICE\n");
     printf("-a, --api-socket=PATH    specify API socket path\n");
     printf("-6, --enable-ipv6        enable IPv6 (experimental)\n");
     printf("-h, --help               show this help and exit\n");
@@ -329,6 +352,7 @@ struct options {
     char *netns_type; // argv[1]
     char *netns_path; // --netns-path
     char *userns_path; // --userns-path
+    bool create_sandbox; // --create-sandbod
 };
 
 static void options_init(struct options *options)
@@ -381,6 +405,7 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 #define DISABLE_HOST_LOOPBACK -43
 #define NETNS_TYPE -44
 #define USERNS_PATH -45
+#define CREATE_SANDBOX -46
 #define _DEPRECATED_NO_HOST_LOOPBACK \
     -10043 // deprecated in favor of disable-host-loopback
     const struct option longopts[] = {
@@ -395,6 +420,7 @@ static void parse_args(int argc, char *const argv[], struct options *options)
         { "userns-path", required_argument, NULL, USERNS_PATH },
         { "api-socket", required_argument, NULL, 'a' },
         { "enable-ipv6", no_argument, NULL, '6' },
+        { "create-sandbox", no_argument, NULL, CREATE_SANDBOX },
         { "help", no_argument, NULL, 'h' },
         { "version", no_argument, NULL, 'v' },
         { 0, 0, 0, 0 },
@@ -445,6 +471,10 @@ static void parse_args(int argc, char *const argv[], struct options *options)
         case DISABLE_HOST_LOOPBACK:
             options->disable_host_loopback = true;
             break;
+        case CREATE_SANDBOX:
+            printf("WARNING: Support for sandboxing is experimental\n");
+            options->create_sandbox = true;
+            break;
         case NETNS_TYPE:
             optarg_netns_type = optarg;
             break;
@@ -493,6 +523,7 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 #undef NETNS_TYPE
 #undef USERNS_PATH
 #undef _DEPRECATED_NO_HOST_LOOPBACK
+#undef CREATE_SANDBOX
     if (argc - optind < 2) {
         goto error;
     }
@@ -625,6 +656,7 @@ static int slirp4netns_config_from_options(struct slirp4netns_config *cfg,
     }
     cfg->enable_ipv6 = cfg->enable_ipv6;
     cfg->disable_host_loopback = opt->disable_host_loopback;
+    cfg->create_sandbox = opt->create_sandbox;
 finish:
     return rc;
 }
@@ -682,7 +714,7 @@ int main(int argc, char *const argv[])
             goto finish;
         }
         if (parent(sv[0], options.ready_fd, options.exit_fd, options.api_socket,
-                   &slirp4netns_config) < 0) {
+                   &slirp4netns_config, options.target_pid) < 0) {
             fprintf(stderr, "parent failed\n");
             exit_status = EXIT_FAILURE;
             goto finish;
