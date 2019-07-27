@@ -310,21 +310,25 @@ static void usage(const char *argv0)
            "slirp4netns\n");
     printf("-r, --ready-fd=FD        specify the FD to write to when the "
            "network is configured\n");
+    /* v0.2.0 */
     printf("-m, --mtu=MTU            specify MTU (default=%d, max=65521)\n",
            DEFAULT_MTU);
+    printf("-6, --enable-ipv6        enable IPv6 (experimental)\n");
+    /* v0.3.0 */
+    printf("-a, --api-socket=PATH    specify API socket path\n");
     printf(
         "--cidr=CIDR              specify network address CIDR (default=%s)\n",
         DEFAULT_CIDR);
     printf("--disable-host-loopback  prohibit connecting to 127.0.0.1:* on the "
            "host namespace\n");
+    /* v0.4.0 */
     printf("--netns-type=TYPE 	 specify network namespace type ([path|pid], "
            "default=%s)\n",
            DEFAULT_NETNS_TYPE);
     printf("--userns-path=PATH	 specify user namespace path\n");
     printf("--create-sandbox         create a new mount namespace and drop all "
-           "capabilities except CAP_NET_BIND_SERVICE\n");
-    printf("-a, --api-socket=PATH    specify API socket path\n");
-    printf("-6, --enable-ipv6        enable IPv6 (experimental)\n");
+           "capabilities except CAP_NET_BIND_SERVICE (experimental)\n");
+    /* others */
     printf("-h, --help               show this help and exit\n");
     printf("-v, --version            show version and exit\n");
 }
