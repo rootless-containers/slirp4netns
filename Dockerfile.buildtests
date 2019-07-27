@@ -1,9 +1,11 @@
+# Alpine
 FROM alpine:3.10 AS buildtest-alpine310-static
 RUN apk add --no-cache git build-base autoconf automake libtool linux-headers glib-dev glib-static libcap-static libcap-dev
 COPY . /src
 WORKDIR /src
 RUN ./autogen.sh && ./configure LDFLAGS="-static" && make && cp -f slirp4netns /
 
+# Ubuntu
 FROM ubuntu:18.04 AS buildtest-ubuntu1804-common
 RUN apt update && apt install -y automake autotools-dev make gcc libglib2.0-dev libcap-dev
 COPY . /src
@@ -16,7 +18,23 @@ RUN ./configure && make && cp -f slirp4netns /
 FROM buildtest-ubuntu1804-common AS buildtest-ubuntu1804-static
 RUN ./configure LDFLAGS="-static" && make && cp -f slirp4netns /
 
+# CentOS
+FROM centos:7.6.1810 AS buildtest-centos76-common
+RUN yum install -y autoconf automake gcc glib2-devel git make libcap-devel
+COPY . /src
+WORKDIR /src
+RUN ./autogen.sh
+
+FROM buildtest-centos76-common AS buildtest-centos76-dynamic
+RUN ./configure && make && cp -f slirp4netns /
+
+FROM buildtest-centos76-common AS buildtest-centos76-static
+RUN yum install -y glibc-static glib2-static
+RUN ./configure LDFLAGS="-static" && make && cp -f slirp4netns /
+
 FROM scratch AS buildtest-final-stage
 COPY --from=buildtest-alpine310-static /slirp4netns /buildtest-alpine310-static
 COPY --from=buildtest-ubuntu1804-dynamic /slirp4netns /buildtest-ubuntu1804-dynamic
 COPY --from=buildtest-ubuntu1804-static /slirp4netns /buildtest-ubuntu1804-static
+COPY --from=buildtest-centos76-dynamic /slirp4netns /buildtest-centos76-dynamic
+COPY --from=buildtest-centos76-static /slirp4netns /buildtest-centos76-static

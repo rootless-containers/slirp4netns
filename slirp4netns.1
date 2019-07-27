@@ -59,8 +59,16 @@ Prior to v0.4.0, the FD was written after the network configuration (\fB\-c\fP)
 but before the API socket configuration (\fB\-a\fP).
 
 .PP
-\fB\-m\fP, \fB\-\-mtu=MTU\fP
+\fB\-m\fP, \fB\-\-mtu=MTU\fP (since v0.2.0)
 specify MTU (max=65521).
+
+.PP
+\fB\-6\fP, \fB\-\-enable\-ipv6\fP (since v0.2.0, EXPERIMENTAL)
+enable IPv6
+
+.PP
+\fB\-a\fP, \fB\-\-api\-socket\fP (since v0.3.0)
+API socket path
 
 .PP
 \fB\-\-cidr\fP (since v0.3.0)
@@ -71,14 +79,6 @@ specify CIDR, e.g. 10.0.2.0/24
 prohibit connecting to 127.0.0.1:* on the host namespace
 
 .PP
-\fB\-a\fP, \fB\-\-api\-socket\fP (since v0.3.0)
-API socket path
-
-.PP
-\fB\-6\fP, \fB\-\-enable\-ipv6\fP
-enable IPv6 (experimental).
-
-.PP
 \fB\-\-netns\-type=TYPE\fP (since v0.4.0)
 specify network namespace type ([path|pid], default=pid)
 
@@ -87,11 +87,17 @@ specify network namespace type ([path|pid], default=pid)
 specify user namespace path
 
 .PP
-\fB\-h\fP, \fB\-\-help\fP
+\fB\-\-create\-sandbox\fP (since v0.4.0, EXPERIMENTAL)
+when running as a root (either on the host, or in a user namespace), create
+a new mount namespace where only /etc and /run are mounted from the host and
+all the capabilities except \fB\fCCAP\_NET\_BIND\_SERVICE\fR are dropped.
+
+.PP
+\fB\-h\fP, \fB\-\-help\fP (since v0.2.0)
 show help and exit
 
 .PP
-\fB\-v\fP, \fB\-\-version\fP
+\fB\-v\fP, \fB\-\-version\fP (since v0.2.0)
 show version and exit
 
 

@@ -8,7 +8,7 @@ AC_PROG_RANLIB
 
 AM_INIT_AUTOMAKE([1.9 foreign subdir-objects])
 
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h netdb.h netinet/in.h stdint.h stdlib.h string.h sys/ioctl.h sys/socket.h sys/timeb.h unistd.h getopt.h])
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h netdb.h netinet/in.h stddef.h stdint.h stdlib.h string.h sys/ioctl.h sys/mount.h sys/socket.h sys/timeb.h unistd.h getopt.h])
 
 AC_CHECK_HEADER_STDBOOL
 AC_C_INLINE
@@ -25,12 +25,14 @@ AC_TYPE_UINT64_T
 AC_TYPE_UINT8_T
 
 AC_FUNC_ALLOCA
+AC_FUNC_STRTOD
 AC_FUNC_FORK
 AC_FUNC_MALLOC
 AC_FUNC_REALLOC
-AC_CHECK_FUNCS([atexit clock_gettime inet_ntoa memmove memset socket strchr strdup strerror strstr strtol getopt_long])
+AC_CHECK_FUNCS([atexit clock_gettime dup2 getopt_long inet_ntoa memmove memset mkdir regcomp rmdir socket strcasecmp strchr strdup strerror strstr strtol strtoul])
 
 PKG_CHECK_MODULES(GLIB, glib-2.0)
+PKG_CHECK_MODULES(LIBCAP, libcap)
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

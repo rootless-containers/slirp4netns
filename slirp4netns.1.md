@@ -41,8 +41,14 @@ When the FD is specified, slirp4netns writes **"1"** to the FD and close the FD.
 Prior to v0.4.0, the FD was written after the network configuration (**-c**)
 but before the API socket configuration (**-a**).
 
-**-m**, **--mtu=MTU**
+**-m**, **--mtu=MTU** (since v0.2.0)
 specify MTU (max=65521).
+
+**-6**, **--enable-ipv6** (since v0.2.0, EXPERIMENTAL)
+enable IPv6
+
+**-a**, **--api-socket** (since v0.3.0)
+API socket path
 
 **--cidr** (since v0.3.0)
 specify CIDR, e.g. 10.0.2.0/24
@@ -50,27 +56,21 @@ specify CIDR, e.g. 10.0.2.0/24
 **--disable-host-loopback** (since v0.3.0)
 prohibit connecting to 127.0.0.1:\* on the host namespace
 
-**-a**, **--api-socket** (since v0.3.0)
-API socket path
-
-**-6**, **--enable-ipv6**
-enable IPv6 (experimental).
-
 **--netns-type=TYPE** (since v0.4.0)
 specify network namespace type ([path|pid], default=pid)
 
 **--userns-path=PATH** (since v0.4.0)
 specify user namespace path
 
-**--create-sandbox** (since v0.4.0)
+**--create-sandbox** (since v0.4.0, EXPERIMENTAL)
 when running as a root (either on the host, or in a user namespace), create
 a new mount namespace where only /etc and /run are mounted from the host and
 all the capabilities except `CAP_NET_BIND_SERVICE` are dropped.
 
-**-h**, **--help**
+**-h**, **--help** (since v0.2.0)
 show help and exit
 
-**-v**, **--version**
+**-v**, **--version** (since v0.2.0)
 show version and exit
 
 # EXAMPLE
