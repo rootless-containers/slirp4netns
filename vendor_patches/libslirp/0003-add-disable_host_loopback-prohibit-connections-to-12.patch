@@ -1,4 +1,4 @@
-From 18abf482f7e9d82a11a9e675bbc5de1987b2ee40 Mon Sep 17 00:00:00 2001
+From ce16ed9822ea6e26b64158774ddc33282ed5cc3c Mon Sep 17 00:00:00 2001
 From: Akihiro Suda <akihiro.suda.cz@hco.ntt.co.jp>
 Date: Wed, 10 Jul 2019 15:16:58 +0900
 Subject: [PATCH 3/3] add disable_host_loopback (prohibit connections to
@@ -12,20 +12,20 @@ Original commits:
 
 Signed-off-by: Akihiro Suda <akihiro.suda.cz@hco.ntt.co.jp>
 ---
- src/ip_icmp.c  |  6 +++++-
+ src/ip_icmp.c  |  7 ++++++-
  src/libslirp.h |  2 ++
  src/slirp.c    |  1 +
  src/slirp.h    |  2 ++
  src/socket.c   | 30 ++++++++++++++++++++----------
  src/socket.h   |  2 +-
  src/tcp_subr.c |  4 +++-
- 7 files changed, 34 insertions(+), 13 deletions(-)
+ 7 files changed, 35 insertions(+), 13 deletions(-)
 
 diff --git a/src/ip_icmp.c b/src/ip_icmp.c
-index 7590cff..5f96f54 100644
+index 7590cff..58e35a5 100644
 --- a/src/ip_icmp.c
 +++ b/src/ip_icmp.c
-@@ -190,7 +190,11 @@ void icmp_input(struct mbuf *m, int hlen)
+@@ -190,7 +190,12 @@ void icmp_input(struct mbuf *m, int hlen)
  
              /* Send the packet */
              addr = so->fhost.ss;
@@ -34,6 +34,7 @@ index 7590cff..5f96f54 100644
 +                icmp_send_error(m, ICMP_UNREACH, ICMP_UNREACH_NET, 0,
 +                                strerror(errno));
 +                udp_detach(so);
++                return;
 +            }
  
              if (sendto(so->s, icmp_ping_msg, strlen(icmp_ping_msg), 0,
