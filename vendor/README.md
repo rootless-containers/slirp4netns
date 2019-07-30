@@ -6,9 +6,9 @@ Vendored components:
 
 Applied patches (sha256sum):
 ```
-7e9ecbf36da1316445576827b89521da53aa08b01571c8f2b226a7923ec1b8c1  vendor_patches/libslirp/0001-add-slirp_initx-SlirpConfig-SlirpCb-void.patch
-c895a1c8613d5a7de20d0a40c3812616a9230b84ee736d34572accbc0dee1be3  vendor_patches/libslirp/0002-allow-custom-MTU.patch
-87311194d0669d31b7d02db86082b7e00c6996a27f70eb04e777826763aa4ade  vendor_patches/libslirp/0003-add-disable_host_loopback-prohibit-connections-to-12.patch
+c8a0602500e5a3c7687f2af5d9d329591d655483505c192b0a656913dcc4e7ee  vendor_patches/libslirp/0001-add-slirp_initx-SlirpConfig-SlirpCb-void.patch
+495a0604f3cd3e8463f127b634215ac25d311204756d4ce4079ae81b6fb87cbe  vendor_patches/libslirp/0002-allow-custom-MTU.patch
+9cd83f55d0696d898bc8f8c48df04f8dd97576511780b36bf92f439dcb33b33c  vendor_patches/libslirp/0003-add-disable_host_loopback-prohibit-connections-to-12.patch
 ```
 
 Please do not edit the contents under this directory manually.
