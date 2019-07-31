@@ -2,8 +2,6 @@
 
 slirp4netns provides user-mode networking ("slirp") for unprivileged network namespaces.
 
-Latest stable release: [v0.3.X](https://github.com/rootless-containers/slirp4netns/releases)
-
 ## Motivation
 
 Starting with Linux 3.8, unprivileged users can create [`network_namespaces(7)`](http://man7.org/linux/man-pages/man7/network_namespaces.7.html) along with [`user_namespaces(7)`](http://man7.org/linux/man-pages/man7/user_namespaces.7.html).
@@ -27,6 +25,22 @@ Tools:
 * [RootlessKit](https://github.com/rootless-containers/rootlesskit)
 * [become-root](https://github.com/giuseppe/become-root)
 * [slirp-cni-plugin](https://github.com/mgoltzsche/slirp-cni-plugin)
+
+## Maintenance policy
+
+Version                        | Status
+-------------------------------|------------------------------------------------------------------------
+v0.4.x                         | A :white_check_mark: (will be demoted to B after the release of v0.5.0)
+v0.3.x                         | B :white_check_mark: (will be demoted to C after the release of v0.5.0)
+v0.2.x                         | C :warning:
+Early versions prior to v0.2.x | D :warning:
+
+* A: Actively maintained. Patch releases for security fixes and other bug fixes are planned.
+* B: Patch releases for security fixes are planned.
+* C: No additional release is planned. However, anybody can still open PR for security fixes in the `release/x.y` branch.
+* D: Not maintained. Distributors can continue to distribute this version, but they should apply security fixes by themselves.
+
+See https://github.com/rootless-containers/slirp4netns/releases for the releases.
 
 ## Quick start
 
