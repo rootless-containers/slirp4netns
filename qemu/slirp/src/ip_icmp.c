@@ -192,6 +192,7 @@ icmp_input(struct mbuf *m, int hlen)
       if (sotranslate_out(so, &addr) < 0) {
           icmp_send_error(m, ICMP_UNREACH, ICMP_UNREACH_NET, 0, strerror(errno));
           udp_detach(so);
+          return;
       }
 
       if(sendto(so->s, icmp_ping_msg, strlen(icmp_ping_msg), 0,
