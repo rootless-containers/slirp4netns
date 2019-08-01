@@ -252,6 +252,7 @@ Slirp *create_slirp(void *opaque, struct slirp4netns_config *s4nn)
     Slirp *slirp = NULL;
     SlirpConfig cfg;
     memset(&cfg, 0, sizeof(cfg));
+    cfg.version = 1;
     cfg.restricted = 0;
     cfg.in_enabled = 1;
     cfg.vnetwork = s4nn->vnetwork;
@@ -273,9 +274,9 @@ Slirp *create_slirp(void *opaque, struct slirp4netns_config *s4nn)
     cfg.if_mtu = s4nn->mtu;
     cfg.if_mru = s4nn->mtu;
     cfg.disable_host_loopback = s4nn->disable_host_loopback;
-    slirp = slirp_initx(&cfg, &libslirp_cb, opaque);
+    slirp = slirp_new(&cfg, &libslirp_cb, opaque);
     if (slirp == NULL) {
-        fprintf(stderr, "slirp_initx failed\n");
+        fprintf(stderr, "slirp_new failed\n");
     }
     return slirp;
 }
