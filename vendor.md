@@ -1,6 +1,6 @@
 # Vendor
 
-The `*.patch` files in `vendor_patches` directory are applied to `vendor` via [`vendor.sh`](./vendor.sh).
+The `*.patch` files in `vendor_patches` directory (if exists) are applied to `vendor` via [`vendor.sh`](./vendor.sh).
 Please DO NOT edit files under `vendor`.
 
 ## Update vendor

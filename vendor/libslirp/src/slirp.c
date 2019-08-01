@@ -267,19 +267,17 @@ static void slirp_init_once(void)
     }
 }
 
-Slirp *slirp_initx(const SlirpConfig *cfg, const SlirpCb *callbacks,
-                   void *opaque)
+Slirp *slirp_new(const SlirpConfig *cfg, const SlirpCb *callbacks, void *opaque)
 {
     Slirp *slirp;
-    if (cfg == NULL) {
-        return NULL;
-    }
-    if (cfg->if_mtu > IF_MTU_MAX) {
-        return NULL;
-    }
-    if (cfg->if_mru > IF_MRU_MAX) {
-        return NULL;
-    }
+
+    g_return_val_if_fail(cfg != NULL, NULL);
+    g_return_val_if_fail(cfg->version >= SLIRP_CONFIG_VERSION_MIN, NULL);
+    g_return_val_if_fail(cfg->version <= SLIRP_CONFIG_VERSION_MAX, NULL);
+    g_return_val_if_fail(cfg->if_mtu >= IF_MTU_MIN || cfg->if_mtu == 0, NULL);
+    g_return_val_if_fail(cfg->if_mtu <= IF_MTU_MAX, NULL);
+    g_return_val_if_fail(cfg->if_mru >= IF_MRU_MIN || cfg->if_mru == 0, NULL);
+    g_return_val_if_fail(cfg->if_mru <= IF_MRU_MAX, NULL);
 
     slirp = g_malloc0(sizeof(Slirp));
 
@@ -297,7 +295,6 @@ Slirp *slirp_initx(const SlirpConfig *cfg, const SlirpCb *callbacks,
     ip_init(slirp);
     ip6_init(slirp);
 
-    /* Initialise mbufs *after* setting the MTU */
     m_init(slirp);
 
     slirp->vnetwork_addr = cfg->vnetwork;
@@ -341,6 +338,7 @@ Slirp *slirp_init(int restricted, bool in_enabled, struct in_addr vnetwork,
 {
     SlirpConfig cfg;
     memset(&cfg, 0, sizeof(cfg));
+    cfg.version = 1;
     cfg.restricted = restricted;
     cfg.in_enabled = in_enabled;
     cfg.vnetwork = vnetwork;
@@ -359,7 +357,7 @@ Slirp *slirp_init(int restricted, bool in_enabled, struct in_addr vnetwork,
     cfg.vnameserver6 = vnameserver6;
     cfg.vdnssearch = vdnssearch;
     cfg.vdomainname = vdomainname;
-    return slirp_initx(&cfg, callbacks, opaque);
+    return slirp_new(&cfg, callbacks, opaque);
 }
 
 void slirp_cleanup(Slirp *slirp)

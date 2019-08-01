@@ -261,6 +261,10 @@ struct tcpcb *tcp_newtcpcb(struct socket *so)
 
     memset((char *)tp, 0, sizeof(struct tcpcb));
     tp->seg_next = tp->seg_prev = (struct tcpiphdr *)tp;
+    /*
+     * 40: length of IPv4 header (20) + TCP header (20)
+     * 60: length of IPv6 header (40) + TCP header (20)
+     */
     tp->t_maxseg =
         MIN(so->slirp->if_mtu - ((so->so_ffamily == AF_INET) ? 40 : 60),
             TCP_MAXSEG_MAX);

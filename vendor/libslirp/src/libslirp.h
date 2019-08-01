@@ -66,7 +66,15 @@ typedef struct SlirpCb {
     void (*notify)(void *opaque);
 } SlirpCb;
 
+#define SLIRP_CONFIG_VERSION_MIN 1
+#define SLIRP_CONFIG_VERSION_MAX 1
+
 typedef struct SlirpConfig {
+    /* Version must be already provided */
+    uint32_t version;
+    /*
+     * Fields introduced in SlirpConfig version 1 begin
+     */
     int restricted;
     bool in_enabled;
     struct in_addr vnetwork;
@@ -86,16 +94,19 @@ typedef struct SlirpConfig {
     const char **vdnssearch;
     const char *vdomainname;
     /* Default: IF_MTU_DEFAULT */
-    int if_mtu;
+    size_t if_mtu;
     /* Default: IF_MRU_DEFAULT */
-    int if_mru;
+    size_t if_mru;
     /* Prohibit connecting to 127.0.0.1:* */
     bool disable_host_loopback;
+    /*
+     * Fields introduced in SlirpConfig version 2 begin
+     */
 } SlirpConfig;
 
-Slirp *slirp_initx(const SlirpConfig *cfg, const SlirpCb *callbacks,
-                   void *opaque);
-/* slirp_init is deprecated in favor of slirp_initx */
+Slirp *slirp_new(const SlirpConfig *cfg, const SlirpCb *callbacks,
+                 void *opaque);
+/* slirp_init is deprecated in favor of slirp_new */
 Slirp *slirp_init(int restricted, bool in_enabled, struct in_addr vnetwork,
                   struct in_addr vnetmask, struct in_addr vhost,
                   bool in6_enabled, struct in6_addr vprefix_addr6,
