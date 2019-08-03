@@ -172,5 +172,4 @@ The latest revision of slirp4netns is regularly benchmarked (`make benchmark`) o
 
 ## Acknowledgement
 
-* The files under [`qemu`](./qemu) directory were forked from [QEMU](https://github.com/qemu/qemu) with the patches under [`qemu_patches`](./qemu_patches) directory.
-* The files under [`parson`](./parson) directory were copied from [kgabis/parson](https://github.com/kgabis/parson/commit/0a1896939faff5f69e179637fc49f678ff0128ba) without any modification.
+See [`vendor/README.md`](./vendor/README.md).
