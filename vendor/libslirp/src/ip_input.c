@@ -344,11 +344,10 @@ insert:
     q = fp->frag_link.next;
 
     /*
-     * If the fragments concatenated to an mbuf that's
-     * bigger than the total size of the fragment, then and
-     * m_ext buffer was alloced. But fp->ipq_next points to
-     * the old buffer (in the mbuf), so we must point ip
-     * into the new buffer.
+     * If the fragments concatenated to an mbuf that's bigger than the total
+     * size of the fragment and the mbuf was not already using an m_ext buffer,
+     * then an m_ext buffer was alloced. But fp->ipq_next points to the old
+     * buffer (in the mbuf), so we must point ip into the new buffer.
      */
     if (!was_ext && m->m_flags & M_EXT) {
         int delta = (char *)q - m->m_dat;

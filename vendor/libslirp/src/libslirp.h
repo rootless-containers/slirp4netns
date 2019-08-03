@@ -70,7 +70,7 @@ typedef struct SlirpCb {
 #define SLIRP_CONFIG_VERSION_MAX 1
 
 typedef struct SlirpConfig {
-    /* Version must be already provided */
+    /* Version must be provided */
     uint32_t version;
     /*
      * Fields introduced in SlirpConfig version 1 begin
@@ -99,6 +99,11 @@ typedef struct SlirpConfig {
     size_t if_mru;
     /* Prohibit connecting to 127.0.0.1:* */
     bool disable_host_loopback;
+    /*
+     * Enable emulation code (*warning*: this code isn't safe, it is not
+     * recommended to enable it)
+     */
+    bool enable_emu;
     /*
      * Fields introduced in SlirpConfig version 2 begin
      */

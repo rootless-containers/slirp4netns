@@ -195,6 +195,8 @@ struct Slirp {
     GRand *grand;
     void *ra_timer;
 
+    bool enable_emu;
+
     const SlirpCb *cb;
     void *opaque;
 };
