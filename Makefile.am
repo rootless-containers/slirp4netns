@@ -2,7 +2,7 @@ bin_PROGRAMS = slirp4netns
 
 AM_CFLAGS = @GLIB_CFLAGS@
 
-noinst_LIBRARIES = libqemu_slirp.a libparson.a
+noinst_LIBRARIES = libslirp.a libparson.a
 
 AM_TESTS_ENVIRONMENT = PATH="$(abs_top_builddir):$(PATH)"
 TESTS = tests/test-slirp4netns.sh tests/test-slirp4netns-configure.sh tests/test-slirp4netns-exit-fd.sh tests/test-slirp4netns-ready-fd.sh tests/test-slirp4netns-api-socket.sh tests/test-slirp4netns-disable-host-loopback.sh tests/test-slirp4netns-cidr.sh
@@ -14,65 +14,70 @@ EXTRA_DIST = \
 	tests/common.sh \
 	slirp4netns.h \
 	api.h \
-	qemu/slirp/src/bootp.h \
-	qemu/slirp/src/debug.h \
-	qemu/slirp/src/dhcpv6.h \
-	qemu/slirp/src/if.h \
-	qemu/slirp/src/ip6.h \
-	qemu/slirp/src/ip6_icmp.h \
-	qemu/slirp/src/ip.h \
-	qemu/slirp/src/ip_icmp.h \
-	qemu/slirp/src/libslirp.h \
-	qemu/slirp/src/main.h \
-	qemu/slirp/src/mbuf.h \
-	qemu/slirp/src/misc.h \
-	qemu/slirp/src/ncsi-pkt.h \
-	qemu/slirp/src/qtailq.h \
-	qemu/slirp/src/sbuf.h \
-	qemu/slirp/src/slirp.h \
-	qemu/slirp/src/socket.h \
-	qemu/slirp/src/stream.h \
-	qemu/slirp/src/tftp.h \
-	qemu/slirp/src/tcp.h \
-	qemu/slirp/src/tcpip.h \
-	qemu/slirp/src/tcp_timer.h \
-	qemu/slirp/src/tcp_var.h \
-	qemu/slirp/src/udp.h \
-	qemu/slirp/src/util.h \
-	qemu/slirp/src/vmstate.h \
-	parson/parson.h
+	vendor/libslirp/COPYRIGHT \
+	vendor/libslirp/README.md \
+	vendor/libslirp/src/bootp.h \
+	vendor/libslirp/src/debug.h \
+	vendor/libslirp/src/dhcpv6.h \
+	vendor/libslirp/src/if.h \
+	vendor/libslirp/src/ip6.h \
+	vendor/libslirp/src/ip6_icmp.h \
+	vendor/libslirp/src/ip.h \
+	vendor/libslirp/src/ip_icmp.h \
+	vendor/libslirp/src/libslirp.h \
+	vendor/libslirp/src/libslirp-version.h \
+	vendor/libslirp/src/main.h \
+	vendor/libslirp/src/mbuf.h \
+	vendor/libslirp/src/misc.h \
+	vendor/libslirp/src/ncsi-pkt.h \
+	vendor/libslirp/src/sbuf.h \
+	vendor/libslirp/src/slirp.h \
+	vendor/libslirp/src/socket.h \
+	vendor/libslirp/src/stream.h \
+	vendor/libslirp/src/tftp.h \
+	vendor/libslirp/src/tcp.h \
+	vendor/libslirp/src/tcpip.h \
+	vendor/libslirp/src/tcp_timer.h \
+	vendor/libslirp/src/tcp_var.h \
+	vendor/libslirp/src/udp.h \
+	vendor/libslirp/src/util.h \
+	vendor/libslirp/src/vmstate.h \
+	vendor/parson/LICENSE \
+	vendor/parson/README.md \
+	vendor/parson/parson.h
 
-libqemu_slirp_a_SOURCES = \
-			qemu/slirp/src/arp_table.c \
-			qemu/slirp/src/bootp.c \
-			qemu/slirp/src/cksum.c \
-			qemu/slirp/src/dhcpv6.c \
-			qemu/slirp/src/dnssearch.c \
-			qemu/slirp/src/if.c \
-			qemu/slirp/src/ip6_icmp.c \
-			qemu/slirp/src/ip6_input.c \
-			qemu/slirp/src/ip6_output.c \
-			qemu/slirp/src/ip_icmp.c \
-			qemu/slirp/src/ip_input.c \
-			qemu/slirp/src/ip_output.c \
-			qemu/slirp/src/mbuf.c \
-			qemu/slirp/src/misc.c \
-			qemu/slirp/src/ncsi.c \
-			qemu/slirp/src/ndp_table.c \
-			qemu/slirp/src/sbuf.c \
-			qemu/slirp/src/slirp.c \
-			qemu/slirp/src/socket.c \
-			qemu/slirp/src/state.c \
-			qemu/slirp/src/stream.c \
-			qemu/slirp/src/tcp_input.c \
-			qemu/slirp/src/tcp_output.c \
-			qemu/slirp/src/tcp_subr.c \
-			qemu/slirp/src/tcp_timer.c \
-			qemu/slirp/src/tftp.c \
-			qemu/slirp/src/udp6.c \
-			qemu/slirp/src/udp.c \
-			qemu/slirp/src/util.c \
-			qemu/slirp/src/vmstate.c
+libslirp_a_SOURCES = \
+			vendor/libslirp/src/arp_table.c \
+			vendor/libslirp/src/bootp.c \
+			vendor/libslirp/src/cksum.c \
+			vendor/libslirp/src/dhcpv6.c \
+			vendor/libslirp/src/dnssearch.c \
+			vendor/libslirp/src/if.c \
+			vendor/libslirp/src/ip6_icmp.c \
+			vendor/libslirp/src/ip6_input.c \
+			vendor/libslirp/src/ip6_output.c \
+			vendor/libslirp/src/ip_icmp.c \
+			vendor/libslirp/src/ip_input.c \
+			vendor/libslirp/src/ip_output.c \
+			vendor/libslirp/src/mbuf.c \
+			vendor/libslirp/src/misc.c \
+			vendor/libslirp/src/ncsi.c \
+			vendor/libslirp/src/ndp_table.c \
+			vendor/libslirp/src/sbuf.c \
+			vendor/libslirp/src/slirp.c \
+			vendor/libslirp/src/socket.c \
+			vendor/libslirp/src/state.c \
+			vendor/libslirp/src/stream.c \
+			vendor/libslirp/src/tcp_input.c \
+			vendor/libslirp/src/tcp_output.c \
+			vendor/libslirp/src/tcp_subr.c \
+			vendor/libslirp/src/tcp_timer.c \
+			vendor/libslirp/src/tftp.c \
+			vendor/libslirp/src/udp6.c \
+			vendor/libslirp/src/udp.c \
+			vendor/libslirp/src/util.c \
+			vendor/libslirp/src/version.c \
+			vendor/libslirp/src/vmstate.c
 
 # define specific commit if git available or it was replaced during git-archive creation
 COMMIT := $(shell V=$Format:%H$ ; \
@@ -82,12 +87,12 @@ COMMIT := $(shell V=$Format:%H$ ; \
 DEFINE_COMMIT = -DCOMMIT="\"$(COMMIT)\""
 
 slirp4netns_CFLAGS = $(AM_CFLAGS) $(DEFINE_COMMIT)
-libqemu_slirp_a_CFLAGS = $(AM_CFLAGS) -I$(abs_top_builddir)/qemu/slirp/src
-libparson_a_CFLAGS = $(AM_CFLAGS) -I$(abs_top_builddir)/parson
-libparson_a_SOURCES = parson/parson.c
+libslirp_a_CFLAGS = $(AM_CFLAGS) -I$(abs_top_builddir)/vendor/libslirp/src
+libparson_a_CFLAGS = $(AM_CFLAGS) -I$(abs_top_builddir)/vendor/parson
+libparson_a_SOURCES = vendor/parson/parson.c
 
 slirp4netns_SOURCES = main.c slirp4netns.c api.c
-slirp4netns_LDADD = libqemu_slirp.a libparson.a @GLIB_LIBS@ -lpthread
+slirp4netns_LDADD = libslirp.a libparson.a @GLIB_LIBS@ -lpthread
 man1_MANS = slirp4netns.1
 
 generate-man:
@@ -99,7 +104,7 @@ lint:
 	$(CLANGTIDY) $(slirp4netns_SOURCES) -- $(AM_CFLAGS)
 
 lint-full:
-	$(CLANGTIDY) $(slirp4netns_SOURCES) $(libqemu_slirp_a_SOURCES) $(libparson_a_SOURCES) -- $(AM_CFLAGS)
+	$(CLANGTIDY) $(slirp4netns_SOURCES) $(libslirp_a_SOURCES) $(libparson_a_SOURCES) -- $(AM_CFLAGS)
 
 indent:
 # indent(1): "You must use the ‘-T’ option to tell indent the name of all the typenames in your program that are defined by typedef."
@@ -120,8 +125,8 @@ benchmark:
 ci:
 	$(MAKE) indent
 	test -z "$(git diff)"
-# TODO: make sure ./qemu is synced with ./qemu_patches/sync.sh
-# (hard to verify during `make`, because sync.sh removes ./qemu/slirp/src/.deps)
+# TODO: make sure ./vendor is synced with ./vendor.sh
+# (hard to verify during `make`, because sync.sh removes ./vendor/libslirp/src/.deps)
 	$(MAKE) lint
 	$(MAKE) -j $(shell nproc) distcheck || ( find . -name test-suite.log | xargs cat; exit 1 )
 	PATH=$(shell pwd):$$PATH $(MAKE) benchmark MTU=1500
