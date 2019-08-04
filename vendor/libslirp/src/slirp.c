@@ -321,6 +321,7 @@ Slirp *slirp_new(const SlirpConfig *cfg, const SlirpCb *callbacks, void *opaque)
     slirp->if_mtu = cfg->if_mtu == 0 ? IF_MTU_DEFAULT : cfg->if_mtu;
     slirp->if_mru = cfg->if_mru == 0 ? IF_MRU_DEFAULT : cfg->if_mru;
     slirp->disable_host_loopback = cfg->disable_host_loopback;
+    slirp->enable_emu = cfg->enable_emu;
 
     return slirp;
 }
