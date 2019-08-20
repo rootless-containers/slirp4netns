@@ -30,6 +30,8 @@ Default configuration:
 **-c**, **--configure**
 bring up the TAP interface. IP will be set to 10.0.2.100 (network address + 100) by default. IPv6 will be set to a random address.
 Starting with v0.4.0, the loopback interface (**lo**) is brought up as well.
+Starting with v0.4.0, **/proc/sys/net/ipv4/tcp_rmem** in the namespace is adjusted when running with kernel >= 4.20.
+This adjustment may differ in the future releases. (See BUGS)
 
 **-e**, **--exit-fd=FD**
 specify the FD for terminating slirp4netns.
@@ -206,6 +208,19 @@ Additionally, a **--userns-path=PATH** argument can be included to override any 
 ```console
 $ slirp4netns --netns-type=path --userns-path=/path/to/userns /path/to/netns tap0
 ```
+# BUGS
+
+Kernel 4.20 bumped up the default value of **/proc/sys/net/ipv4/tcp_rmem** from 87380 to 131072.
+This is known to slow down slirp4netns port forwarding: **https://github.com/rootless-containers/slirp4netns/issues/128**.
+
+As a workaround, you can adjust the value of **/proc/sys/net/ipv4/tcp_rmem** inside the namespace.
+No real root privilege is needed to modify the file since kernel 4.15.
+
+```console
+unshared$ c=$(cat /proc/sys/net/ipv4/tcp_rmem); echo $c | sed -e s/131072/87380/g > /proc/sys/net/ipv4/tcp_rmem
+```
+
+Since slirp4netns v0.4.0, the value is automatically adjusted when running with **--configure**.
 
 # SEE ALSO
 

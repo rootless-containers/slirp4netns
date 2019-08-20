@@ -19,6 +19,7 @@
 #include <getopt.h>
 #include <stdbool.h>
 #include <regex.h>
+#include <glib.h>
 #include "slirp4netns.h"
 
 #define DEFAULT_MTU (1500)
@@ -120,6 +121,54 @@ static int sendfd(int sock, int fd)
     return rc;
 }
 
+
+/*
+   kernel 4.20 bumped up the default value of /proc/sys/net/ipv4/tcp_rmem from
+   87380 to 131072. This is known to slow down slirp4netns port forwarding. See
+   https://github.com/rootless-containers/slirp4netns/issues/128 See
+   https://github.com/torvalds/linux/commit/a337531b942bd8a03e7052444d7e36972aac2d92
+   */
+static void try_configure_kernel420_net_ipv4_tcp_rmem()
+{
+    gchar *contents = NULL;
+    gsize length = 0;
+    gchar **tokenv = NULL;
+    int nfd = -1;
+    if (!g_file_get_contents("/proc/sys/net/ipv4/tcp_rmem", &contents, &length,
+                             NULL)) {
+        goto ret;
+    }
+    tokenv = g_strsplit_set(contents, " \t\r\n", 4);
+    if (g_strv_length(tokenv) != 4) {
+        goto ret;
+    }
+    /* when running with kernel <  4.20, tokenv is like {"4096",  "87380",
+     * "6291456", ""} (preferred) */
+    /* when running with kernel >= 4.20, tokenv is like {"4096", "131072",
+     * "6291456", ""} (not preferred) */
+    if (g_strcmp0(tokenv[1], "87380") == 0) {
+        /* no need to adjust */
+        goto ret;
+    }
+    /* g_file_set_contents() can't be used as it attempts to create
+     * /proc/sys/net/ipv4/tcp_rmem.RANDOMSTR */
+    nfd = open("/proc/sys/net/ipv4/tcp_rmem", O_WRONLY);
+    if (nfd < 0) {
+        goto ret;
+    }
+    if (dprintf(nfd, "%s\t%s\t%s%s\n", tokenv[0], "87380",
+                g_strcmp0(tokenv[2], "131072") == 0 ? "87380" : tokenv[2],
+                tokenv[3]) > 0) {
+        printf("configure: Adjusted the value of /proc/sys/net/ipv4/tcp_rmem "
+               "inside the namespace (131072 -> 87380)\n");
+    }
+ret:
+    if (nfd >= 0)
+        close(nfd);
+    g_strfreev(tokenv);
+    g_free(contents);
+}
+
 static int configure_network(const char *tapname,
                              struct slirp4netns_config *cfg)
 {
@@ -191,6 +240,8 @@ static int configure_network(const char *tapname,
         perror("set route");
         return -1;
     }
+
+    try_configure_kernel420_net_ipv4_tcp_rmem();
     return 0;
 }
 
