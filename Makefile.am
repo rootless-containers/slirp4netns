@@ -15,6 +15,7 @@ EXTRA_DIST = \
 	slirp4netns.h \
 	api.h \
 	sandbox.h \
+	seccompfilter.h \
 	vendor/libslirp/COPYRIGHT \
 	vendor/libslirp/README.md \
 	vendor/libslirp/src/bootp.h \
@@ -92,8 +93,8 @@ libslirp_a_CFLAGS = $(AM_CFLAGS) -I$(abs_top_builddir)/vendor/libslirp/src
 libparson_a_CFLAGS = $(AM_CFLAGS) -I$(abs_top_builddir)/vendor/parson
 libparson_a_SOURCES = vendor/parson/parson.c
 
-slirp4netns_SOURCES = main.c slirp4netns.c api.c sandbox.c
-slirp4netns_LDADD = libslirp.a libparson.a @GLIB_LIBS@ -lpthread
+slirp4netns_SOURCES = main.c slirp4netns.c api.c sandbox.c seccompfilter.c
+slirp4netns_LDADD = libslirp.a libparson.a @GLIB_LIBS@ @LIBSECCOMP_LIBS@ -lpthread
 man1_MANS = slirp4netns.1
 
 generate-man:

@@ -33,6 +33,7 @@ AC_CHECK_FUNCS([atexit clock_gettime dup2 getopt_long inet_ntoa memmove memset m
 
 PKG_CHECK_MODULES(GLIB, glib-2.0)
 PKG_CHECK_MODULES(LIBCAP, libcap)
+PKG_CHECK_MODULES(LIBSECCOMP, libseccomp)
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

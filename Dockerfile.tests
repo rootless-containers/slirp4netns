@@ -1,5 +1,5 @@
 FROM ubuntu:18.04 AS build
-RUN apt update && apt install -y automake autotools-dev make gcc libglib2.0-dev libcap-dev
+RUN apt update && apt install -y automake autotools-dev make gcc libglib2.0-dev libcap-dev libseccomp-dev
 COPY . /slirp4netns
 WORKDIR /slirp4netns
 RUN chown -R 1000:1000 /slirp4netns

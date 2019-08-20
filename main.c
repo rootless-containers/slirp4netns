@@ -328,6 +328,8 @@ static void usage(const char *argv0)
     printf("--userns-path=PATH	 specify user namespace path\n");
     printf("--enable-sandbox         create a new mount namespace and drop all "
            "capabilities except CAP_NET_BIND_SERVICE (experimental)\n");
+    printf("--enable-seccomp         enable seccomp to limit syscalls "
+           "(experimental)\n");
     /* others */
     printf("-h, --help               show this help and exit\n");
     printf("-v, --version            show version and exit\n");
@@ -357,6 +359,7 @@ struct options {
     char *netns_path; // --netns-path
     char *userns_path; // --userns-path
     bool enable_sandbox; // --enable-sandbox
+    bool enable_seccomp; // --enable-seccomp
 };
 
 static void options_init(struct options *options)
@@ -410,6 +413,7 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 #define NETNS_TYPE -44
 #define USERNS_PATH -45
 #define ENABLE_SANDBOX -46
+#define ENABLE_SECCOMP -47
 #define _DEPRECATED_NO_HOST_LOOPBACK \
     -10043 // deprecated in favor of disable-host-loopback
 #define _DEPRECATED_CREATE_SANDBOX \
@@ -428,6 +432,7 @@ static void parse_args(int argc, char *const argv[], struct options *options)
         { "enable-ipv6", no_argument, NULL, '6' },
         { "enable-sandbox", no_argument, NULL, ENABLE_SANDBOX },
         { "create-sandbox", no_argument, NULL, _DEPRECATED_CREATE_SANDBOX },
+        { "enable-seccomp", no_argument, NULL, ENABLE_SECCOMP },
         { "help", no_argument, NULL, 'h' },
         { "version", no_argument, NULL, 'v' },
         { 0, 0, 0, 0 },
@@ -489,6 +494,10 @@ static void parse_args(int argc, char *const argv[], struct options *options)
             printf("WARNING: Support for sandboxing is experimental\n");
             options->enable_sandbox = true;
             break;
+        case ENABLE_SECCOMP:
+            printf("WARNING: Support for seccomp is experimental\n");
+            options->enable_seccomp = true;
+            break;
         case NETNS_TYPE:
             optarg_netns_type = optarg;
             break;
@@ -538,6 +547,7 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 #undef USERNS_PATH
 #undef _DEPRECATED_NO_HOST_LOOPBACK
 #undef ENABLE_SANDBOX
+#undef ENABLE_SECCOMP
     if (argc - optind < 2) {
         goto error;
     }
@@ -671,6 +681,7 @@ static int slirp4netns_config_from_options(struct slirp4netns_config *cfg,
     cfg->enable_ipv6 = cfg->enable_ipv6;
     cfg->disable_host_loopback = opt->disable_host_loopback;
     cfg->enable_sandbox = opt->enable_sandbox;
+    cfg->enable_seccomp = opt->enable_seccomp;
 finish:
     return rc;
 }

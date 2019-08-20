@@ -35,6 +35,7 @@ Tools:
 Build dependencies:
 * `glib2-devel` (`libglib2.0-dev`)
 * `libcap-devel` (`libcap-dev`)
+* `libseccomp-devel` (`libseccomp-dev`)
 
 Install steps:
 
