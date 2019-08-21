@@ -333,7 +333,7 @@ int do_slirp(int tapfd, int readyfd, int exitfd, const char *api_socket,
         pollfds_apifd_idx = n_fds - 1;
     }
     signal(SIGPIPE, SIG_IGN);
-    if (cfg->create_sandbox && create_sandbox() < 0) {
+    if (cfg->enable_sandbox && create_sandbox() < 0) {
         fprintf(stderr, "create_sandbox failed\n");
         goto err;
     }
