@@ -276,7 +276,7 @@ static int parent(int sock, int ready_fd, int exit_fd, const char *api_socket,
             "--disable-host-loopback to prohibit connecting to 127.0.0.1:*)\n",
             inet_ntoa(cfg->vhost));
     }
-    if (cfg->create_sandbox && geteuid() != 0) {
+    if (cfg->enable_sandbox && geteuid() != 0) {
         if ((rc = nsenter(target_pid, NULL, NULL, true)) < 0) {
             close(tapfd);
             return rc;
@@ -326,7 +326,7 @@ static void usage(const char *argv0)
            "default=%s)\n",
            DEFAULT_NETNS_TYPE);
     printf("--userns-path=PATH	 specify user namespace path\n");
-    printf("--create-sandbox         create a new mount namespace and drop all "
+    printf("--enable-sandbox         create a new mount namespace and drop all "
            "capabilities except CAP_NET_BIND_SERVICE (experimental)\n");
     /* others */
     printf("-h, --help               show this help and exit\n");
@@ -356,7 +356,7 @@ struct options {
     char *netns_type; // argv[1]
     char *netns_path; // --netns-path
     char *userns_path; // --userns-path
-    bool create_sandbox; // --create-sandbod
+    bool enable_sandbox; // --enable-sandbox
 };
 
 static void options_init(struct options *options)
@@ -409,9 +409,11 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 #define DISABLE_HOST_LOOPBACK -43
 #define NETNS_TYPE -44
 #define USERNS_PATH -45
-#define CREATE_SANDBOX -46
+#define ENABLE_SANDBOX -46
 #define _DEPRECATED_NO_HOST_LOOPBACK \
     -10043 // deprecated in favor of disable-host-loopback
+#define _DEPRECATED_CREATE_SANDBOX \
+    -10044 // deprecated in favor of enable-sandbox
     const struct option longopts[] = {
         { "configure", no_argument, NULL, 'c' },
         { "exit-fd", required_argument, NULL, 'e' },
@@ -424,7 +426,8 @@ static void parse_args(int argc, char *const argv[], struct options *options)
         { "userns-path", required_argument, NULL, USERNS_PATH },
         { "api-socket", required_argument, NULL, 'a' },
         { "enable-ipv6", no_argument, NULL, '6' },
-        { "create-sandbox", no_argument, NULL, CREATE_SANDBOX },
+        { "enable-sandbox", no_argument, NULL, ENABLE_SANDBOX },
+        { "create-sandbox", no_argument, NULL, _DEPRECATED_CREATE_SANDBOX },
         { "help", no_argument, NULL, 'h' },
         { "version", no_argument, NULL, 'v' },
         { 0, 0, 0, 0 },
@@ -475,9 +478,16 @@ static void parse_args(int argc, char *const argv[], struct options *options)
         case DISABLE_HOST_LOOPBACK:
             options->disable_host_loopback = true;
             break;
-        case CREATE_SANDBOX:
+        case _DEPRECATED_CREATE_SANDBOX:
+            // There was no tagged release with support for --create-sandbox.
+            // So no one will be affected by removal of --create-sandbox.
+            printf("WARNING: --create-sandbox is deprecated and will be "
+                   "removed in future releases, please use "
+                   "--enable-sandbox instead.\n");
+            /* FALLTHROUGH */
+        case ENABLE_SANDBOX:
             printf("WARNING: Support for sandboxing is experimental\n");
-            options->create_sandbox = true;
+            options->enable_sandbox = true;
             break;
         case NETNS_TYPE:
             optarg_netns_type = optarg;
@@ -527,7 +537,7 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 #undef NETNS_TYPE
 #undef USERNS_PATH
 #undef _DEPRECATED_NO_HOST_LOOPBACK
-#undef CREATE_SANDBOX
+#undef ENABLE_SANDBOX
     if (argc - optind < 2) {
         goto error;
     }
@@ -660,7 +670,7 @@ static int slirp4netns_config_from_options(struct slirp4netns_config *cfg,
     }
     cfg->enable_ipv6 = cfg->enable_ipv6;
     cfg->disable_host_loopback = opt->disable_host_loopback;
-    cfg->create_sandbox = opt->create_sandbox;
+    cfg->enable_sandbox = opt->enable_sandbox;
 finish:
     return rc;
 }

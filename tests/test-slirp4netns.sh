@@ -10,7 +10,7 @@ child=$!
 
 wait_for_network_namespace $child
 
-slirp4netns --ready-fd=3 --create-sandbox $child tun11 3>ready.file &
+slirp4netns --ready-fd=3 --enable-sandbox $child tun11 3>ready.file &
 slirp_pid=$!
 
 # Wait that the sandbox is created

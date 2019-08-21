@@ -1,4 +1,3 @@
-.nh
 .TH SLIRP4NETNS 1 "July 2018" "Rootless Containers" "User Commands"
 
 .SH NAME
@@ -87,7 +86,7 @@ specify network namespace type ([path|pid], default=pid)
 specify user namespace path
 
 .PP
-\fB\-\-create\-sandbox\fP (since v0.4.0, EXPERIMENTAL)
+\fB\-\-enable\-sandbox\fP (since v0.4.0, EXPERIMENTAL)
 when running as a root (either on the host, or in a user namespace), create
 a new mount namespace where only /etc and /run are mounted from the host and
 all the capabilities except \fB\fCCAP\_NET\_BIND\_SERVICE\fR are dropped.
@@ -335,4 +334,5 @@ $ slirp4netns \-\-netns\-type=path \-\-userns\-path=/path/to/userns /path/to/net
 
 .SH AVAILABILITY
 .PP
-The slirp4netns command is available from \fBhttps://github.com/rootless\-containers/slirp4netns\fP under GNU GENERAL PUBLIC LICENSE Version 2.
+The slirp4netns command is available from \fB
+\[la]https://github.com/rootless-containers/slirp4netns\[ra]\fP under GNU GENERAL PUBLIC LICENSE Version 2.

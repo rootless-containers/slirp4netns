@@ -62,7 +62,7 @@ specify network namespace type ([path|pid], default=pid)
 **--userns-path=PATH** (since v0.4.0)
 specify user namespace path
 
-**--create-sandbox** (since v0.4.0, EXPERIMENTAL)
+**--enable-sandbox** (since v0.4.0, EXPERIMENTAL)
 when running as a root (either on the host, or in a user namespace), create
 a new mount namespace where only /etc and /run are mounted from the host and
 all the capabilities except `CAP_NET_BIND_SERVICE` are dropped.
