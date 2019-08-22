@@ -1,4 +1,4 @@
-SLIRP4NETNS 1 "July 2018" "Rootless Containers" "User Commands"
+SLIRP4NETNS 1 "August 2019" "Rootless Containers" "User Commands"
 ==================================================
 
 # NAME
@@ -63,9 +63,11 @@ specify network namespace type ([path|pid], default=pid)
 specify user namespace path
 
 **--enable-sandbox** (since v0.4.0, EXPERIMENTAL)
-when running as a root (either on the host, or in a user namespace), create
-a new mount namespace where only /etc and /run are mounted from the host and
-all the capabilities except `CAP_NET_BIND_SERVICE` are dropped.
+enter the user namespace and create a new mount namespace where only /etc and
+/run are mounted from the host.
+
+When running as the root, the process does not enter the user namespace but all
+the capabilities except `CAP_NET_BIND_SERVICE` are dropped.
 
 **-h**, **--help** (since v0.2.0)
 show help and exit
@@ -205,6 +207,18 @@ Currently, the **netns-type=TYPE** argument supports **path** or **pid** args wi
 Additionally, a **--userns-path=PATH** argument can be included to override any user namespace path defaults
 ```console
 $ slirp4netns --netns-type=path --userns-path=/path/to/userns /path/to/netns tap0
+```
+
+# BUGS
+
+Kernel 4.20 bumped up the default value of **/proc/sys/net/ipv4/tcp_rmem** from 87380 to 131072.
+This is known to slow down slirp4netns port forwarding: **https://github.com/rootless-containers/slirp4netns/issues/128**.
+
+As a workaround, you can adjust the value of **/proc/sys/net/ipv4/tcp_rmem** inside the namespace.
+No real root privilege is needed to modify the file since kernel 4.15.
+
+```console
+unshared$ c=$(cat /proc/sys/net/ipv4/tcp_rmem); echo $c | sed -e s/131072/87380/g > /proc/sys/net/ipv4/tcp_rmem
 ```
 
 # SEE ALSO
