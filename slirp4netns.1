@@ -1,4 +1,5 @@
-.TH SLIRP4NETNS 1 "July 2018" "Rootless Containers" "User Commands"
+.nh
+.TH SLIRP4NETNS 1 "August 2019" "Rootless Containers" "User Commands"
 
 .SH NAME
 .PP
@@ -87,9 +88,12 @@ specify user namespace path
 
 .PP
 \fB\-\-enable\-sandbox\fP (since v0.4.0, EXPERIMENTAL)
-when running as a root (either on the host, or in a user namespace), create
-a new mount namespace where only /etc and /run are mounted from the host and
-all the capabilities except \fB\fCCAP\_NET\_BIND\_SERVICE\fR are dropped.
+enter the user namespace and create a new mount namespace where only /etc and
+/run are mounted from the host.
+
+.PP
+When running as the root, the process does not enter the user namespace but all
+the capabilities except \fB\fCCAP\_NET\_BIND\_SERVICE\fR are dropped.
 
 .PP
 \fB\-h\fP, \fB\-\-help\fP (since v0.2.0)
@@ -327,6 +331,25 @@ $ slirp4netns \-\-netns\-type=path \-\-userns\-path=/path/to/userns /path/to/net
 .RE
 
 
+.SH BUGS
+.PP
+Kernel 4.20 bumped up the default value of \fB/proc/sys/net/ipv4/tcp\_rmem\fP from 87380 to 131072.
+This is known to slow down slirp4netns port forwarding: \fBhttps://github.com/rootless\-containers/slirp4netns/issues/128\fP\&.
+
+.PP
+As a workaround, you can adjust the value of \fB/proc/sys/net/ipv4/tcp\_rmem\fP inside the namespace.
+No real root privilege is needed to modify the file since kernel 4.15.
+
+.PP
+.RS
+
+.nf
+unshared$ c=$(cat /proc/sys/net/ipv4/tcp\_rmem); echo $c | sed \-e s/131072/87380/g > /proc/sys/net/ipv4/tcp\_rmem
+
+.fi
+.RE
+
+
 .SH SEE ALSO
 .PP
 \fBnetwork\_namespaces\fP(7), \fBuser\_namespaces\fP(7), \fBveth\fP(4)
@@ -334,5 +357,4 @@ $ slirp4netns \-\-netns\-type=path \-\-userns\-path=/path/to/userns /path/to/net
 
 .SH AVAILABILITY
 .PP
-The slirp4netns command is available from \fB
-\[la]https://github.com/rootless-containers/slirp4netns\[ra]\fP under GNU GENERAL PUBLIC LICENSE Version 2.
+The slirp4netns command is available from \fBhttps://github.com/rootless\-containers/slirp4netns\fP under GNU GENERAL PUBLIC LICENSE Version 2.
