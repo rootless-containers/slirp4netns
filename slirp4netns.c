@@ -11,6 +11,7 @@
 #include "vendor/libslirp/src/libslirp.h"
 #include "api.h"
 #include "sandbox.h"
+#include "seccompfilter.h"
 #include "slirp4netns.h"
 
 /* opaque for SlirpCb */
@@ -335,6 +336,10 @@ int do_slirp(int tapfd, int readyfd, int exitfd, const char *api_socket,
     signal(SIGPIPE, SIG_IGN);
     if (cfg->enable_sandbox && create_sandbox() < 0) {
         fprintf(stderr, "create_sandbox failed\n");
+        goto err;
+    }
+    if (cfg->enable_seccomp && enable_seccomp() < 0) {
+        fprintf(stderr, "enable_seccomp failed\n");
         goto err;
     }
     if (readyfd >= 0) {

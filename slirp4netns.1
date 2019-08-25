@@ -96,6 +96,11 @@ When running as the root, the process does not enter the user namespace but all
 the capabilities except \fB\fCCAP\_NET\_BIND\_SERVICE\fR are dropped.
 
 .PP
+\fB\-\-enable\-seccomp\fP (since v0.4.0, EXPERIMENTAL)
+enable \fBseccomp(2)\fP to limit syscalls.
+Typically used in conjunction with \fB\-\-enable\-sandbox\fP\&.
+
+.PP
 \fB\-h\fP, \fB\-\-help\fP (since v0.2.0)
 show help and exit
 

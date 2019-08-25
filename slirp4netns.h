@@ -14,6 +14,7 @@ struct slirp4netns_config {
 	bool enable_ipv6;
 	bool disable_host_loopback;
 	bool enable_sandbox;
+	bool enable_seccomp;
 };
 int do_slirp(int tapfd, int readyfd, int exitfd, const char *api_socket, struct slirp4netns_config *cfg);
 

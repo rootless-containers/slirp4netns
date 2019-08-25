@@ -69,6 +69,10 @@ enter the user namespace and create a new mount namespace where only /etc and
 When running as the root, the process does not enter the user namespace but all
 the capabilities except `CAP_NET_BIND_SERVICE` are dropped.
 
+**--enable-seccomp** (since v0.4.0, EXPERIMENTAL)
+enable **seccomp(2)** to limit syscalls.
+Typically used in conjunction with **--enable-sandbox**.
+
 **-h**, **--help** (since v0.2.0)
 show help and exit
 
