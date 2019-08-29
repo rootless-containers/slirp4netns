@@ -42,6 +42,8 @@ Early versions prior to v0.2.x | D :warning:
 
 See https://github.com/rootless-containers/slirp4netns/releases for the releases.
 
+See https://github.com/rootless-containers/slirp4netns/security/advisories for the past security advisories.
+
 ## Quick start
 
 ### Install from source
