@@ -1,6 +1,6 @@
 bin_PROGRAMS = slirp4netns
 
-AM_CFLAGS = @GLIB_CFLAGS@
+AM_CFLAGS = @GLIB_CFLAGS@ @LIBCAP_CFLAGS@ @LIBSECCOMP_CFLAGS@
 
 noinst_LIBRARIES = libslirp.a libparson.a
 

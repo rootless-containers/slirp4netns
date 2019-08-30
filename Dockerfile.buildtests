@@ -34,9 +34,20 @@ RUN yum-config-manager --add-repo=https://cbs.centos.org/repos/virt7-container-c
  yum install --nogpgcheck -y libseccomp-static
 RUN ./configure LDFLAGS="-static" && make && cp -f slirp4netns /
 
+# openSUSE (dynamic only)
+FROM opensuse/leap:15.1 AS buildtest-opensuse151-common
+RUN zypper install -y --no-recommends autoconf automake gcc glib2-devel git make libcap-devel libseccomp-devel
+COPY . /src
+WORKDIR /src
+RUN ./autogen.sh
+
+FROM buildtest-opensuse151-common AS buildtest-opensuse151-dynamic
+RUN ./configure && make && cp -f slirp4netns /
+
 FROM scratch AS buildtest-final-stage
 COPY --from=buildtest-alpine310-static /slirp4netns /buildtest-alpine310-static
 COPY --from=buildtest-ubuntu1804-dynamic /slirp4netns /buildtest-ubuntu1804-dynamic
 COPY --from=buildtest-ubuntu1804-static /slirp4netns /buildtest-ubuntu1804-static
 COPY --from=buildtest-centos76-dynamic /slirp4netns /buildtest-centos76-dynamic
 COPY --from=buildtest-centos76-static /slirp4netns /buildtest-centos76-static
+COPY --from=buildtest-opensuse151-dynamic /slirp4netns /buildtest-opensuse151-dynamic
