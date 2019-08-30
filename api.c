@@ -90,7 +90,6 @@ static int api_handle_req_add_hostfwd(Slirp *slirp, int fd, struct api_ctx *ctx,
                                       JSON_Object *jo)
 {
     int wrc = 0, slirprc = 0;
-    int id = -1;
     char idbuf[64];
     const char *proto_s = json_object_dotget_string(jo, "arguments.proto");
     const char *host_addr_s =
@@ -213,7 +212,6 @@ static int api_handle_req_list_hostfwd(Slirp *slirp, int fd,
                                        struct api_ctx *ctx, JSON_Object *jo)
 {
     int wrc = 0;
-    struct api_hostfwd *fwd = NULL;
     JSON_Value *root_value = json_value_init_object(),
                *entries_value = json_value_init_array();
     JSON_Object *root_object = json_value_get_object(root_value);
@@ -224,7 +222,6 @@ static int api_handle_req_list_hostfwd(Slirp *slirp, int fd,
     json_object_set_value(root_object, "entries", entries_value);
     serialized_string = json_serialize_to_string(root_value);
     wrc = write(fd, serialized_string, strlen(serialized_string));
-finish:
     json_free_serialized_string(serialized_string);
     json_value_free(root_value);
     return wrc;
