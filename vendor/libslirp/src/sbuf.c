@@ -39,13 +39,17 @@ void sbreserve(struct sbuf *sb, int size)
     if (sb->sb_data) {
         /* Already alloced, realloc if necessary */
         if (sb->sb_datalen != size) {
-            sb->sb_wptr = sb->sb_rptr = sb->sb_data =
+            sb->sb_wptr = sb->sb_rptr =
                 (char *)realloc(sb->sb_data, size);
             sb->sb_cc = 0;
-            if (sb->sb_wptr)
+            if (sb->sb_wptr) {
                 sb->sb_datalen = size;
-            else
+                sb->sb_data = sb->sb_wptr;
+            } else {
                 sb->sb_datalen = 0;
+                free(sb->sb_data);
+                sb->sb_data = NULL;
+            }
         }
     } else {
         sb->sb_wptr = sb->sb_rptr = sb->sb_data = (char *)malloc(size);
