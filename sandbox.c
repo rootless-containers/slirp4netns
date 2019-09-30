@@ -16,11 +16,21 @@ static int add_mount(const char *from, const char *to)
 {
     int ret;
 
+    ret = mount("", from, "", MS_SLAVE | MS_REC, NULL);
+    if (ret < 0 && errno != EINVAL) {
+        fprintf(stderr, "cannot make mount propagation slave %s\n", from);
+        return ret;
+    }
     ret = mount(from, to, "",
                 MS_BIND | MS_REC | MS_SLAVE | MS_NOSUID | MS_NODEV | MS_NOEXEC,
                 NULL);
     if (ret < 0) {
         fprintf(stderr, "cannot bind mount %s to %s\n", from, to);
+        return ret;
+    }
+    ret = mount("", to, "", MS_SLAVE | MS_REC, NULL);
+    if (ret < 0) {
+        fprintf(stderr, "cannot make mount propagation slave %s\n", to);
         return ret;
     }
     ret = mount(from, to, "",
