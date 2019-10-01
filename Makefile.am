@@ -16,6 +16,7 @@ EXTRA_DIST = \
 	api.h \
 	sandbox.h \
 	seccompfilter.h \
+	tests/slirp4netns-no-unmount.sh \
 	vendor/libslirp/COPYRIGHT \
 	vendor/libslirp/README.md \
 	vendor/libslirp/src/bootp.h \
