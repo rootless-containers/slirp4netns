@@ -67,3 +67,5 @@ wait_for_network_device $child tun11
 
 nsenter --preserve-credentials -U -n --target=$child ip -a netconf | grep tun11
 nsenter --preserve-credentials -U -n --target=$child ip addr show tun11 | grep -v inet
+
+unshare -rm $(readlink -f $(dirname $0)/slirp4netns-no-unmount.sh)
