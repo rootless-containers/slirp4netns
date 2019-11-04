@@ -21,6 +21,11 @@ int api_bindlisten(const char *api_socket)
     }
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
+    if (strlen(api_socket) >= sizeof(addr.sun_path)) {
+        fprintf(stderr, "the specified API socket path is too long (>= %lu)\n",
+                sizeof(addr.sun_path));
+        return -1;
+    }
     strncpy(addr.sun_path, api_socket, sizeof(addr.sun_path) - 1);
     if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         perror("api_bindlisten: bind");
