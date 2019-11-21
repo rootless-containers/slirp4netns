@@ -168,7 +168,8 @@ g_spawn_async_with_fds_slirp(const gchar *working_directory, gchar **argv,
 int fork_exec(struct socket *so, const char *ex)
 {
     GError *err = NULL;
-    char **argv;
+    gint argc = 0;
+    gchar **argv = NULL;
     int opt, sp[2];
 
     DEBUG_CALL("fork_exec");
@@ -179,7 +180,12 @@ int fork_exec(struct socket *so, const char *ex)
         return 0;
     }
 
-    argv = g_strsplit(ex, " ", -1);
+    if (!g_shell_parse_argv(ex, &argc, &argv, &err)) {
+        g_critical("fork_exec invalid command: %s\nerror: %s", ex, err->message);
+        g_error_free(err);
+        return 0;
+    }
+
     g_spawn_async_with_fds(NULL /* cwd */, argv, NULL /* env */,
                            G_SPAWN_SEARCH_PATH, fork_exec_child_setup,
                            NULL /* data */, NULL /* child_pid */, sp[1], sp[1],
