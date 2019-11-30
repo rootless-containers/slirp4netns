@@ -135,7 +135,6 @@ int create_sandbox()
     ret = mount("tmpfs", "/", "tmpfs", MS_REMOUNT | MS_RDONLY, "size=0k");
     if (ret < 0) {
         fprintf(stderr, "cannot mount tmpfs on /tmp\n");
-        return ret;
     }
 
     ret = prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
