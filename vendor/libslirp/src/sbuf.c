@@ -9,19 +9,17 @@ static void sbappendsb(struct sbuf *sb, struct mbuf *m);
 
 void sbfree(struct sbuf *sb)
 {
-    free(sb->sb_data);
+    g_free(sb->sb_data);
 }
 
-bool sbdrop(struct sbuf *sb, int num)
+bool sbdrop(struct sbuf *sb, size_t num)
 {
     int limit = sb->sb_datalen / 2;
 
-    /*
-     * We can only drop how much we have
-     * This should never succeed
-     */
+    g_warn_if_fail(num <= sb->sb_cc);
     if (num > sb->sb_cc)
         num = sb->sb_cc;
+
     sb->sb_cc -= num;
     sb->sb_rptr += num;
     if (sb->sb_rptr >= sb->sb_data + sb->sb_datalen)
@@ -34,27 +32,11 @@ bool sbdrop(struct sbuf *sb, int num)
     return false;
 }
 
-void sbreserve(struct sbuf *sb, int size)
+void sbreserve(struct sbuf *sb, size_t size)
 {
-    if (sb->sb_data) {
-        /* Already alloced, realloc if necessary */
-        if (sb->sb_datalen != size) {
-            sb->sb_wptr = sb->sb_rptr = sb->sb_data =
-                (char *)realloc(sb->sb_data, size);
-            sb->sb_cc = 0;
-            if (sb->sb_wptr)
-                sb->sb_datalen = size;
-            else
-                sb->sb_datalen = 0;
-        }
-    } else {
-        sb->sb_wptr = sb->sb_rptr = sb->sb_data = (char *)malloc(size);
-        sb->sb_cc = 0;
-        if (sb->sb_wptr)
-            sb->sb_datalen = size;
-        else
-            sb->sb_datalen = 0;
-    }
+    sb->sb_wptr = sb->sb_rptr = sb->sb_data = g_realloc(sb->sb_data, size);
+    sb->sb_cc = 0;
+    sb->sb_datalen = size;
 }
 
 /*
@@ -161,17 +143,17 @@ static void sbappendsb(struct sbuf *sb, struct mbuf *m)
  * Don't update the sbuf rptr, this will be
  * done in sbdrop when the data is acked
  */
-void sbcopy(struct sbuf *sb, int off, int len, char *to)
+void sbcopy(struct sbuf *sb, size_t off, size_t len, char *to)
 {
     char *from;
+
+    g_assert(len + off <= sb->sb_cc);
 
     from = sb->sb_rptr + off;
     if (from >= sb->sb_data + sb->sb_datalen)
         from -= sb->sb_datalen;
 
     if (from < sb->sb_wptr) {
-        if (len > sb->sb_cc)
-            len = sb->sb_cc;
         memcpy(to, from, len);
     } else {
         /* re-use off */

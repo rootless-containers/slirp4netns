@@ -18,10 +18,10 @@ struct sbuf {
     char *sb_data; /* Actual data */
 };
 
-void sbfree(struct sbuf *);
-bool sbdrop(struct sbuf *, int);
-void sbreserve(struct sbuf *, int);
-void sbappend(struct socket *, struct mbuf *);
-void sbcopy(struct sbuf *, int, int, char *);
+void sbfree(struct sbuf *sb);
+bool sbdrop(struct sbuf *sb, size_t len);
+void sbreserve(struct sbuf *sb, size_t size);
+void sbappend(struct socket *sb, struct mbuf *mb);
+void sbcopy(struct sbuf *sb, size_t off, size_t len, char *p);
 
 #endif

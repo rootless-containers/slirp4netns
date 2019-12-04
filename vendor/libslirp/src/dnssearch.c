@@ -238,13 +238,8 @@ int translate_dnssearch(Slirp *s, const char **names)
     size_t i, num_domains, memreq = 0;
     uint8_t *result = NULL, *outptr;
     CompactDomain *domains = NULL;
-    const char **nameptr = names;
 
-    while (*nameptr != NULL) {
-        nameptr++;
-    }
-
-    num_domains = nameptr - names;
+    num_domains = g_strv_length((GStrv)names);
     if (num_domains == 0) {
         return -2;
     }
