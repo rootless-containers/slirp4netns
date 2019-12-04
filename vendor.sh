@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eux -o pipefail
-# Nov 21, 2019
-LIBSLIRP_COMMIT=d171af3732a0610a25334b06b77fa547bd677918
+# Dec 4, 2019 (v4.1.0)
+LIBSLIRP_COMMIT=6651ba26c4e94f64d6448a2db4991269ce553bd9
 LIBSLIRP_REPO=https://gitlab.freedesktop.org/slirp/libslirp.git
 
 # Jul 12, 2019

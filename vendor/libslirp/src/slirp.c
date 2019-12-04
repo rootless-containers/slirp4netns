@@ -845,11 +845,6 @@ static int if_encap4(Slirp *slirp, struct mbuf *ifm, struct ethhdr *eh,
 {
     const struct ip *iph = (const struct ip *)ifm->m_data;
 
-    if (iph->ip_dst.s_addr == 0) {
-        /* 0.0.0.0 can not be a destination address, something went wrong,
-         * avoid making it worse */
-        return 1;
-    }
     if (!arp_table_search(slirp, iph->ip_dst.s_addr, ethaddr)) {
         uint8_t arp_req[ETH_HLEN + sizeof(struct slirp_arphdr)];
         struct ethhdr *reh = (struct ethhdr *)arp_req;

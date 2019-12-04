@@ -95,7 +95,7 @@ void sofree(struct socket *so)
         remque(so); /* crashes if so is not in a queue */
 
     if (so->so_tcpcb) {
-        free(so->so_tcpcb);
+        g_free(so->so_tcpcb);
     }
     g_free(so);
 }
@@ -846,6 +846,9 @@ int sotranslate_out(struct socket *so, struct sockaddr_storage *addr)
             } else {
                 sin->sin_addr = loopback_addr;
             }
+        } else if (!slirp->disable_host_loopback && so->so_faddr.s_addr == 0xffffffff) {
+            /* Receive broadcast as well */
+            sin->sin_addr = loopback_addr;
         }
         break;
     case AF_INET6:
@@ -865,6 +868,9 @@ int sotranslate_out(struct socket *so, struct sockaddr_storage *addr)
             } else {
                 sin6->sin6_addr = in6addr_loopback;
             }
+        } else if (!slirp->disable_host_loopback
+                   && in6_equal(&so->so_faddr6, &(struct in6_addr) ALLNODES_MULTICAST)) {
+            sin6->sin6_addr = in6addr_loopback;
         }
         break;
 
