@@ -1,0 +1,24 @@
+name: Main
+on: [push, pull_request]
+jobs:
+  test-main:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - run: docker build -t slirp4netns-tests -f Dockerfile.tests .
+    - run: docker run --rm --privileged slirp4netns-tests
+  test-build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - run: DOCKER_BUILDKIT=1 docker build -f Dockerfile.buildtests .
+  artifact:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - run: DOCKER_BUILDKIT=1 docker build -o /tmp/artifact --target artifact -f Dockerfile.buildtests .
+    - run: (cd /tmp/artifact; sha256sum *)
+    - uses: actions/upload-artifact@v1
+      with:
+        name: slirp4netns-x86_64
+        path: /tmp/artifact/slirp4netns

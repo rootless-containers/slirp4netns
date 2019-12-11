@@ -44,6 +44,10 @@ RUN ./autogen.sh
 FROM buildtest-opensuse151-common AS buildtest-opensuse151-dynamic
 RUN ./configure && make && cp -f slirp4netns /
 
+# artifact for GitHub actions
+FROM scratch AS artifact
+COPY --from=buildtest-alpine310-static /slirp4netns /slirp4netns
+
 FROM scratch AS buildtest-final-stage
 COPY --from=buildtest-alpine310-static /slirp4netns /buildtest-alpine310-static
 COPY --from=buildtest-ubuntu1804-dynamic /slirp4netns /buildtest-ubuntu1804-dynamic
