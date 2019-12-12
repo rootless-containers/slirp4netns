@@ -266,7 +266,7 @@ struct tcpcb *tcp_close(register struct tcpcb *);
 void tcp_sockclosed(struct tcpcb *);
 int tcp_fconnect(struct socket *, unsigned short af);
 void tcp_connect(struct socket *);
-int tcp_attach(struct socket *);
+void tcp_attach(struct socket *);
 uint8_t tcp_tos(struct socket *);
 int tcp_emu(struct socket *, struct mbuf *);
 int tcp_ctl(struct socket *);

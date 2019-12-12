@@ -107,9 +107,6 @@ static int sbuf_tmp_post_load(void *opaque, int version)
     /* Allocate the buffer space used by the field after the tmp */
     sbreserve(tmp->parent, tmp->parent->sb_datalen);
 
-    if (tmp->parent->sb_datalen != requested_len) {
-        return -ENOMEM;
-    }
     if (tmp->woff >= requested_len || tmp->roff >= requested_len) {
         g_critical("invalid sbuf offsets r/w=%u/%u len=%u", tmp->roff,
                    tmp->woff, requested_len);
@@ -159,9 +156,8 @@ static bool slirp_family_inet(void *opaque, int version_id)
 static int slirp_socket_pre_load(void *opaque)
 {
     struct socket *so = opaque;
-    if (tcp_attach(so) < 0) {
-        return -ENOMEM;
-    }
+
+    tcp_attach(so);
     /* Older versions don't load these fields */
     so->so_ffamily = AF_INET;
     so->so_lfamily = AF_INET;
