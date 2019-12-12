@@ -255,11 +255,7 @@ struct tcpcb *tcp_newtcpcb(struct socket *so)
 {
     register struct tcpcb *tp;
 
-    tp = (struct tcpcb *)malloc(sizeof(*tp));
-    if (tp == NULL)
-        return ((struct tcpcb *)0);
-
-    memset((char *)tp, 0, sizeof(struct tcpcb));
+    tp = g_new0(struct tcpcb, 1);
     tp->seg_next = tp->seg_prev = (struct tcpiphdr *)tp;
     /*
      * 40: length of IPv4 header (20) + TCP header (20)
@@ -336,7 +332,7 @@ struct tcpcb *tcp_close(struct tcpcb *tp)
         remque(tcpiphdr2qlink(tcpiphdr_prev(t)));
         m_free(m);
     }
-    free(tp);
+    g_free(tp);
     so->so_tcpcb = NULL;
     /* clobber input socket cache if we're closing the cached connection */
     if (so == slirp->tcp_last_so)
@@ -377,8 +373,8 @@ void tcp_sockclosed(struct tcpcb *tp)
     case TCPS_LISTEN:
     case TCPS_SYN_SENT:
         tp->t_state = TCPS_CLOSED;
-        tp = tcp_close(tp);
-        break;
+        tcp_close(tp);
+        return;
 
     case TCPS_SYN_RECEIVED:
     case TCPS_ESTABLISHED:
@@ -474,10 +470,7 @@ void tcp_connect(struct socket *inso)
         so = inso;
     } else {
         so = socreate(slirp);
-        if (tcp_attach(so) < 0) {
-            g_free(so); /* NOT sofree */
-            return;
-        }
+        tcp_attach(so);
         so->lhost = inso->lhost;
         so->so_ffamily = inso->so_ffamily;
     }
@@ -528,14 +521,10 @@ void tcp_connect(struct socket *inso)
 /*
  * Attach a TCPCB to a socket.
  */
-int tcp_attach(struct socket *so)
+void tcp_attach(struct socket *so)
 {
-    if ((so->so_tcpcb = tcp_newtcpcb(so)) == NULL)
-        return -1;
-
+    so->so_tcpcb = tcp_newtcpcb(so);
     insque(so, &so->slirp->tcb);
-
-    return 0;
 }
 
 /*
