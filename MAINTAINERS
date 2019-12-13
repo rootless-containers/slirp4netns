@@ -2,8 +2,22 @@
 
 [Org]
 
-# Approvers (aka Core Maintainers) approve pull requests.
+# Approvers (aka Core Maintainers) approve pull requests and ship releases.
 # GitHub Team: rootless-containers/slirp4netns-approvers
+#
+# An approver may approve PRs and ship releases without waiting for LGTMs from other approvers.
+# However, the approver should try to get LGTMs from other approvers for significant changes.
+#
+# Release guide (since v0.4.3):
+# 1. Bump up the version string to `vX.Y.Z` (or `vX.Y.Z-beta.W`) in `configure.ac`.
+# 2. `git commit -a -s -m vX.Y.Z`
+# 3. Bump up the version string to `vX.Y.Z+dev` (or `vX.Y.Z-beta.W`+dev) in `configure.ac`.
+# 4. `git commit -a -s -m vX.Y.Z+dev`
+# 5. Open a PR and merge it.
+# 6. Create a tag `v.X.Y.Z` for the `vX.Y.Z` commit, and push the tag to the upstream: `git push upstream vX.Y.Z`
+# 7. GitHub Actions automatically ships a draft release with a statically compiled binary: https://github.com/rootless-containers/slirp4netns/releases
+#    If it fails, check the GitHub Actions log: https://github.com/rootless-containers/slirp4netns/actions?query=workflow%3ARelease
+# 8. Add release notes to the draft release and ship the release.
 	[Org.Approvers]
 		people = [
 			"akihirosuda",
