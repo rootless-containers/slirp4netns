@@ -5,8 +5,8 @@
 #include <unistd.h>
 #include <sys/un.h>
 #include <glib.h>
+#include <libslirp.h>
 #include "vendor/parson/parson.h"
-#include "vendor/libslirp/src/libslirp.h"
 #include "api.h"
 #include "slirp4netns.h"
 

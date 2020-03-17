@@ -1,8 +1,5 @@
 #!/bin/bash
 set -eux -o pipefail
-# Dec 4, 2019 (v4.1.0)
-LIBSLIRP_COMMIT=6651ba26c4e94f64d6448a2db4991269ce553bd9
-LIBSLIRP_REPO=https://gitlab.freedesktop.org/slirp/libslirp.git
 
 # Jul 12, 2019
 PARSON_COMMIT=c5bb9557fe98367aa8e041c65863909f12ee76b2
@@ -14,21 +11,6 @@ tmp=$(mktemp -d /tmp/slirp4netns-vendor.XXXXXXXXXX)
 tmp_git=$tmp/git
 tmp_vendor=$tmp/vendor
 mkdir -p $tmp_git $tmp_vendor
-
-# vendor libslirp
-git clone $LIBSLIRP_REPO $tmp_git/libslirp
-(
-	cd $tmp_git/libslirp
-	git checkout $LIBSLIRP_COMMIT
-	if ls $slirp4netns_root/vendor_patches/libslirp/*.patch >/dev/null; then
-		git am $slirp4netns_root/vendor_patches/libslirp/*.patch
-	fi
-	# run make to generate src/libslirp-version.h
-	make
-	mkdir -p $tmp_vendor/libslirp/src
-	cp -a .clang-format COPYRIGHT README.md $tmp_vendor/libslirp
-	cp -a src/{*.c,*.h} $tmp_vendor/libslirp/src
-)
 
 # vendor parson
 git clone $PARSON_REPO $tmp_git/parson
@@ -44,23 +26,9 @@ cat <<EOF >$tmp_vendor/README.md
 # DO NOT EDIT MANUALLY
 
 Vendored components:
-* libslirp: $LIBSLIRP_REPO (\`$LIBSLIRP_COMMIT\`)
 * parson: $PARSON_REPO (\`$PARSON_COMMIT\`)
 
 EOF
-
-if ls $slirp4netns_root/vendor_patches/libslirp/*.patch >/dev/null; then
-	cat <<EOF >>$tmp_vendor/README.md
-Applied patches (sha256sum):
-\`\`\`
-$(
-		cd $slirp4netns_root
-		sha256sum vendor_patches/*/*
-	)
-\`\`\`
-
-EOF
-fi
 
 cat <<EOF >>$tmp_vendor/README.md
 Please do not edit the contents under this directory manually.

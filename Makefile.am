@@ -1,8 +1,8 @@
 bin_PROGRAMS = slirp4netns
 
-AM_CFLAGS = @GLIB_CFLAGS@ @LIBCAP_CFLAGS@ @LIBSECCOMP_CFLAGS@
+AM_CFLAGS = @GLIB_CFLAGS@ @SLIRP_CFLAGS@ @LIBCAP_CFLAGS@ @LIBSECCOMP_CFLAGS@
 
-noinst_LIBRARIES = libslirp.a libparson.a
+noinst_LIBRARIES = libparson.a
 
 AM_TESTS_ENVIRONMENT = PATH="$(abs_top_builddir):$(PATH)"
 TESTS = tests/test-slirp4netns.sh tests/test-slirp4netns-configure.sh tests/test-slirp4netns-exit-fd.sh tests/test-slirp4netns-ready-fd.sh tests/test-slirp4netns-api-socket.sh tests/test-slirp4netns-disable-host-loopback.sh tests/test-slirp4netns-cidr.sh
@@ -17,70 +17,9 @@ EXTRA_DIST = \
 	sandbox.h \
 	seccompfilter.h \
 	tests/slirp4netns-no-unmount.sh \
-	vendor/libslirp/COPYRIGHT \
-	vendor/libslirp/README.md \
-	vendor/libslirp/src/bootp.h \
-	vendor/libslirp/src/debug.h \
-	vendor/libslirp/src/dhcpv6.h \
-	vendor/libslirp/src/if.h \
-	vendor/libslirp/src/ip6.h \
-	vendor/libslirp/src/ip6_icmp.h \
-	vendor/libslirp/src/ip.h \
-	vendor/libslirp/src/ip_icmp.h \
-	vendor/libslirp/src/libslirp.h \
-	vendor/libslirp/src/libslirp-version.h \
-	vendor/libslirp/src/main.h \
-	vendor/libslirp/src/mbuf.h \
-	vendor/libslirp/src/misc.h \
-	vendor/libslirp/src/ncsi-pkt.h \
-	vendor/libslirp/src/sbuf.h \
-	vendor/libslirp/src/slirp.h \
-	vendor/libslirp/src/socket.h \
-	vendor/libslirp/src/stream.h \
-	vendor/libslirp/src/tcp.h \
-	vendor/libslirp/src/tcpip.h \
-	vendor/libslirp/src/tcp_timer.h \
-	vendor/libslirp/src/tcp_var.h \
-	vendor/libslirp/src/tftp.h \
-	vendor/libslirp/src/udp.h \
-	vendor/libslirp/src/util.h \
-	vendor/libslirp/src/vmstate.h \
 	vendor/parson/LICENSE \
 	vendor/parson/README.md \
 	vendor/parson/parson.h
-
-libslirp_a_SOURCES = \
-			vendor/libslirp/src/arp_table.c \
-			vendor/libslirp/src/bootp.c \
-			vendor/libslirp/src/cksum.c \
-			vendor/libslirp/src/dhcpv6.c \
-			vendor/libslirp/src/dnssearch.c \
-			vendor/libslirp/src/if.c \
-			vendor/libslirp/src/ip6_icmp.c \
-			vendor/libslirp/src/ip6_input.c \
-			vendor/libslirp/src/ip6_output.c \
-			vendor/libslirp/src/ip_icmp.c \
-			vendor/libslirp/src/ip_input.c \
-			vendor/libslirp/src/ip_output.c \
-			vendor/libslirp/src/mbuf.c \
-			vendor/libslirp/src/misc.c \
-			vendor/libslirp/src/ncsi.c \
-			vendor/libslirp/src/ndp_table.c \
-			vendor/libslirp/src/sbuf.c \
-			vendor/libslirp/src/slirp.c \
-			vendor/libslirp/src/socket.c \
-			vendor/libslirp/src/state.c \
-			vendor/libslirp/src/stream.c \
-			vendor/libslirp/src/tcp_input.c \
-			vendor/libslirp/src/tcp_output.c \
-			vendor/libslirp/src/tcp_subr.c \
-			vendor/libslirp/src/tcp_timer.c \
-			vendor/libslirp/src/tftp.c \
-			vendor/libslirp/src/udp6.c \
-			vendor/libslirp/src/udp.c \
-			vendor/libslirp/src/util.c \
-			vendor/libslirp/src/version.c \
-			vendor/libslirp/src/vmstate.c
 
 # define specific commit if git available or it was replaced during git-archive creation
 COMMIT := $(shell V=$Format:%H$ ; \
@@ -90,12 +29,11 @@ COMMIT := $(shell V=$Format:%H$ ; \
 DEFINE_COMMIT = -DCOMMIT="\"$(COMMIT)\""
 
 slirp4netns_CFLAGS = $(AM_CFLAGS) $(DEFINE_COMMIT)
-libslirp_a_CFLAGS = $(AM_CFLAGS) -I$(abs_top_builddir)/vendor/libslirp/src
 libparson_a_CFLAGS = $(AM_CFLAGS) -I$(abs_top_builddir)/vendor/parson
 libparson_a_SOURCES = vendor/parson/parson.c
 
 slirp4netns_SOURCES = main.c slirp4netns.c api.c sandbox.c seccompfilter.c
-slirp4netns_LDADD = libslirp.a libparson.a @GLIB_LIBS@ @LIBSECCOMP_LIBS@ -lpthread
+slirp4netns_LDADD = libparson.a @GLIB_LIBS@ @SLIRP_LIBS@ @LIBSECCOMP_LIBS@ -lpthread
 man1_MANS = slirp4netns.1
 
 generate-man:
@@ -109,7 +47,7 @@ lint:
 	$(CLANGTIDY) $(slirp4netns_SOURCES) -- $(AM_CFLAGS)
 
 lint-full:
-	$(CLANGTIDY) $(slirp4netns_SOURCES) $(libslirp_a_SOURCES) $(libparson_a_SOURCES) -- $(AM_CFLAGS)
+	$(CLANGTIDY) $(slirp4netns_SOURCES) $(libparson_a_SOURCES) -- $(AM_CFLAGS)
 
 indent:
 	$(CLANGFORMAT) -i $(slirp4netns_SOURCES)
@@ -122,7 +60,6 @@ ci:
 	$(MAKE) indent
 	git diff --exit-code
 # TODO: make sure ./vendor is synced with ./vendor.sh
-# (hard to verify during `make`, because vendor.sh removes ./vendor/libslirp/src/.deps)
 	$(MAKE) lint
 	$(MAKE) -j $(shell nproc) distcheck || ( find . -name test-suite.log | xargs cat; exit 1 )
 	PATH=$(shell pwd):$$PATH $(MAKE) benchmark MTU=1500

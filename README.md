@@ -50,6 +50,7 @@ See https://github.com/rootless-containers/slirp4netns/security/advisories for t
 
 Build dependencies:
 * `glib2-devel` (`libglib2.0-dev`)
+* `libslirp-devel` >= 4.1 (`libslirp-dev`)
 * `libcap-devel` (`libcap-dev`)
 * `libseccomp-devel` (`libseccomp-dev`)
 

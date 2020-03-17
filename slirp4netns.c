@@ -7,8 +7,8 @@
 #include <unistd.h>
 
 #include <glib.h>
+#include <libslirp.h>
 
-#include "vendor/libslirp/src/libslirp.h"
 #include "api.h"
 #include "sandbox.h"
 #include "seccompfilter.h"
