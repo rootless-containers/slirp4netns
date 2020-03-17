@@ -19,6 +19,7 @@
 #include <getopt.h>
 #include <stdbool.h>
 #include <regex.h>
+#include <libslirp.h>
 #include "slirp4netns.h"
 
 #define DEFAULT_MTU (1500)
@@ -342,6 +343,7 @@ static void version()
 #ifdef COMMIT
     printf("commit: %s\n", COMMIT);
 #endif
+    printf("libslirp: %s\n", slirp_version_string());
 }
 
 struct options {
