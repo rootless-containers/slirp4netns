@@ -3,9 +3,14 @@ on: [push, pull_request]
 jobs:
   test-main:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        libslirp_commit: [master, v4.2.0, v4.1.0]
     steps:
     - uses: actions/checkout@v1
-    - run: docker build -t slirp4netns-tests -f Dockerfile.tests .
+    - run: docker build -t slirp4netns-tests --build-arg LIBSLIRP_COMMIT -f Dockerfile.tests .
+      env:
+        LIBSLIRP_COMMIT: ${{ matrix.libslirp_commit }}
     - run: docker run --rm --privileged slirp4netns-tests
   test-build:
     runs-on: ubuntu-latest
