@@ -1,8 +1,8 @@
 #!/bin/bash
 set -eux -o pipefail
 
-# Jul 12, 2019
-PARSON_COMMIT=c5bb9557fe98367aa8e041c65863909f12ee76b2
+# Feb 21, 2020
+PARSON_COMMIT=70dc239f8f54c80bf58477b25435fd3dd3102804
 PARSON_REPO=https://github.com/kgabis/parson.git
 
 # prepare
@@ -33,7 +33,7 @@ EOF
 cat <<EOF >>$tmp_vendor/README.md
 Please do not edit the contents under this directory manually.
 
-See also [\`../vendor.md\`](../vendor.md).
+Use [\`../vendor.sh\`](../vendor.sh) to update the contents.
 EOF
 
 # fix up

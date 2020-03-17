@@ -1,7 +1,7 @@
 /*
  SPDX-License-Identifier: MIT
 
- Parson ( http://kgabis.github.com/parson/ )
+ Parson 1.0.2 ( http://kgabis.github.com/parson/ )
  Copyright (c) 2012 - 2019 Krzysztof Gabis
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -156,7 +156,7 @@ static char * parson_strndup(const char *string, size_t n) {
         return NULL;
     }
     output_string[n] = '\0';
-    strncpy(output_string, string, n);
+    memcpy(output_string, string, n);
     return output_string;
 }
 
@@ -1496,7 +1496,7 @@ JSON_Value * json_value_deep_copy(const JSON_Value *value) {
 size_t json_serialization_size(const JSON_Value *value) {
     char num_buf[NUM_BUF_SIZE]; /* recursively allocating buffer on stack is a bad idea, so let's do it only once */
     int res = json_serialize_to_buffer_r(value, NULL, 0, 0, num_buf);
-    return res < 0 ? 0 : (size_t)(res + 1);
+    return res < 0 ? 0 : (size_t)(res) + 1;
 }
 
 JSON_Status json_serialize_to_buffer(const JSON_Value *value, char *buf, size_t buf_size_in_bytes) {
@@ -1556,7 +1556,7 @@ char * json_serialize_to_string(const JSON_Value *value) {
 size_t json_serialization_size_pretty(const JSON_Value *value) {
     char num_buf[NUM_BUF_SIZE]; /* recursively allocating buffer on stack is a bad idea, so let's do it only once */
     int res = json_serialize_to_buffer_r(value, NULL, 0, 1, num_buf);
-    return res < 0 ? 0 : (size_t)(res + 1);
+    return res < 0 ? 0 : (size_t)(res) + 1;
 }
 
 JSON_Status json_serialize_to_buffer_pretty(const JSON_Value *value, char *buf, size_t buf_size_in_bytes) {
@@ -1776,19 +1776,39 @@ JSON_Status json_object_set_value(JSON_Object *object, const char *name, JSON_Va
 }
 
 JSON_Status json_object_set_string(JSON_Object *object, const char *name, const char *string) {
-    return json_object_set_value(object, name, json_value_init_string(string));
+    JSON_Value *value = json_value_init_string(string);
+    JSON_Status status = json_object_set_value(object, name, value);
+    if (status == JSONFailure) {
+        json_value_free(value);
+    }
+    return status;
 }
 
 JSON_Status json_object_set_number(JSON_Object *object, const char *name, double number) {
-    return json_object_set_value(object, name, json_value_init_number(number));
+    JSON_Value *value = json_value_init_number(number);
+    JSON_Status status = json_object_set_value(object, name, value);
+    if (status == JSONFailure) {
+        json_value_free(value);
+    }
+    return status;
 }
 
 JSON_Status json_object_set_boolean(JSON_Object *object, const char *name, int boolean) {
-    return json_object_set_value(object, name, json_value_init_boolean(boolean));
+    JSON_Value *value = json_value_init_boolean(boolean);
+    JSON_Status status = json_object_set_value(object, name, value);
+    if (status == JSONFailure) {
+        json_value_free(value);
+    }
+    return status;
 }
 
 JSON_Status json_object_set_null(JSON_Object *object, const char *name) {
-    return json_object_set_value(object, name, json_value_init_null());
+    JSON_Value *value = json_value_init_null();
+    JSON_Status status = json_object_set_value(object, name, value);
+    if (status == JSONFailure) {
+        json_value_free(value);
+    }
+    return status;
 }
 
 JSON_Status json_object_dotset_value(JSON_Object *object, const char *name, JSON_Value *value) {
