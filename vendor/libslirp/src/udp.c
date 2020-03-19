@@ -279,6 +279,12 @@ int udp_attach(struct socket *so, unsigned short af)
 {
     so->s = slirp_socket(af, SOCK_DGRAM, 0);
     if (so->s != -1) {
+        if (slirp_bind_outbound(so, af) != 0) {
+            // bind failed - close socket
+            closesocket(so->s);
+            so->s = -1;
+            return -1;
+        }
         so->so_expire = curtime + SO_EXPIRE;
         insque(so, &so->slirp->udb);
     }
