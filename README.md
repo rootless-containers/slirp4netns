@@ -30,15 +30,11 @@ Tools:
 
 Version                        | Status
 -------------------------------|------------------------------------------------------------------------
-v0.4.x                         | A :white_check_mark: (will be demoted to B after the release of v0.5.0)
-v0.3.x                         | B :white_check_mark: (will be demoted to C after the release of v0.5.0)
-v0.2.x                         | C :warning:
-Early versions prior to v0.2.x | D :warning:
-
-* A: Actively maintained. Patch releases for security fixes and other bug fixes are planned.
-* B: Patch releases for security fixes are planned.
-* C: No additional release is planned. However, anybody can still open PR for security fixes in the `release/x.y` branch.
-* D: Not maintained. Distributors can continue to distribute this version, but they should apply security fixes by themselves.
+v1.0.x                         | :white_check_mark: Active
+v0.4.x                         | :white_check_mark: Active (EOL: Sep 30, 2020)
+v0.3.x                         | :white_check_mark: Active (EOL: Mar 31, 2020)
+v0.2.x                         | :warning: End of Life (Aug 30, 2019)
+Early versions prior to v0.2.x | :warning: End of Life (Jan 5, 2019)
 
 See https://github.com/rootless-containers/slirp4netns/releases for the releases.
 
