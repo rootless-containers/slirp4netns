@@ -179,13 +179,12 @@ static void dhcpv6_info_request(Slirp *slirp, struct sockaddr_in6 *srcsas,
         *resp++ = OPTION_BOOTFILE_URL >> 8; /* option-code high byte */
         *resp++ = OPTION_BOOTFILE_URL; /* option-code low byte */
         smaxlen = (uint8_t *)m->m_data + slirp->if_mtu - (resp + 2);
-        slen = snprintf((char *)resp + 2, smaxlen,
-                        "tftp://[%02x%02x:%02x%02x:%02x%02x:%02x%02x:"
-                        "%02x%02x:%02x%02x:%02x%02x:%02x%02x]/%s",
-                        sa[0], sa[1], sa[2], sa[3], sa[4], sa[5], sa[6], sa[7],
-                        sa[8], sa[9], sa[10], sa[11], sa[12], sa[13], sa[14],
-                        sa[15], slirp->bootp_filename);
-        slen = MIN(slen, smaxlen);
+        slen = slirp_fmt((char *)resp + 2, smaxlen,
+                         "tftp://[%02x%02x:%02x%02x:%02x%02x:%02x%02x:"
+                         "%02x%02x:%02x%02x:%02x%02x:%02x%02x]/%s",
+                         sa[0], sa[1], sa[2], sa[3], sa[4], sa[5], sa[6], sa[7],
+                         sa[8], sa[9], sa[10], sa[11], sa[12], sa[13], sa[14],
+                         sa[15], slirp->bootp_filename);
         *resp++ = slen >> 8; /* option-len high byte */
         *resp++ = slen; /* option-len low byte */
         resp += slen;

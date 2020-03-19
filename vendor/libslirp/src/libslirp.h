@@ -67,7 +67,7 @@ typedef struct SlirpCb {
 } SlirpCb;
 
 #define SLIRP_CONFIG_VERSION_MIN 1
-#define SLIRP_CONFIG_VERSION_MAX 1
+#define SLIRP_CONFIG_VERSION_MAX 2
 
 typedef struct SlirpConfig {
     /* Version must be provided */
@@ -107,6 +107,8 @@ typedef struct SlirpConfig {
     /*
      * Fields introduced in SlirpConfig version 2 begin
      */
+    struct sockaddr_in *outbound_addr;
+    struct sockaddr_in6 *outbound_addr6;
 } SlirpConfig;
 
 Slirp *slirp_new(const SlirpConfig *cfg, const SlirpCb *callbacks,
@@ -138,8 +140,13 @@ int slirp_remove_hostfwd(Slirp *slirp, int is_udp, struct in_addr host_addr,
                          int host_port);
 int slirp_add_exec(Slirp *slirp, const char *cmdline,
                    struct in_addr *guest_addr, int guest_port);
+int slirp_add_unix(Slirp *slirp, const char *unixsock,
+                   struct in_addr *guest_addr, int guest_port);
 int slirp_add_guestfwd(Slirp *slirp, SlirpWriteCb write_cb, void *opaque,
                        struct in_addr *guest_addr, int guest_port);
+/* remove entries added by slirp_add_exec, slirp_add_unix or slirp_add_guestfwd */
+int slirp_remove_guestfwd(Slirp *slirp, struct in_addr guest_addr,
+                          int guest_port);
 
 char *slirp_connection_info(Slirp *slirp);
 

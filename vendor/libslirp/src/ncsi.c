@@ -47,7 +47,7 @@ static uint32_t ncsi_calculate_checksum(uint16_t *data, int len)
      * 32-bit unsigned sum of the NC-SI packet header and NC-SI packet
      * payload interpreted as a series of 16-bit unsigned integer values.
      */
-    for (i = 0; i < len; i++) {
+    for (i = 0; i < len / 2; i++) {
         checksum += htons(data[i]);
     }
 

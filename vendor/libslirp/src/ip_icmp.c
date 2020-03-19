@@ -90,6 +90,13 @@ static int icmp_send(struct socket *so, struct mbuf *m, int hlen)
         return -1;
     }
 
+    if (slirp_bind_outbound(so, AF_INET) != 0) {
+        // bind failed - close socket
+        closesocket(so->s);
+        so->s = -1;
+        return -1;
+    }
+
     so->so_m = m;
     so->so_faddr = ip->ip_dst;
     so->so_laddr = ip->ip_src;

@@ -254,9 +254,10 @@ static void bootp_reply(Slirp *slirp, const struct bootp_t *bp)
             *q++ = DHCPACK;
         }
 
-        if (slirp->bootp_filename)
-            snprintf((char *)rbp->bp_file, sizeof(rbp->bp_file), "%s",
-                     slirp->bootp_filename);
+        if (slirp->bootp_filename) {
+            g_assert(strlen(slirp->bootp_filename) < sizeof(rbp->bp_file));
+            strcpy(rbp->bp_file, slirp->bootp_filename);
+        }
 
         *q++ = RFC2132_SRV_ID;
         *q++ = 4;
