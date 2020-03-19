@@ -113,7 +113,7 @@ struct bootp_t {
     struct in_addr bp_giaddr;
     uint8_t bp_hwaddr[16];
     uint8_t bp_sname[64];
-    uint8_t bp_file[128];
+    char bp_file[128];
     uint8_t bp_vend[DHCP_OPT_LEN];
 };
 

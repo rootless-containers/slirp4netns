@@ -199,6 +199,9 @@ struct Slirp {
 
     const SlirpCb *cb;
     void *opaque;
+
+    struct sockaddr_in *outbound_addr;
+    struct sockaddr_in6 *outbound_addr6;
 };
 
 void if_start(Slirp *);

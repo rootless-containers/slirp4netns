@@ -1,11 +1,11 @@
 #!/bin/bash
 set -eux -o pipefail
-# Dec 4, 2019 (v4.1.0)
-LIBSLIRP_COMMIT=6651ba26c4e94f64d6448a2db4991269ce553bd9
+# Mar 17, 2020 (v4.2.0)
+LIBSLIRP_COMMIT=daba14c3416fa9641ab4453a9a11e7f8bde08875
 LIBSLIRP_REPO=https://gitlab.freedesktop.org/slirp/libslirp.git
 
-# Jul 12, 2019
-PARSON_COMMIT=c5bb9557fe98367aa8e041c65863909f12ee76b2
+# Feb 21, 2020
+PARSON_COMMIT=70dc239f8f54c80bf58477b25435fd3dd3102804
 PARSON_REPO=https://github.com/kgabis/parson.git
 
 # prepare
