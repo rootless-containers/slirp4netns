@@ -7,7 +7,7 @@ extern "C" {
 #endif
 
 #define SLIRP_MAJOR_VERSION 4
-#define SLIRP_MINOR_VERSION 1
+#define SLIRP_MINOR_VERSION 2
 #define SLIRP_MICRO_VERSION 0
 
 #define SLIRP_CHECK_VERSION(major,minor,micro)                          \

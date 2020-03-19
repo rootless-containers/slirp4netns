@@ -278,6 +278,9 @@ Slirp *slirp_new(const SlirpConfig *cfg, const SlirpCb *callbacks, void *opaque)
     g_return_val_if_fail(cfg->if_mtu <= IF_MTU_MAX, NULL);
     g_return_val_if_fail(cfg->if_mru >= IF_MRU_MIN || cfg->if_mru == 0, NULL);
     g_return_val_if_fail(cfg->if_mru <= IF_MRU_MAX, NULL);
+    g_return_val_if_fail(!cfg->bootfile ||
+                         (strlen(cfg->bootfile) <
+                          G_SIZEOF_MEMBER(struct bootp_t, bp_file)), NULL);
 
     slirp = g_malloc0(sizeof(Slirp));
 
@@ -323,6 +326,13 @@ Slirp *slirp_new(const SlirpConfig *cfg, const SlirpCb *callbacks, void *opaque)
     slirp->disable_host_loopback = cfg->disable_host_loopback;
     slirp->enable_emu = cfg->enable_emu;
 
+    if (cfg->version >= 2) {
+        slirp->outbound_addr = cfg->outbound_addr;
+        slirp->outbound_addr6 = cfg->outbound_addr6;
+    } else {
+        slirp->outbound_addr = NULL;
+        slirp->outbound_addr6 = NULL;
+    }
     return slirp;
 }
 
@@ -368,6 +378,7 @@ void slirp_cleanup(Slirp *slirp)
     for (e = slirp->guestfwd_list; e; e = next) {
         next = e->ex_next;
         g_free(e->ex_exec);
+        g_free(e->ex_unix);
         g_free(e);
     }
 
@@ -1049,6 +1060,22 @@ int slirp_add_exec(Slirp *slirp, const char *cmdline,
     return 0;
 }
 
+int slirp_add_unix(Slirp *slirp, const char *unixsock,
+                   struct in_addr *guest_addr, int guest_port)
+{
+#ifdef G_OS_UNIX
+    if (!check_guestfwd(slirp, guest_addr, guest_port)) {
+        return -1;
+    }
+
+    add_unix(&slirp->guestfwd_list, unixsock, *guest_addr, htons(guest_port));
+    return 0;
+#else
+    g_warn_if_reached();
+    return -1;
+#endif
+}
+
 int slirp_add_guestfwd(Slirp *slirp, SlirpWriteCb write_cb, void *opaque,
                        struct in_addr *guest_addr, int guest_port)
 {
@@ -1059,6 +1086,13 @@ int slirp_add_guestfwd(Slirp *slirp, SlirpWriteCb write_cb, void *opaque,
     add_guestfwd(&slirp->guestfwd_list, write_cb, opaque, *guest_addr,
                  htons(guest_port));
     return 0;
+}
+
+int slirp_remove_guestfwd(Slirp *slirp, struct in_addr guest_addr,
+                          int guest_port)
+{
+    return remove_guestfwd(&slirp->guestfwd_list, guest_addr,
+                           htons(guest_port));
 }
 
 ssize_t slirp_send(struct socket *so, const void *buf, size_t len, int flags)

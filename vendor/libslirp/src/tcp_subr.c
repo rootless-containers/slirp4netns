@@ -407,6 +407,16 @@ int tcp_fconnect(struct socket *so, unsigned short af)
 
     ret = so->s = slirp_socket(af, SOCK_STREAM, 0);
     if (ret >= 0) {
+        ret = slirp_bind_outbound(so, af);
+        if (ret < 0) {
+            // bind failed - close socket
+            closesocket(so->s);
+            so->s = -1;
+            return (ret);
+        }
+    }
+
+    if (ret >= 0) {
         int opt, s = so->s;
         struct sockaddr_storage addr;
 
@@ -575,6 +585,9 @@ uint8_t tcp_tos(struct socket *so)
  * more checks are needed here
  *
  * XXX Assumes the whole command came in one packet
+ * XXX If there is more than one command in the packet, the others may
+ * be truncated.
+ * XXX If the command is too long, it may be truncated.
  *
  * XXX Some ftp clients will have their TOS set to
  * LOWDELAY and so Nagel will kick in.  Because of this,
@@ -639,9 +652,8 @@ int tcp_emu(struct socket *so, struct mbuf *m)
                 }
                 NTOHS(n1);
                 NTOHS(n2);
-                m_inc(m, snprintf(NULL, 0, "%d,%d\r\n", n1, n2) + 1);
-                m->m_len = snprintf(m->m_data, M_ROOM(m), "%d,%d\r\n", n1, n2);
-                assert(m->m_len < M_ROOM(m));
+                m_inc(m, g_snprintf(NULL, 0, "%d,%d\r\n", n1, n2) + 1);
+                m->m_len = slirp_fmt(m->m_data, M_ROOM(m), "%d,%d\r\n", n1, n2);
             } else {
                 *eol = '\r';
             }
@@ -681,9 +693,9 @@ int tcp_emu(struct socket *so, struct mbuf *m)
             n4 = (laddr & 0xff);
 
             m->m_len = bptr - m->m_data; /* Adjust length */
-            m->m_len += snprintf(bptr, m->m_size - m->m_len,
-                                 "ORT %d,%d,%d,%d,%d,%d\r\n%s", n1, n2, n3, n4,
-                                 n5, n6, x == 7 ? buff : "");
+            m->m_len += slirp_fmt(bptr, M_FREEROOM(m),
+                                  "ORT %d,%d,%d,%d,%d,%d\r\n%s",
+                                  n1, n2, n3, n4, n5, n6, x == 7 ? buff : "");
             return 1;
         } else if ((bptr = (char *)strstr(m->m_data, "27 Entering")) != NULL) {
             /*
@@ -716,11 +728,9 @@ int tcp_emu(struct socket *so, struct mbuf *m)
             n4 = (laddr & 0xff);
 
             m->m_len = bptr - m->m_data; /* Adjust length */
-            m->m_len +=
-                snprintf(bptr, m->m_size - m->m_len,
-                         "27 Entering Passive Mode (%d,%d,%d,%d,%d,%d)\r\n%s",
-                         n1, n2, n3, n4, n5, n6, x == 7 ? buff : "");
-
+            m->m_len += slirp_fmt(bptr, M_FREEROOM(m),
+                                  "27 Entering Passive Mode (%d,%d,%d,%d,%d,%d)\r\n%s",
+                                  n1, n2, n3, n4, n5, n6, x == 7 ? buff : "");
             return 1;
         }
 
@@ -743,8 +753,8 @@ int tcp_emu(struct socket *so, struct mbuf *m)
         if (m->m_data[m->m_len - 1] == '\0' && lport != 0 &&
             (so = tcp_listen(slirp, INADDR_ANY, 0, so->so_laddr.s_addr,
                              htons(lport), SS_FACCEPTONCE)) != NULL)
-            m->m_len =
-                snprintf(m->m_data, m->m_size, "%d", ntohs(so->so_fport)) + 1;
+            m->m_len = slirp_fmt0(m->m_data, M_ROOM(m),
+                                  "%d", ntohs(so->so_fport));
         return 1;
 
     case EMU_IRC:
@@ -763,9 +773,10 @@ int tcp_emu(struct socket *so, struct mbuf *m)
                 return 1;
             }
             m->m_len = bptr - m->m_data; /* Adjust length */
-            m->m_len += snprintf(bptr, m->m_size, "DCC CHAT chat %lu %u%c\n",
-                                 (unsigned long)ntohl(so->so_faddr.s_addr),
-                                 ntohs(so->so_fport), 1);
+            m->m_len += slirp_fmt(bptr, M_FREEROOM(m),
+                                  "DCC CHAT chat %lu %u%c\n",
+                                  (unsigned long)ntohl(so->so_faddr.s_addr),
+                                  ntohs(so->so_fport), 1);
         } else if (sscanf(bptr, "DCC SEND %256s %u %u %u", buff, &laddr, &lport,
                           &n1) == 4) {
             if ((so = tcp_listen(slirp, INADDR_ANY, 0, htonl(laddr),
@@ -773,10 +784,10 @@ int tcp_emu(struct socket *so, struct mbuf *m)
                 return 1;
             }
             m->m_len = bptr - m->m_data; /* Adjust length */
-            m->m_len +=
-                snprintf(bptr, m->m_size, "DCC SEND %s %lu %u %u%c\n", buff,
-                         (unsigned long)ntohl(so->so_faddr.s_addr),
-                         ntohs(so->so_fport), n1, 1);
+            m->m_len += slirp_fmt(bptr, M_FREEROOM(m),
+                                  "DCC SEND %s %lu %u %u%c\n", buff,
+                                  (unsigned long)ntohl(so->so_faddr.s_addr),
+                                  ntohs(so->so_fport), n1, 1);
         } else if (sscanf(bptr, "DCC MOVE %256s %u %u %u", buff, &laddr, &lport,
                           &n1) == 4) {
             if ((so = tcp_listen(slirp, INADDR_ANY, 0, htonl(laddr),
@@ -784,10 +795,10 @@ int tcp_emu(struct socket *so, struct mbuf *m)
                 return 1;
             }
             m->m_len = bptr - m->m_data; /* Adjust length */
-            m->m_len +=
-                snprintf(bptr, m->m_size, "DCC MOVE %s %lu %u %u%c\n", buff,
-                         (unsigned long)ntohl(so->so_faddr.s_addr),
-                         ntohs(so->so_fport), n1, 1);
+            m->m_len += slirp_fmt(bptr, M_FREEROOM(m),
+                                  "DCC MOVE %s %lu %u %u%c\n", buff,
+                                  (unsigned long)ntohl(so->so_faddr.s_addr),
+                                  ntohs(so->so_fport), n1, 1);
         }
         return 1;
 
@@ -871,6 +882,9 @@ int tcp_emu(struct socket *so, struct mbuf *m)
                 break;
 
             case 5:
+                if (bptr == m->m_data + m->m_len - 1)
+                        return 1; /* We need two bytes */
+
                 /*
                  * The difference between versions 1.0 and
                  * 2.0 is here. For future versions of
@@ -886,6 +900,10 @@ int tcp_emu(struct socket *so, struct mbuf *m)
                 /* This is the field containing the port
                  * number that RA-player is listening to.
                  */
+
+                if (bptr == m->m_data + m->m_len - 1)
+                        return 1; /* We need two bytes */
+
                 lport = (((uint8_t *)bptr)[0] << 8) + ((uint8_t *)bptr)[1];
                 if (lport < 6970)
                     lport += 256; /* don't know why */
@@ -948,13 +966,15 @@ int tcp_ctl(struct socket *so)
                     return 1;
                 }
                 DEBUG_MISC(" executing %s", ex_ptr->ex_exec);
-                return fork_exec(so, ex_ptr->ex_exec);
+                if (ex_ptr->ex_unix)
+                    return open_unix(so, ex_ptr->ex_unix);
+                else
+                    return fork_exec(so, ex_ptr->ex_exec);
             }
         }
     }
-    sb->sb_cc =
-        snprintf(sb->sb_wptr, sb->sb_datalen - (sb->sb_wptr - sb->sb_data),
-                 "Error: No application configured.\r\n");
+    sb->sb_cc = slirp_fmt(sb->sb_wptr, sb->sb_datalen - (sb->sb_wptr - sb->sb_data),
+                          "Error: No application configured.\r\n");
     sb->sb_wptr += sb->sb_cc;
     return 0;
 }

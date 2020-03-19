@@ -366,6 +366,8 @@ int slirp_state_load(Slirp *slirp, int version_id, SlirpReadCb read_cb,
         if (!ex_ptr) {
             return -EINVAL;
         }
+
+        so->guestfwd = ex_ptr;
     }
 
     return slirp_vmstate_load_state(&f, &vmstate_slirp, slirp, version_id);
