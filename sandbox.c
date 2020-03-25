@@ -12,6 +12,8 @@
 #include <sys/capability.h>
 #include <sys/stat.h>
 
+#include <glib.h>
+
 static int add_mount(const char *from, const char *to)
 {
     int ret;
@@ -44,6 +46,23 @@ static int add_mount(const char *from, const char *to)
     return 0;
 }
 
+/* Warn (not error) if /etc/resolv.conf is a symlink to a file outside /etc or
+ * /run. */
+static void validate_etc_resolv_conf()
+{
+    char *p = realpath("/etc/resolv.conf", NULL);
+    if (p == NULL) {
+        return;
+    }
+    if (!g_str_has_prefix(p, "/etc") && !g_str_has_prefix(p, "/run")) {
+        fprintf(stderr,
+                "sandbox: /etc/resolv.conf (-> %s) seems a symlink to a file "
+                "outside {/etc, /run}. DNS will not work.\n",
+                p);
+    }
+    free(p);
+}
+
 /* lock down the process doing the following:
  - create a new mount namespace
  - bind mount /etc and /run from the host
@@ -55,6 +74,8 @@ int create_sandbox()
     int ret, i;
     struct __user_cap_header_struct hdr = { _LINUX_CAPABILITY_VERSION_3, 0 };
     struct __user_cap_data_struct data[2] = { { 0 } };
+
+    validate_etc_resolv_conf();
 
     ret = unshare(CLONE_NEWNS);
     if (ret < 0) {

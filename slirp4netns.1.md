@@ -66,6 +66,8 @@ specify user namespace path
 enter the user namespace and create a new mount namespace where only /etc and
 /run are mounted from the host.
 
+Requires **/etc/resolv.conf** not to be a symlink to a file outside /etc and /run.
+
 When running as the root, the process does not enter the user namespace but all
 the capabilities except `CAP_NET_BIND_SERVICE` are dropped.
 
