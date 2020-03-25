@@ -92,6 +92,9 @@ enter the user namespace and create a new mount namespace where only /etc and
 /run are mounted from the host.
 
 .PP
+Requires \fB/etc/resolv.conf\fP not to be a symlink to a file outside /etc and /run.
+
+.PP
 When running as the root, the process does not enter the user namespace but all
 the capabilities except \fB\fCCAP\_NET\_BIND\_SERVICE\fR are dropped.
 
