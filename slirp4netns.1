@@ -1,5 +1,5 @@
 .nh
-.TH SLIRP4NETNS 1 "August 2019" "Rootless Containers" "User Commands"
+.TH SLIRP4NETNS 1 "March 2020" "Rootless Containers" "User Commands"
 
 .SH NAME
 .PP
@@ -87,7 +87,7 @@ specify network namespace type ([path|pid], default=pid)
 specify user namespace path
 
 .PP
-\fB\-\-enable\-sandbox\fP (since v0.4.0, EXPERIMENTAL)
+\fB\-\-enable\-sandbox\fP (since v0.4.0)
 enter the user namespace and create a new mount namespace where only /etc and
 /run are mounted from the host.
 
@@ -99,8 +99,10 @@ When running as the root, the process does not enter the user namespace but all
 the capabilities except \fB\fCCAP\_NET\_BIND\_SERVICE\fR are dropped.
 
 .PP
-\fB\-\-enable\-seccomp\fP (since v0.4.0, EXPERIMENTAL)
+\fB\-\-enable\-seccomp\fP (since v0.4.0)
 enable \fBseccomp(2)\fP to limit syscalls.
+
+.PP
 Typically used in conjunction with \fB\-\-enable\-sandbox\fP\&.
 
 .PP
@@ -336,6 +338,41 @@ Additionally, a \fB\-\-userns\-path=PATH\fP argument can be included to override
 $ slirp4netns \-\-netns\-type=path \-\-userns\-path=/path/to/userns /path/to/netns tap0
 
 .fi
+.RE
+
+
+.SH SYSCALLS BLOCKED BY \fB\-\-enable\-seccomp\fP
+.PP
+\fB\-\-enable\-seccomp\fP blocks the following syscalls:
+
+.RS
+.IP \(bu 2
+\fBexecve(2)\fP
+.IP \(bu 2
+\fBexecveat(2)\fP
+.IP \(bu 2
+\fBopen\_by\_handle\_at(2)\fP
+.IP \(bu 2
+\fBptrace(2)\fP
+.IP \(bu 2
+\fBprctl(2)\fP
+.IP \(bu 2
+\fBprocess\_vm\_readv(2)\fP
+.IP \(bu 2
+\fBprocess\_vm\_writev(2)\fP
+.IP \(bu 2
+\fBmount(2)\fP
+.IP \(bu 2
+\fBname\_to\_handle\_at(2)\fP
+.IP \(bu 2
+\fBsetns(2)\fP
+.IP \(bu 2
+\fBumount(2)\fP
+.IP \(bu 2
+\fBumount2(2)\fP
+.IP \(bu 2
+\fBunshare(2)\fP
+
 .RE
 
 

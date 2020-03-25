@@ -327,10 +327,10 @@ static void usage(const char *argv0)
            "default=%s)\n",
            DEFAULT_NETNS_TYPE);
     printf("--userns-path=PATH	 specify user namespace path\n");
-    printf("--enable-sandbox         create a new mount namespace and drop all "
-           "capabilities except CAP_NET_BIND_SERVICE (experimental)\n");
-    printf("--enable-seccomp         enable seccomp to limit syscalls "
-           "(experimental)\n");
+    printf(
+        "--enable-sandbox         create a new mount namespace (and drop all "
+        "caps except CAP_NET_BIND_SERVICE if running as the root)\n");
+    printf("--enable-seccomp         enable seccomp to limit syscalls\n");
     /* others */
     printf("-h, --help               show this help and exit\n");
     printf("-v, --version            show version and exit\n");
@@ -493,11 +493,9 @@ static void parse_args(int argc, char *const argv[], struct options *options)
                    "--enable-sandbox instead.\n");
             /* FALLTHROUGH */
         case ENABLE_SANDBOX:
-            printf("WARNING: Support for sandboxing is experimental\n");
             options->enable_sandbox = true;
             break;
         case ENABLE_SECCOMP:
-            printf("WARNING: Support for seccomp is experimental\n");
             options->enable_seccomp = true;
             break;
         case NETNS_TYPE:

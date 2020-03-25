@@ -1,4 +1,4 @@
-SLIRP4NETNS 1 "August 2019" "Rootless Containers" "User Commands"
+SLIRP4NETNS 1 "March 2020" "Rootless Containers" "User Commands"
 ==================================================
 
 # NAME
@@ -62,7 +62,7 @@ specify network namespace type ([path|pid], default=pid)
 **--userns-path=PATH** (since v0.4.0)
 specify user namespace path
 
-**--enable-sandbox** (since v0.4.0, EXPERIMENTAL)
+**--enable-sandbox** (since v0.4.0)
 enter the user namespace and create a new mount namespace where only /etc and
 /run are mounted from the host.
 
@@ -71,8 +71,9 @@ Requires **/etc/resolv.conf** not to be a symlink to a file outside /etc and /ru
 When running as the root, the process does not enter the user namespace but all
 the capabilities except `CAP_NET_BIND_SERVICE` are dropped.
 
-**--enable-seccomp** (since v0.4.0, EXPERIMENTAL)
+**--enable-seccomp** (since v0.4.0)
 enable **seccomp(2)** to limit syscalls.
+
 Typically used in conjunction with **--enable-sandbox**.
 
 **-h**, **--help** (since v0.2.0)
@@ -214,6 +215,24 @@ Additionally, a **--userns-path=PATH** argument can be included to override any 
 ```console
 $ slirp4netns --netns-type=path --userns-path=/path/to/userns /path/to/netns tap0
 ```
+
+# SYSCALLS BLOCKED BY **--enable-seccomp**
+
+**--enable-seccomp** blocks the following syscalls:
+
+* **execve(2)**
+* **execveat(2)**
+* **open_by_handle_at(2)**
+* **ptrace(2)**
+* **prctl(2)**
+* **process_vm_readv(2)**
+* **process_vm_writev(2)**
+* **mount(2)**
+* **name_to_handle_at(2)**
+* **setns(2)**
+* **umount(2)**
+* **umount2(2)**
+* **unshare(2)**
 
 # BUGS
 
