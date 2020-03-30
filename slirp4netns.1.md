@@ -1,4 +1,4 @@
-SLIRP4NETNS 1 "August 2019" "Rootless Containers" "User Commands"
+SLIRP4NETNS 1 "March 2020" "Rootless Containers" "User Commands"
 ==================================================
 
 # NAME
@@ -62,7 +62,7 @@ specify network namespace type ([path|pid], default=pid)
 **--userns-path=PATH** (since v0.4.0)
 specify user namespace path
 
-**--enable-sandbox** (since v0.4.0, EXPERIMENTAL)
+**--enable-sandbox** (since v0.4.0)
 enter the user namespace and create a new mount namespace where only /etc and
 /run are mounted from the host.
 
