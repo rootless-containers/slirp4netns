@@ -30,7 +30,7 @@ RUN ./configure && make && cp -f slirp4netns /
 
 FROM buildtest-centos76-common AS buildtest-centos76-static
 RUN yum install -y glibc-static glib2-static
-RUN yum-config-manager --add-repo=https://cbs.centos.org/repos/virt7-container-common-candidate/x86_64/os/ && \
+RUN yum-config-manager --add-repo=https://buildlogs.centos.org/centos/7/virt/x86_64/container && \
  yum install --nogpgcheck -y libseccomp-static
 RUN ./configure LDFLAGS="-static" && make && cp -f slirp4netns /
 
