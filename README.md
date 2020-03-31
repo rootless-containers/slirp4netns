@@ -32,7 +32,7 @@ Version                        | Status
 -------------------------------|------------------------------------------------------------------------
 v1.0.x                         | :white_check_mark: Active
 v0.4.x                         | :white_check_mark: Active (EOL: Sep 30, 2020)
-v0.3.x                         | :white_check_mark: Active (EOL: Mar 31, 2020)
+v0.3.x                         | :warning: End of Life (Mar 31, 2020)
 v0.2.x                         | :warning: End of Life (Aug 30, 2019)
 Early versions prior to v0.2.x | :warning: End of Life (Jan 5, 2019)
 
