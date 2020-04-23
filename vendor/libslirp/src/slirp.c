@@ -29,6 +29,11 @@
 #include <net/if.h>
 #endif
 
+/* https://gitlab.freedesktop.org/slirp/libslirp/issues/18 */
+#if defined(__NetBSD__) && defined(if_mtu)
+#undef if_mtu
+#endif
+
 int slirp_debug;
 
 /* Define to 1 if you want KEEPALIVE timers */
@@ -333,6 +338,13 @@ Slirp *slirp_new(const SlirpConfig *cfg, const SlirpCb *callbacks, void *opaque)
         slirp->outbound_addr = NULL;
         slirp->outbound_addr6 = NULL;
     }
+
+    if (cfg->version >= 3) {
+        slirp->disable_dns = cfg->disable_dns;
+    } else {
+        slirp->disable_dns = false;
+    }
+
     return slirp;
 }
 
