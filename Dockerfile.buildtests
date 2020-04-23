@@ -65,7 +65,7 @@ RUN ./configure && make && cp -f slirp4netns /
 
 # artifact for GitHub actions
 FROM scratch AS artifact
-COPY --from=buildtest-alpine3-static /slirp4netns /slirp4netns
+COPY --from=buildtest-centos7-static /slirp4netns /slirp4netns
 
 FROM scratch AS buildtest-final-stage
 COPY --from=buildtest-alpine3-static /slirp4netns /buildtest-alpine3-static
