@@ -67,7 +67,7 @@ typedef struct SlirpCb {
 } SlirpCb;
 
 #define SLIRP_CONFIG_VERSION_MIN 1
-#define SLIRP_CONFIG_VERSION_MAX 2
+#define SLIRP_CONFIG_VERSION_MAX 3
 
 typedef struct SlirpConfig {
     /* Version must be provided */
@@ -109,6 +109,10 @@ typedef struct SlirpConfig {
      */
     struct sockaddr_in *outbound_addr;
     struct sockaddr_in6 *outbound_addr6;
+    /*
+     * Fields introduced in SlirpConfig version 3 begin
+     */
+    bool disable_dns;  /* slirp will not redirect/serve any DNS packet */
 } SlirpConfig;
 
 Slirp *slirp_new(const SlirpConfig *cfg, const SlirpCb *callbacks,
