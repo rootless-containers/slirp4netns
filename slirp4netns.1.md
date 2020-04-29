@@ -75,11 +75,27 @@ the capabilities except `CAP_NET_BIND_SERVICE` are dropped.
 enable **seccomp(2)** to limit syscalls.
 Typically used in conjunction with **--enable-sandbox**.
 
+**--outbound-addr=IPv4** (since v1.1.0, EXPERIMENTAL)
+specify outbound ipv4 address slirp should bind to
+
+**--outbound-addr=INTERFACE** (since v1.1.0, EXPERIMENTAL)
+specify outbound interface slirp should bind to (ipv4 traffic only)
+
+**--outbound-addr=IPv6** (since v1.1.0, EXPERIMENTAL)
+specify outbound ipv6 address slirp should bind to
+
+**--outbound-addr6=INTERFACE** (since v1.1.0, EXPERIMENTAL)
+specify outbound interface slirp should bind to (ipv6 traffic only)
+
+**--disable-dns** (since v1.1.0)
+disable built-in DNS (10.0.2.3 by default)
+
 **-h**, **--help** (since v0.2.0)
 show help and exit
 
 **-v**, **--version** (since v0.2.0)
 show version and exit
+
 
 # EXAMPLE
 
@@ -213,6 +229,19 @@ Currently, the **netns-type=TYPE** argument supports **path** or **pid** args wi
 Additionally, a **--userns-path=PATH** argument can be included to override any user namespace path defaults
 ```console
 $ slirp4netns --netns-type=path --userns-path=/path/to/userns /path/to/netns tap0
+```
+
+# OUTBOUND ADDRESSES 
+A user can defined preferred outbound ipv4 and ipv6 address in multi IP scenarios. 
+
+```console
+$ slirp4netns --outbound-addr=10.2.2.10 --outbound-addr6=fe80::10 ...
+```
+
+Optionally you can use interface names instead of ip addresses. 
+
+```console
+$ slirp4netns --outbound-addr=eth0 --outbound-addr6=eth0 ...
 ```
 
 # BUGS
