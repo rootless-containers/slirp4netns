@@ -104,6 +104,26 @@ enable \fBseccomp(2)\fP to limit syscalls.
 Typically used in conjunction with \fB\-\-enable\-sandbox\fP\&.
 
 .PP
+\fB\-\-outbound\-addr=IPv4\fP (since v1.1.0, EXPERIMENTAL)
+specify outbound ipv4 address slirp should bind to
+
+.PP
+\fB\-\-outbound\-addr=INTERFACE\fP (since v1.1.0, EXPERIMENTAL)
+specify outbound interface slirp should bind to (ipv4 traffic only)
+
+.PP
+\fB\-\-outbound\-addr=IPv6\fP (since v1.1.0, EXPERIMENTAL)
+specify outbound ipv6 address slirp should bind to
+
+.PP
+\fB\-\-outbound\-addr6=INTERFACE\fP (since v1.1.0, EXPERIMENTAL)
+specify outbound interface slirp should bind to (ipv6 traffic only)
+
+.PP
+\fB\-\-disable\-dns\fP (since v1.1.0)
+disable built\-in DNS (10.0.2.3 by default)
+
+.PP
 \fB\-h\fP, \fB\-\-help\fP (since v0.2.0)
 show help and exit
 
@@ -334,6 +354,32 @@ Additionally, a \fB\-\-userns\-path=PATH\fP argument can be included to override
 
 .nf
 $ slirp4netns \-\-netns\-type=path \-\-userns\-path=/path/to/userns /path/to/netns tap0
+
+.fi
+.RE
+
+
+.SH OUTBOUND ADDRESSES
+.PP
+A user can defined preferred outbound ipv4 and ipv6 address in multi IP scenarios.
+
+.PP
+.RS
+
+.nf
+$ slirp4netns \-\-outbound\-addr=10.2.2.10 \-\-outbound\-addr6=fe80::10 ...
+
+.fi
+.RE
+
+.PP
+Optionally you can use interface names instead of ip addresses.
+
+.PP
+.RS
+
+.nf
+$ slirp4netns \-\-outbound\-addr=eth0 \-\-outbound\-addr6=eth0 ...
 
 .fi
 .RE
