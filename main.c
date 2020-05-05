@@ -21,6 +21,7 @@
 #include <regex.h>
 #include <libslirp.h>
 #include "slirp4netns.h"
+#include <ifaddrs.h>
 
 #define DEFAULT_MTU (1500)
 #define DEFAULT_CIDR ("10.0.2.0/24")
@@ -271,6 +272,19 @@ static int parent(int sock, int ready_fd, int exit_fd, const char *api_socket,
     if (api_socket != NULL) {
         printf("* API Socket:      %s\n", api_socket);
     }
+#if SLIRP_CONFIG_VERSION_MAX >= 2
+    if (cfg->enable_outbound_addr) {
+        printf("* Outbound IPv4:    %s\n",
+               inet_ntoa(cfg->outbound_addr.sin_addr));
+    }
+    if (cfg->enable_outbound_addr6) {
+        char str[INET6_ADDRSTRLEN];
+        if (inet_ntop(AF_INET6, &cfg->outbound_addr6.sin6_addr, str,
+                      INET6_ADDRSTRLEN) != NULL) {
+            printf("* Outbound IPv6:    %s\n", str);
+        }
+    }
+#endif
     if (!cfg->disable_host_loopback) {
         printf(
             "WARNING: 127.0.0.1:* on the host is accessible as %s (set "
@@ -332,6 +346,17 @@ static void usage(const char *argv0)
         "caps except CAP_NET_BIND_SERVICE if running as the root)\n");
     printf("--enable-seccomp         enable seccomp to limit syscalls "
            "(experimental)\n");
+    /* v1.1.0 */
+#if SLIRP_CONFIG_VERSION_MAX >= 2
+    printf("--outbound-addr=IPv4     sets outbound ipv4 address to bound to "
+           "(experimental)\n");
+    printf("--outbound-addr6=IPv6    sets outbound ipv6 address to bound to "
+           "(experimental)\n");
+#endif
+#if SLIRP_CONFIG_VERSION_MAX >= 3
+    printf("--disable-dns            disables 10.0.2.3 (or configured internal "
+           "ip) to host dns redirect (experimental)\n");
+#endif
     /* others */
     printf("-h, --help               show this help and exit\n");
     printf("-v, --version            show version and exit\n");
@@ -345,24 +370,28 @@ static void version()
     printf("commit: %s\n", COMMIT);
 #endif
     printf("libslirp: %s\n", slirp_version_string());
+    printf("SLIRP_CONFIG_VERSION_MAX: %d\n", SLIRP_CONFIG_VERSION_MAX);
 }
 
 struct options {
-    pid_t target_pid; // argv[1]
     char *tapname; // argv[2]
-    bool do_config_network; // -c
-    int exit_fd; // -e
-    int ready_fd; // -r
-    unsigned int mtu; // -m
-    bool disable_host_loopback; // --disable-host-loopback
     char *cidr; // --cidr
-    bool enable_ipv6; // -6
     char *api_socket; // -a
     char *netns_type; // argv[1]
     char *netns_path; // --netns-path
     char *userns_path; // --userns-path
+    char *outbound_addr; // --outbound-addr
+    char *outbound_addr6; // --outbound-addr6
+    pid_t target_pid; // argv[1]
+    int exit_fd; // -e
+    int ready_fd; // -r
+    unsigned int mtu; // -m
+    bool do_config_network; // -c
+    bool disable_host_loopback; // --disable-host-loopback
+    bool enable_ipv6; // -6
     bool enable_sandbox; // --enable-sandbox
     bool enable_seccomp; // --enable-seccomp
+    bool disable_dns; // --disable-dns
 };
 
 static void options_init(struct options *options)
@@ -398,6 +427,14 @@ static void options_destroy(struct options *options)
         free(options->userns_path);
         options->userns_path = NULL;
     }
+    if (options->outbound_addr != NULL) {
+        free(options->outbound_addr);
+        options->outbound_addr = NULL;
+    }
+    if (options->outbound_addr6 != NULL) {
+        free(options->outbound_addr6);
+        options->outbound_addr6 = NULL;
+    }
 }
 
 // * caller does not need to call options_init()
@@ -411,12 +448,17 @@ static void parse_args(int argc, char *const argv[], struct options *options)
     char *optarg_netns_type = NULL;
     char *optarg_userns_path = NULL;
     char *optarg_api_socket = NULL;
+    char *optarg_outbound_addr = NULL;
+    char *optarg_outbound_addr6 = NULL;
 #define CIDR -42
 #define DISABLE_HOST_LOOPBACK -43
 #define NETNS_TYPE -44
 #define USERNS_PATH -45
 #define ENABLE_SANDBOX -46
 #define ENABLE_SECCOMP -47
+#define OUTBOUND_ADDR -48
+#define OUTBOUND_ADDR6 -49
+#define DISABLE_DNS -50
 #define _DEPRECATED_NO_HOST_LOOPBACK \
     -10043 // deprecated in favor of disable-host-loopback
 #define _DEPRECATED_CREATE_SANDBOX \
@@ -438,6 +480,9 @@ static void parse_args(int argc, char *const argv[], struct options *options)
         { "enable-seccomp", no_argument, NULL, ENABLE_SECCOMP },
         { "help", no_argument, NULL, 'h' },
         { "version", no_argument, NULL, 'v' },
+        { "outbound-addr", required_argument, NULL, OUTBOUND_ADDR },
+        { "outbound-addr6", required_argument, NULL, OUTBOUND_ADDR6 },
+        { "disable-dns", no_argument, NULL, DISABLE_DNS },
         { 0, 0, 0, 0 },
     };
     options_init(options);
@@ -526,6 +571,17 @@ static void parse_args(int argc, char *const argv[], struct options *options)
             version();
             exit(EXIT_SUCCESS);
             break;
+        case OUTBOUND_ADDR:
+            printf("WARNING: Support for --outbount-addr is experimental\n");
+            optarg_outbound_addr = optarg;
+            break;
+        case OUTBOUND_ADDR6:
+            printf("WARNING: Support for --outbount-addr6 is experimental\n");
+            optarg_outbound_addr6 = optarg;
+            break;
+        case DISABLE_DNS:
+            options->disable_dns = true;
+            break;
         default:
             goto error;
             break;
@@ -543,6 +599,12 @@ static void parse_args(int argc, char *const argv[], struct options *options)
     if (optarg_api_socket != NULL) {
         options->api_socket = strdup(optarg_api_socket);
     }
+    if (optarg_outbound_addr != NULL) {
+        options->outbound_addr = strdup(optarg_outbound_addr);
+    }
+    if (optarg_outbound_addr6 != NULL) {
+        options->outbound_addr6 = strdup(optarg_outbound_addr6);
+    }
 #undef CIDR
 #undef DISABLE_HOST_LOOPBACK
 #undef NETNS_TYPE
@@ -550,6 +612,9 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 #undef _DEPRECATED_NO_HOST_LOOPBACK
 #undef ENABLE_SANDBOX
 #undef ENABLE_SECCOMP
+#undef OUTBOUND_ADDR
+#undef OUTBOUND_ADDR6
+#undef DISABLE_DNS
     if (argc - optind < 2) {
         goto error;
     }
@@ -670,6 +735,36 @@ finish:
     return rc;
 }
 
+static int get_interface_addr(const char *interface, int af, void *addr)
+{
+    struct ifaddrs *ifaddr, *ifa;
+    if (interface == NULL)
+        return -1;
+
+    if (getifaddrs(&ifaddr) == -1) {
+        fprintf(stderr, "getifaddrs failed to obtain interface addresses");
+        return -1;
+    }
+
+    for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+        if (ifa->ifa_addr == NULL || ifa->ifa_name == NULL)
+            continue;
+        if (ifa->ifa_addr->sa_family == af) {
+            if (strcmp(ifa->ifa_name, interface) == 0) {
+                if (af == AF_INET) {
+                    *(struct in_addr *)addr =
+                        ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
+                } else {
+                    *(struct in6_addr *)addr =
+                        ((struct sockaddr_in6 *)ifa->ifa_addr)->sin6_addr;
+                }
+                return 0;
+            }
+        }
+    }
+    return -1;
+}
+
 static int slirp4netns_config_from_options(struct slirp4netns_config *cfg,
                                            struct options *opt)
 {
@@ -684,6 +779,71 @@ static int slirp4netns_config_from_options(struct slirp4netns_config *cfg,
     cfg->disable_host_loopback = opt->disable_host_loopback;
     cfg->enable_sandbox = opt->enable_sandbox;
     cfg->enable_seccomp = opt->enable_seccomp;
+
+#if SLIRP_CONFIG_VERSION_MAX >= 2
+    cfg->enable_outbound_addr = false;
+    cfg->enable_outbound_addr6 = false;
+#endif
+
+    if (opt->outbound_addr != NULL) {
+#if SLIRP_CONFIG_VERSION_MAX >= 2
+        cfg->outbound_addr.sin_family = AF_INET;
+        cfg->outbound_addr.sin_port = 0; // Any local port will do
+        if (inet_pton(AF_INET, opt->outbound_addr,
+                      &cfg->outbound_addr.sin_addr) == 1) {
+            cfg->enable_outbound_addr = true;
+        } else {
+            if (get_interface_addr(opt->outbound_addr, AF_INET,
+                                   &cfg->outbound_addr.sin_addr) != 0) {
+                fprintf(stderr, "outbound-addr has to be valid ipv4 address or "
+                                "interface name.");
+                rc = -1;
+                goto finish;
+            }
+            cfg->enable_outbound_addr = true;
+        }
+#else
+        fprintf(stderr, "slirp4netns has to be compiled against libslrip 4.2.0 "
+                        "or newer for --outbound-addr support.");
+        rc = -1;
+        goto finish;
+#endif
+    }
+    if (opt->outbound_addr6 != NULL) {
+#if SLIRP_CONFIG_VERSION_MAX >= 2
+        cfg->outbound_addr6.sin6_family = AF_INET6;
+        cfg->outbound_addr6.sin6_port = 0; // Any local port will do
+        if (inet_pton(AF_INET6, opt->outbound_addr6,
+                      &cfg->outbound_addr6.sin6_addr) == 1) {
+            cfg->enable_outbound_addr6 = true;
+        } else {
+            if (get_interface_addr(opt->outbound_addr, AF_INET6,
+                                   &cfg->outbound_addr6.sin6_addr) != 0) {
+                fprintf(stderr, "outbound-addr has to be valid ipv4 address or "
+                                "iterface name.");
+                rc = -1;
+                goto finish;
+            }
+            cfg->enable_outbound_addr6 = true;
+        }
+#else
+        fprintf(stderr, "slirp4netns has to be compiled against libslirp 4.2.0 "
+                        "or newer for --outbound-addr6 support.");
+        rc = -1;
+        goto finish;
+#endif
+    }
+
+#if SLIRP_CONFIG_VERSION_MAX >= 3
+    cfg->disable_dns = opt->disable_dns;
+#else
+    if (opt->disable_dns) {
+        fprintf(stderr, "slirp4netns has to be compiled against libslirp 4.3.0 "
+                        "or newer for --disable-dns support.");
+        rc = -1;
+        goto finish;
+    }
+#endif
 finish:
     return rc;
 }

@@ -50,6 +50,18 @@ function wait_for_ping_connectivity {
     done
 }
 
+function wait_for_connectivity {
+    COUNTER=0
+    while [ $COUNTER -lt 40 ]; do
+        if echo "wait_for_connectivity" | nsenter --preserve-credentials -U -n --target=$1 ncat -v $2 $3; then
+            break
+        else
+            sleep 0.5
+        fi
+        let COUNTER=COUNTER+1
+    done
+}
+
 function wait_for_file_content {
     # Wait for a file to get the specified content.
     COUNTER=0

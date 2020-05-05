@@ -275,6 +275,24 @@ Slirp *create_slirp(void *opaque, struct slirp4netns_config *s4nn)
     cfg.if_mtu = s4nn->mtu;
     cfg.if_mru = s4nn->mtu;
     cfg.disable_host_loopback = s4nn->disable_host_loopback;
+#if SLIRP_CONFIG_VERSION_MAX >= 2
+    cfg.outbound_addr = NULL;
+    cfg.outbound_addr6 = NULL;
+    if (s4nn->enable_outbound_addr) {
+        cfg.version = 2;
+        cfg.outbound_addr = &s4nn->outbound_addr;
+    }
+    if (s4nn->enable_outbound_addr6) {
+        cfg.version = 2;
+        cfg.outbound_addr6 = &s4nn->outbound_addr6;
+    }
+#endif
+#if SLIRP_CONFIG_VERSION_MAX >= 3
+    if (s4nn->disable_dns) {
+        cfg.version = 3;
+        cfg.disable_dns = true;
+    }
+#endif
     slirp = slirp_new(&cfg, &libslirp_cb, opaque);
     if (slirp == NULL) {
         fprintf(stderr, "slirp_new failed\n");
