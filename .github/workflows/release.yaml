@@ -15,6 +15,10 @@ jobs:
       run: |
         wget -O buildx https://github.com/docker/buildx/releases/download/v0.4.1/buildx-v0.4.1.linux-amd64
         chmod +x buildx
+    - name: "Initialize buildx"
+      run: |
+        ./buildx create --name cross --platform=amd64,arm,arm64,s390x,ppc64le  --use
+        ./buildx inspect --bootstrap
     - name: "Build binaries from Dockerfile.artifact"
       run: ./buildx build -o /tmp --platform=amd64,arm64,arm -f Dockerfile.artifact .
     - name: "Create /tmp/artifact"
