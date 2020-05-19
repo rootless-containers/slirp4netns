@@ -10,7 +10,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: "Register QEMU to /proc/sys/fs/binfmt_misc"
-      run: docker run --rm --privileged docker/binfmt:a7996909642ee92942dcd6cff44b9b95f08dad64
+      run: docker run --rm --privileged linuxkit/binfmt:v0.8
     - name: "Fetch buildx binary"
       run: |
         wget -O buildx https://github.com/docker/buildx/releases/download/v0.4.1/buildx-v0.4.1.linux-amd64
