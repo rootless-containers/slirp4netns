@@ -1,16 +1,26 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 #define _GNU_SOURCE
 #include <stdio.h>
+#include <errno.h>
 #include <seccomp.h>
+#include "seccomparch.h"
 
 int enable_seccomp()
 {
-    int rc = -1;
+    int rc = -1, i;
     /* Allow everything by default and block dangerous syscalls explicitly,
      * as it is hard to find the correct set of required syscalls */
     scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_ALLOW);
     if (ctx == NULL)
         goto ret;
+    for (i = 0; i < seccomp_extra_archs_items; i++) {
+        uint32_t arch = seccomp_extra_archs[i];
+        rc = seccomp_arch_add(ctx, arch);
+        if (rc < 0 && rc != -EEXIST) {
+            fprintf(stderr, "seccomp: can't add extra arch (i=%d)\n", i);
+            goto ret;
+        }
+    }
     printf("seccomp: The following syscalls will be blocked by seccomp:");
 #ifdef SCMP_ACT_KILL_PROCESS
 #define BLOCK_ACTION SCMP_ACT_KILL_PROCESS

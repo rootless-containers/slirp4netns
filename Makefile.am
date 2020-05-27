@@ -15,6 +15,7 @@ EXTRA_DIST = \
 	slirp4netns.h \
 	api.h \
 	sandbox.h \
+	seccomparch.h \
 	seccompfilter.h \
 	tests/slirp4netns-no-unmount.sh \
 	vendor/parson/LICENSE \
