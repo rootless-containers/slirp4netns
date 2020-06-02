@@ -30,6 +30,7 @@ Tools:
 
 Version                        | Status
 -------------------------------|------------------------------------------------------------------------
+v1.1.x                         | :white_check_mark: Active
 v1.0.x                         | :white_check_mark: Active
 v0.4.x                         | :white_check_mark: Active (EOL: Sep 30, 2020)
 v0.3.x                         | :warning: End of Life (Mar 31, 2020)
@@ -63,6 +64,8 @@ $ sudo make install
 * If you set `--prefix` to `$HOME`, you don't need to run `make install` with `sudo`.
 
 ### Install from binary
+
+Pre-built static binaries are available here: https://github.com/rootless-containers/slirp4netns/releases
 
 #### RHEL 8 & [Fedora (28 or later)](https://src.fedoraproject.org/rpms/slirp4netns):
 
