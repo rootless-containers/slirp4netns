@@ -20,14 +20,17 @@ jobs:
         ./buildx create --name cross --platform=amd64,arm,arm64,s390x,ppc64le  --use
         ./buildx inspect --bootstrap
     - name: "Build binaries from Dockerfile.artifact"
-      run: ./buildx build -o /tmp --platform=amd64,arm64,arm -f Dockerfile.artifact .
+      run: ./buildx build -o /tmp --platform=amd64,arm64,arm,s390x,ppc64le -f Dockerfile.artifact .
     - name: "Create /tmp/artifact"
       run: |
         mkdir -p /tmp/artifact
         mv /tmp/linux_amd64/slirp4netns /tmp/artifact/slirp4netns-x86_64
         mv /tmp/linux_arm64/slirp4netns /tmp/artifact/slirp4netns-aarch64
         mv /tmp/linux_arm_v7/slirp4netns /tmp/artifact/slirp4netns-armv7l
-    - run: (cd /tmp/artifact; sha256sum *)
+        mv /tmp/linux_s390x/slirp4netns /tmp/artifact/slirp4netns-s390x
+        mv /tmp/linux_ppc64le/slirp4netns /tmp/artifact/slirp4netns-ppc64le
+    - name: "SHA256SUM"
+      run: (cd /tmp/artifact; sha256sum *) | tee /tmp/SHA256SUM
     - name: "Create release"
       uses: actions/create-release@v1
       id: create_release
@@ -64,3 +67,30 @@ jobs:
         asset_path: /tmp/artifact/slirp4netns-armv7l
         asset_name: slirp4netns-armv7l
         asset_content_type: application/octet-stream
+    - name: "Upload slirp4netns-s390x"
+      uses: actions/upload-release-asset@v1.0.2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: /tmp/artifact/slirp4netns-s390x
+        asset_name: slirp4netns-s390x
+        asset_content_type: application/octet-stream
+    - name: "Upload slirp4netns-ppc64le"
+      uses: actions/upload-release-asset@v1.0.2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: /tmp/artifact/slirp4netns-ppc64le
+        asset_name: slirp4netns-ppc64le
+        asset_content_type: application/octet-stream
+    - name: "Upload SHA256SUM"
+      uses: actions/upload-release-asset@v1.0.2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: /tmp/SHA256SUM
+        asset_name: SHA256SUM
+        asset_content_type: text/plain
