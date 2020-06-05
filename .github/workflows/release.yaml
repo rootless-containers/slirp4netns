@@ -29,8 +29,8 @@ jobs:
         mv /tmp/linux_arm_v7/slirp4netns /tmp/artifact/slirp4netns-armv7l
         mv /tmp/linux_s390x/slirp4netns /tmp/artifact/slirp4netns-s390x
         mv /tmp/linux_ppc64le/slirp4netns /tmp/artifact/slirp4netns-ppc64le
-    - name: "SHA256SUM"
-      run: (cd /tmp/artifact; sha256sum *) | tee /tmp/SHA256SUM
+    - name: "SHA256SUMS"
+      run: (cd /tmp/artifact; sha256sum *) | tee /tmp/SHA256SUMS
     - name: "Create release"
       uses: actions/create-release@v1
       id: create_release
@@ -85,12 +85,12 @@ jobs:
         asset_path: /tmp/artifact/slirp4netns-ppc64le
         asset_name: slirp4netns-ppc64le
         asset_content_type: application/octet-stream
-    - name: "Upload SHA256SUM"
+    - name: "Upload SHA256SUMS"
       uses: actions/upload-release-asset@v1.0.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: /tmp/SHA256SUM
-        asset_name: SHA256SUM
+        asset_path: /tmp/SHA256SUMS
+        asset_name: SHA256SUMS
         asset_content_type: text/plain
