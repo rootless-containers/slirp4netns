@@ -123,7 +123,7 @@ $ sudo zypper addrepo --refresh http://download.opensuse.org/repositories/devel:
 $ sudo zypper install slirp4netns
 ```
 
-#### [Debian GNU/Linux (10 or later)](https://packages.debian.org/buster/slirp4netns) & [Ubuntu (19.04 or later)](https://packages.ubuntu.com/disco/slirp4netns)
+#### [Debian GNU/Linux (10 or later)](https://packages.debian.org/buster/slirp4netns) & [Ubuntu (19.04 or later)](https://packages.ubuntu.com/search?keywords=slirp4netns)
 
 ```console
 $ sudo apt install slirp4netns
