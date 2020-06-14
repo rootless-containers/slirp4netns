@@ -15,12 +15,12 @@ jobs:
   test-build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - run: DOCKER_BUILDKIT=1 docker build -f Dockerfile.buildtests .
   artifact:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - run: DOCKER_BUILDKIT=1 docker build -o /tmp/artifact -f Dockerfile.artifact .
     - run: (cd /tmp/artifact; mv slirp4netns slirp4netns-x86_64)
     - run: (cd /tmp/artifact; sha256sum *)
