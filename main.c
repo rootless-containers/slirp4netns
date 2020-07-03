@@ -775,7 +775,7 @@ static int slirp4netns_config_from_options(struct slirp4netns_config *cfg,
     if (rc < 0) {
         goto finish;
     }
-    cfg->enable_ipv6 = cfg->enable_ipv6;
+    cfg->enable_ipv6 = opt->enable_ipv6;
     cfg->disable_host_loopback = opt->disable_host_loopback;
     cfg->enable_sandbox = opt->enable_sandbox;
     cfg->enable_seccomp = opt->enable_seccomp;
