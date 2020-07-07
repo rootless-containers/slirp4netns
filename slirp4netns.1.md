@@ -13,7 +13,7 @@ slirp4netns [OPTION]... PID|PATH TAPNAME
 
 slirp4netns provides user-mode networking ("slirp") for network namespaces.
 
-Unlike **veth**(4), slirp4netns does not require the root privileges on the host.
+Unlike `veth(4)`, slirp4netns does not require the root privileges on the host.
 
 Default configuration:
 
@@ -27,73 +27,73 @@ Default configuration:
 
 # OPTIONS
 
-**-c**, **--configure**
+`-c`, `--configure`
 bring up the TAP interface. IP will be set to 10.0.2.100 (network address + 100) by default. IPv6 will be set to a random address.
-Starting with v0.4.0, the loopback interface (**lo**) is brought up as well.
+Starting with v0.4.0, the loopback interface (`lo`) is brought up as well.
 
-**-e**, **--exit-fd=FD**
+`-e`, `--exit-fd=FD`
 specify the FD for terminating slirp4netns.
-When the FD is specified, slirp4netns exits when a **poll(2)** event happens on the FD.
+When the FD is specified, slirp4netns exits when a `poll(2)` event happens on the FD.
 
-**-r**, **--ready-fd=FD**
+`-r`, `--ready-fd=FD`
 specify the FD to write to when the initialization steps are finished.
-When the FD is specified, slirp4netns writes **"1"** to the FD and close the FD.
-Prior to v0.4.0, the FD was written after the network configuration (**-c**)
-but before the API socket configuration (**-a**).
+When the FD is specified, slirp4netns writes `"1"` to the FD and close the FD.
+Prior to v0.4.0, the FD was written after the network configuration (`-c`)
+but before the API socket configuration (`-a`).
 
-**-m**, **--mtu=MTU** (since v0.2.0)
+`-m`, `--mtu=MTU` (since v0.2.0)
 specify MTU (max=65521).
 
-**-6**, **--enable-ipv6** (since v0.2.0, EXPERIMENTAL)
+`-6`, `--enable-ipv6` (since v0.2.0, EXPERIMENTAL)
 enable IPv6
 
-**-a**, **--api-socket** (since v0.3.0)
+`-a`, `--api-socket` (since v0.3.0)
 API socket path
 
-**--cidr** (since v0.3.0)
+`--cidr` (since v0.3.0)
 specify CIDR, e.g. 10.0.2.0/24
 
-**--disable-host-loopback** (since v0.3.0)
+`--disable-host-loopback` (since v0.3.0)
 prohibit connecting to 127.0.0.1:\* on the host namespace
 
-**--netns-type=TYPE** (since v0.4.0)
+`--netns-type=TYPE` (since v0.4.0)
 specify network namespace type ([path|pid], default=pid)
 
-**--userns-path=PATH** (since v0.4.0)
+`--userns-path=PATH` (since v0.4.0)
 specify user namespace path
 
-**--enable-sandbox** (since v0.4.0)
+`--enable-sandbox` (since v0.4.0)
 enter the user namespace and create a new mount namespace where only /etc and
 /run are mounted from the host.
 
-Requires **/etc/resolv.conf** not to be a symlink to a file outside /etc and /run.
+Requires `/etc/resolv.conf` not to be a symlink to a file outside /etc and /run.
 
 When running as the root, the process does not enter the user namespace but all
 the capabilities except `CAP_NET_BIND_SERVICE` are dropped.
 
-**--enable-seccomp** (since v0.4.0, EXPERIMENTAL)
-enable **seccomp(2)** to limit syscalls.
-Typically used in conjunction with **--enable-sandbox**.
+`--enable-seccomp` (since v0.4.0, EXPERIMENTAL)
+enable `seccomp(2)` to limit syscalls.
+Typically used in conjunction with `--enable-sandbox`.
 
-**--outbound-addr=IPv4** (since v1.1.0, EXPERIMENTAL)
+`--outbound-addr=IPv4` (since v1.1.0, EXPERIMENTAL)
 specify outbound ipv4 address slirp should bind to
 
-**--outbound-addr=INTERFACE** (since v1.1.0, EXPERIMENTAL)
+`--outbound-addr=INTERFACE` (since v1.1.0, EXPERIMENTAL)
 specify outbound interface slirp should bind to (ipv4 traffic only)
 
-**--outbound-addr=IPv6** (since v1.1.0, EXPERIMENTAL)
+`--outbound-addr=IPv6` (since v1.1.0, EXPERIMENTAL)
 specify outbound ipv6 address slirp should bind to
 
-**--outbound-addr6=INTERFACE** (since v1.1.0, EXPERIMENTAL)
+`--outbound-addr6=INTERFACE` (since v1.1.0, EXPERIMENTAL)
 specify outbound interface slirp should bind to (ipv6 traffic only)
 
-**--disable-dns** (since v1.1.0)
+`--disable-dns` (since v1.1.0)
 disable built-in DNS (10.0.2.3 by default)
 
-**-h**, **--help** (since v0.2.0)
+`-h`, `--help` (since v0.2.0)
 show help and exit
 
-**-v**, **--version** (since v0.2.0)
+`-v`, `--version` (since v0.2.0)
 show version and exit
 
 
@@ -124,7 +124,7 @@ starting slirp, MTU=65520
 ...
 ```
 
-**Terminal 1**: Make sure **tap0** is configured and connected to the Internet
+**Terminal 1**: Make sure `tap0` is configured and connected to the Internet
 
 ```console
 (namespace)$ ip a
@@ -141,14 +141,14 @@ starting slirp, MTU=65520
 (namespace)$ curl https://example.com
 ```
 
-Bind-mounting **/etc/resolv.conf** is only needed when **/etc/resolv.conf** on
-the host refers to loopback addresses (**127.0.0.X**, typically **dnsmasq**(8)
-or **systemd-resolved.service**(8)) that cannot be accessed from the namespace.
+Bind-mounting `/etc/resolv.conf` is only needed when `/etc/resolv.conf` on
+the host refers to loopback addresses (`127.0.0.X`, typically `dnsmasq(8)`
+or `systemd-resolved.service(8)`) that cannot be accessed from the namespace.
 
-If your **/etc/resolv.conf** on the host is managed by **networkmanager**(8)
-or **systemd-resolved.service**(8), you might need to mount a new filesystem on
-**/etc** instead, so as to prevent the new **/etc/resolv.conf** from being
-unmounted unexpectedly when **/etc/resolv.conf** on the host is regenerated.
+If your `/etc/resolv.conf` on the host is managed by `networkmanager(8)`
+or `systemd-resolved.service(8)`, you might need to mount a new filesystem on
+`/etc` instead, so as to prevent the new `/etc/resolv.conf` from being
+unmounted unexpectedly when `/etc/resolv.conf` on the host is regenerated.
 
 ```console
 (namespace)$ mkdir /tmp/a /tmp/b
@@ -172,7 +172,7 @@ nameserver 10.0.2.3
 
 # ROUTING PING PACKETS
 
-To route ping packets, you may need to set up **net.ipv4.ping_group_range** properly as the root.
+To route ping packets, you may need to set up `net.ipv4.ping_group_range` properly as the root.
 
 e.g.
 ```console
@@ -182,10 +182,10 @@ e.g.
 
 # FILTERING CONNECTIONS
 
-By default, ports listening on **INADDR_LOOPBACK** (**127.0.0.1**) on the host are accessible from the child namespace via the gateway (default: **10.0.2.2**).
-**--disable-host-loopback** can be used to prohibit connecting to **INADDR_LOOPBACK** on the host.
+By default, ports listening on `INADDR_LOOPBACK` (`127.0.0.1`) on the host are accessible from the child namespace via the gateway (default: `10.0.2.2`).
+`--disable-host-loopback` can be used to prohibit connecting to `INADDR_LOOPBACK` on the host.
 
-However, a host loopback address might be still accessible via the built-in DNS (default: **10.0.2.3**) if `/etc/resolv.conf` on the host refers to a loopback address.
+However, a host loopback address might be still accessible via the built-in DNS (default: `10.0.2.3`) if `/etc/resolv.conf` on the host refers to a loopback address.
 You may want to set up iptables for limiting access to the built-in DNS in such a case.
 
 ```console
@@ -202,7 +202,7 @@ slirp4netns can provide QMP-like API server over an UNIX socket file:
 (host)$ slirp4netns --api-socket /tmp/slirp4netns.sock ...
 ```
 
-**add_hostfwd**: Expose a port (IPv4 only)
+`add_hostfwd`: Expose a port (IPv4 only)
 
 ```console
 (namespace)$ json='{"execute": "add_hostfwd", "arguments": {"proto": "tcp", "host_addr": "0.0.0.0", "host_port": 8080, "guest_addr": "10.0.2.100", "guest_port": 80}}'
@@ -210,11 +210,11 @@ slirp4netns can provide QMP-like API server over an UNIX socket file:
 {"return": {"id": 42}}
 ```
 
-If **host_addr** is not specified, then it defaults to "0.0.0.0".
+If `host_addr` is not specified, then it defaults to "0.0.0.0".
 
-If **guest_addr** is not specified, then it will be set to the default address that corresponds to **--configure**.
+If `guest_addr` is not specified, then it will be set to the default address that corresponds to `--configure`.
 
-**list_hostfwd**: List exposed ports
+`list_hostfwd`: List exposed ports
 
 ```console
 (namespace)$ json='{"execute": "list_hostfwd"}'
@@ -222,7 +222,7 @@ If **guest_addr** is not specified, then it will be set to the default address t
 {"return": {"entries": [{"id": 42, "proto": "tcp", "host_addr": "0.0.0.0", "host_port": 8080, "guest_addr": "10.0.2.100", "guest_port": 80}]}}
 ```
 
-**remove_hostfwd**: Remove an exposed port
+`remove_hostfwd`: Remove an exposed port
 
 ```console
 (namespace)$ json='{"execute": "remove_hostfwd", "arguments": {"id": 42}}'
@@ -232,11 +232,11 @@ If **guest_addr** is not specified, then it will be set to the default address t
 
 Remarks:
 
-* Client needs to **shutdown(2)** the socket with **SHUT_WR** after sending every request.
+* Client needs to `shutdown(2)` the socket with `SHUT_WR` after sending every request.
   i.e. No support for keep-alive and timeout.
 * slirp4netns "stops the world" during processing API requests.
 * A request must be less than 4096 bytes.
-* JSON responses may contain **error** instead of **return**.
+* JSON responses may contain `error` instead of `return`.
 
 # DEFINED NAMESPACE PATHS 
 A user can define a network namespace path as opposed to the default process ID:
@@ -244,9 +244,9 @@ A user can define a network namespace path as opposed to the default process ID:
 ```console
 (host)$ slirp4netns --netns-type=path ... /path/to/netns tap0
 ```
-Currently, the **netns-type=TYPE** argument supports **path** or **pid** args with the default being **pid**.
+Currently, the `netns-type=TYPE` argument supports `path` or `pid` args with the default being `pid`.
 
-Additionally, a **--userns-path=PATH** argument can be included to override any user namespace path defaults
+Additionally, a `--userns-path=PATH` argument can be included to override any user namespace path defaults
 ```console
 (host)$ slirp4netns --netns-type=path --userns-path=/path/to/userns /path/to/netns tap0
 ```
@@ -289,7 +289,7 @@ The easiest way to allow inter-namespace communication is to nest network namesp
 
 However, this method does not work when you want to allow communication across multiple slirp4netns instances.
 To allow communication across multiple slirp4netns instances, you need to combine another network stack such as
-**vde_plug(1)** with slirp4netns.
+`vde_plug(1)` with slirp4netns.
 
 ```console
 (host)$ vde_plug --daemon switch:///tmp/switch null://
@@ -308,14 +308,14 @@ To allow communication across multiple slirp4netns instances, you need to combin
 # INTER-HOST COMMUNICATION
 
 VXLAN is known to work.
-See Usernetes project for the example of multi-node rootless Kubernetes cluster with VXLAN: **https://github.com/rootless-containers/usernetes**
+See Usernetes project for the example of multi-node rootless Kubernetes cluster with VXLAN: `https://github.com/rootless-containers/usernetes`
 
 # BUGS
 
-Kernel 4.20 bumped up the default value of **/proc/sys/net/ipv4/tcp_rmem** from 87380 to 131072.
-This is known to slow down slirp4netns port forwarding: **https://github.com/rootless-containers/slirp4netns/issues/128**.
+Kernel 4.20 bumped up the default value of `/proc/sys/net/ipv4/tcp_rmem` from 87380 to 131072.
+This is known to slow down slirp4netns port forwarding: `https://github.com/rootless-containers/slirp4netns/issues/128`.
 
-As a workaround, you can adjust the value of **/proc/sys/net/ipv4/tcp_rmem** inside the namespace.
+As a workaround, you can adjust the value of `/proc/sys/net/ipv4/tcp_rmem` inside the namespace.
 No real root privilege is needed to modify the file since kernel 4.15.
 
 ```console
@@ -325,8 +325,8 @@ No real root privilege is needed to modify the file since kernel 4.15.
 
 # SEE ALSO
 
-**network_namespaces**(7), **user_namespaces**(7), **veth**(4)
+`network_namespaces(7)`, `user_namespaces(7)`, `veth(4)`
 
 # AVAILABILITY
 
-The slirp4netns command is available from **https://github.com/rootless-containers/slirp4netns** under GNU GENERAL PUBLIC LICENSE Version 2 (or later).
+The slirp4netns command is available from `https://github.com/rootless-containers/slirp4netns` under GNU GENERAL PUBLIC LICENSE Version 2 (or later).
