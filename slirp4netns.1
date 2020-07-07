@@ -1,5 +1,5 @@
 .nh
-.TH SLIRP4NETNS 1 "March 2020" "Rootless Containers" "User Commands"
+.TH SLIRP4NETNS 1 "July 2020" "Rootless Containers" "User Commands"
 
 .SH NAME
 .PP
@@ -16,7 +16,7 @@ slirp4netns [OPTION]... PID|PATH TAPNAME
 slirp4netns provides user\-mode networking ("slirp") for network namespaces.
 
 .PP
-Unlike \fBveth\fP(4), slirp4netns does not require the root privileges on the host.
+Unlike \fB\fCveth(4)\fR, slirp4netns does not require the root privileges on the host.
 
 .PP
 Default configuration:
@@ -42,118 +42,135 @@ IPv6 DNS:          fd00::3
 
 .SH OPTIONS
 .PP
-\fB\-c\fP, \fB\-\-configure\fP
+\fB\fC\-c\fR, \fB\fC\-\-configure\fR
 bring up the TAP interface. IP will be set to 10.0.2.100 (network address + 100) by default. IPv6 will be set to a random address.
-Starting with v0.4.0, the loopback interface (\fBlo\fP) is brought up as well.
+Starting with v0.4.0, the loopback interface (\fB\fClo\fR) is brought up as well.
 
 .PP
-\fB\-e\fP, \fB\-\-exit\-fd=FD\fP
+\fB\fC\-e\fR, \fB\fC\-\-exit\-fd=FD\fR
 specify the FD for terminating slirp4netns.
-When the FD is specified, slirp4netns exits when a \fBpoll(2)\fP event happens on the FD.
+When the FD is specified, slirp4netns exits when a \fB\fCpoll(2)\fR event happens on the FD.
 
 .PP
-\fB\-r\fP, \fB\-\-ready\-fd=FD\fP
+\fB\fC\-r\fR, \fB\fC\-\-ready\-fd=FD\fR
 specify the FD to write to when the initialization steps are finished.
-When the FD is specified, slirp4netns writes \fB"1"\fP to the FD and close the FD.
-Prior to v0.4.0, the FD was written after the network configuration (\fB\-c\fP)
-but before the API socket configuration (\fB\-a\fP).
+When the FD is specified, slirp4netns writes \fB\fC"1"\fR to the FD and close the FD.
+Prior to v0.4.0, the FD was written after the network configuration (\fB\fC\-c\fR)
+but before the API socket configuration (\fB\fC\-a\fR).
 
 .PP
-\fB\-m\fP, \fB\-\-mtu=MTU\fP (since v0.2.0)
+\fB\fC\-m\fR, \fB\fC\-\-mtu=MTU\fR (since v0.2.0)
 specify MTU (max=65521).
 
 .PP
-\fB\-6\fP, \fB\-\-enable\-ipv6\fP (since v0.2.0, EXPERIMENTAL)
+\fB\fC\-6\fR, \fB\fC\-\-enable\-ipv6\fR (since v0.2.0, EXPERIMENTAL)
 enable IPv6
 
 .PP
-\fB\-a\fP, \fB\-\-api\-socket\fP (since v0.3.0)
+\fB\fC\-a\fR, \fB\fC\-\-api\-socket\fR (since v0.3.0)
 API socket path
 
 .PP
-\fB\-\-cidr\fP (since v0.3.0)
+\fB\fC\-\-cidr\fR (since v0.3.0)
 specify CIDR, e.g. 10.0.2.0/24
 
 .PP
-\fB\-\-disable\-host\-loopback\fP (since v0.3.0)
+\fB\fC\-\-disable\-host\-loopback\fR (since v0.3.0)
 prohibit connecting to 127.0.0.1:* on the host namespace
 
 .PP
-\fB\-\-netns\-type=TYPE\fP (since v0.4.0)
+\fB\fC\-\-netns\-type=TYPE\fR (since v0.4.0)
 specify network namespace type ([path|pid], default=pid)
 
 .PP
-\fB\-\-userns\-path=PATH\fP (since v0.4.0)
+\fB\fC\-\-userns\-path=PATH\fR (since v0.4.0)
 specify user namespace path
 
 .PP
-\fB\-\-enable\-sandbox\fP (since v0.4.0)
+\fB\fC\-\-enable\-sandbox\fR (since v0.4.0)
 enter the user namespace and create a new mount namespace where only /etc and
 /run are mounted from the host.
 
 .PP
-Requires \fB/etc/resolv.conf\fP not to be a symlink to a file outside /etc and /run.
+Requires \fB\fC/etc/resolv.conf\fR not to be a symlink to a file outside /etc and /run.
 
 .PP
 When running as the root, the process does not enter the user namespace but all
 the capabilities except \fB\fCCAP\_NET\_BIND\_SERVICE\fR are dropped.
 
 .PP
-\fB\-\-enable\-seccomp\fP (since v0.4.0, EXPERIMENTAL)
-enable \fBseccomp(2)\fP to limit syscalls.
-Typically used in conjunction with \fB\-\-enable\-sandbox\fP\&.
+\fB\fC\-\-enable\-seccomp\fR (since v0.4.0, EXPERIMENTAL)
+enable \fB\fCseccomp(2)\fR to limit syscalls.
+Typically used in conjunction with \fB\fC\-\-enable\-sandbox\fR\&.
 
 .PP
-\fB\-\-outbound\-addr=IPv4\fP (since v1.1.0, EXPERIMENTAL)
+\fB\fC\-\-outbound\-addr=IPv4\fR (since v1.1.0, EXPERIMENTAL)
 specify outbound ipv4 address slirp should bind to
 
 .PP
-\fB\-\-outbound\-addr=INTERFACE\fP (since v1.1.0, EXPERIMENTAL)
+\fB\fC\-\-outbound\-addr=INTERFACE\fR (since v1.1.0, EXPERIMENTAL)
 specify outbound interface slirp should bind to (ipv4 traffic only)
 
 .PP
-\fB\-\-outbound\-addr=IPv6\fP (since v1.1.0, EXPERIMENTAL)
+\fB\fC\-\-outbound\-addr=IPv6\fR (since v1.1.0, EXPERIMENTAL)
 specify outbound ipv6 address slirp should bind to
 
 .PP
-\fB\-\-outbound\-addr6=INTERFACE\fP (since v1.1.0, EXPERIMENTAL)
+\fB\fC\-\-outbound\-addr6=INTERFACE\fR (since v1.1.0, EXPERIMENTAL)
 specify outbound interface slirp should bind to (ipv6 traffic only)
 
 .PP
-\fB\-\-disable\-dns\fP (since v1.1.0)
+\fB\fC\-\-disable\-dns\fR (since v1.1.0)
 disable built\-in DNS (10.0.2.3 by default)
 
 .PP
-\fB\-h\fP, \fB\-\-help\fP (since v0.2.0)
+\fB\fC\-h\fR, \fB\fC\-\-help\fR (since v0.2.0)
 show help and exit
 
 .PP
-\fB\-v\fP, \fB\-\-version\fP (since v0.2.0)
+\fB\fC\-v\fR, \fB\fC\-\-version\fR (since v0.2.0)
 show version and exit
 
 
 .SH EXAMPLE
 .PP
-Terminal 1: Create user/network/mount namespaces
+\fBTerminal 1\fP: Create user/network/mount namespaces
 
 .PP
 .RS
 
 .nf
-$ unshare \-\-user \-\-map\-root\-user \-\-net \-\-mount
-unshared$ echo $$ > /tmp/pid
+(host)$ unshare \-\-user \-\-map\-root\-user \-\-net \-\-mount
+(namespace)$ echo $$ > /tmp/pid
 
 .fi
 .RE
 
 .PP
-Terminal 2: Start slirp4netns
+In this documentation, we use \fB\fC(host)$\fR as the prompt of the host shell, \fB\fC(namespace)$\fR as the prompt of the shell running in the namespaces.
+
+.PP
+If \fB\fCunshare\fR fails, try the following commands (known to be needed on Debian, Arch, and old CentOS 7.X):
 
 .PP
 .RS
 
 .nf
-$ slirp4netns \-\-configure \-\-mtu=65520 $(cat /tmp/pid) tap0
+(host)$ sudo sh \-c 'echo "user.max\_user\_namespaces=28633" >> /etc/sysctl.d/userns.conf'
+(host)$ [ \-f /proc/sys/kernel/unprivileged\_serns\_clone ] \&\& sudo sh \-c 'echo "kernel.unprivileged\_userns\_clone=1" >> /etc/sysctl.d/userns.conf'
+(host)$ sudo sysctl \-\-system
+
+.fi
+.RE
+
+.PP
+\fBTerminal 2\fP: Start slirp4netns
+
+.PP
+.RS
+
+.nf
+(host)$ slirp4netns \-\-configure \-\-mtu=65520 $(cat /tmp/pid) tap0
 starting slirp, MTU=65520
 ...
 
@@ -161,13 +178,13 @@ starting slirp, MTU=65520
 .RE
 
 .PP
-Terminal 1: Make sure \fBtap0\fP is configured and connected to the Internet
+\fBTerminal 1\fP: Make sure \fB\fCtap0\fR is configured and connected to the Internet
 
 .PP
 .RS
 
 .nf
-unshared$ ip a
+(namespace)$ ip a
 1: lo: <LOOPBACK> mtu 65536 qdisc noop state DOWN group default qlen 1000
     link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
 3: tap0: <BROADCAST,UP,LOWER\_UP> mtu 65520 qdisc fq\_codel state UNKNOWN group default qlen 1000
@@ -176,39 +193,52 @@ unshared$ ip a
        valid\_lft forever preferred\_lft forever
     inet6 fe80::c028:cff:fe0e:2906/64 scope link 
        valid\_lft forever preferred\_lft forever
-unshared$ echo "nameserver 10.0.2.3" > /tmp/resolv.conf
-unshared$ mount \-\-bind /tmp/resolv.conf /etc/resolv.conf
-unshared$ curl https://example.com
+(namespace)$ echo "nameserver 10.0.2.3" > /tmp/resolv.conf
+(namespace)$ mount \-\-bind /tmp/resolv.conf /etc/resolv.conf
+(namespace)$ curl https://example.com
 
 .fi
 .RE
 
 .PP
-Bind\-mounting \fB/etc/resolv.conf\fP is only needed when \fB/etc/resolv.conf\fP on
-the host refers to loopback addresses (\fB127.0.0.X\fP, typically because of
-\fBdnsmasq\fP(8) or \fBsystemd\-resolved.service\fP(8)) that cannot be accessed from
-the namespace.
+Bind\-mounting \fB\fC/etc/resolv.conf\fR is only needed when \fB\fC/etc/resolv.conf\fR on
+the host refers to loopback addresses (\fB\fC127.0.0.X\fR, typically \fB\fCdnsmasq(8)\fR
+or \fB\fCsystemd\-resolved.service(8)\fR) that cannot be accessed from the namespace.
 
 .PP
-If your \fB/etc/resolv.conf\fP on the host is managed by \fBnetworkmanager\fP(8)
-or \fBsystemd\-resolved.service\fP(8), you might need to mount a new filesystem on
-\fB/etc\fP instead, so as to prevent the new \fB/etc/resolv.conf\fP from being
-unmounted unexpectedly when \fB/etc/resolv.conf\fP on the host is regenerated.
+If your \fB\fC/etc/resolv.conf\fR on the host is managed by \fB\fCnetworkmanager(8)\fR
+or \fB\fCsystemd\-resolved.service(8)\fR, you might need to mount a new filesystem on
+\fB\fC/etc\fR instead, so as to prevent the new \fB\fC/etc/resolv.conf\fR from being
+unmounted unexpectedly when \fB\fC/etc/resolv.conf\fR on the host is regenerated.
 
 .PP
 .RS
 
 .nf
-unshared$ mkdir /tmp/a /tmp/b
-unshared$ mount \-\-rbind /etc /tmp/a
-unshared$ mount \-\-rbind /tmp/b /etc
-unshared$ mkdir /etc/.ro
-unshared$ mount \-\-move /tmp/a /etc/.ro
-unshared$ cd /etc
-unshared$ for f in .ro/*; do ln \-s $f $(basename $f); done
-unshared$ rm resolv.conf
-unshared$ echo "nameserver 10.0.2.3" > /tmp/resolv.conf
-unshared$ curl https://example.com
+(namespace)$ mkdir /tmp/a /tmp/b
+(namespace)$ mount \-\-rbind /etc /tmp/a
+(namespace)$ mount \-\-rbind /tmp/b /etc
+(namespace)$ mkdir /etc/.ro
+(namespace)$ mount \-\-move /tmp/a /etc/.ro
+(namespace)$ cd /etc
+(namespace)$ for f in .ro/*; do ln \-s $f $(basename $f); done
+(namespace)$ rm resolv.conf
+(namespace)$ echo "nameserver 10.0.2.3" > resolv.conf
+(namespace)$ curl https://example.com
+
+.fi
+.RE
+
+.PP
+These steps can be simplified with \fB\fCrootlesskit \-\-copy\-up=/etc\fR if \fB\fCrootlesskit\fR is installed:
+
+.PP
+.RS
+
+.nf
+(host)$ rootlesskit \-\-net=slirp4netns \-\-copy\-up=/etc bash
+(namespace)$ cat /etc/resolv.conf
+nameserver 10.0.2.3
 
 .fi
 .RE
@@ -216,8 +246,7 @@ unshared$ curl https://example.com
 
 .SH ROUTING PING PACKETS
 .PP
-To route ping packets, you need to set up \fBnet.ipv4.ping\_group\_range\fP properly
-as the root.
+To route ping packets, you may need to set up \fB\fCnet.ipv4.ping\_group\_range\fR properly as the root.
 
 .PP
 e.g.
@@ -226,7 +255,8 @@ e.g.
 .RS
 
 .nf
-$ sudo sh \-c "echo 0   2147483647  > /proc/sys/net/ipv4/ping\_group\_range"
+(host)$ sudo sh \-c 'echo "net.ipv4.ping\_group\_range=0   2147483647" > /etc/sysctl.d/ping\_group\_range.conf'
+(host)$ sudo sysctl \-\-system
 
 .fi
 .RE
@@ -234,19 +264,20 @@ $ sudo sh \-c "echo 0   2147483647  > /proc/sys/net/ipv4/ping\_group\_range"
 
 .SH FILTERING CONNECTIONS
 .PP
-By default, ports listening on \fBINADDR\_LOOPBACK\fP (\fB127.0.0.1\fP) on the host are accessible from the child namespace via the gateway (default: \fB10.0.2.2\fP).
-\fB\-\-disable\-host\-loopback\fP can be used to prohibit connecting to \fBINADDR\_LOOPBACK\fP on the host.
+By default, ports listening on \fB\fCINADDR\_LOOPBACK\fR (\fB\fC127.0.0.1\fR) on the host are accessible from the child namespace via the gateway (default: \fB\fC10.0.2.2\fR).
+\fB\fC\-\-disable\-host\-loopback\fR can be used to prohibit connecting to \fB\fCINADDR\_LOOPBACK\fR on the host.
 
 .PP
-However, a host loopback address might be still accessible via the built\-in DNS (default: \fB10.0.2.3\fP) if \fB\fC/etc/resolv.conf\fR on the host refers to a loopback address.
+However, a host loopback address might be still accessible via the built\-in DNS (default: \fB\fC10.0.2.3\fR) if \fB\fC/etc/resolv.conf\fR on the host refers to a loopback address.
 You may want to set up iptables for limiting access to the built\-in DNS in such a case.
 
 .PP
 .RS
 
 .nf
-unshared$ iptables \-A OUTPUT \-d 10.0.2.3 \-p udp \-\-dport 53 \-j ACCEPT
-unshared$ iptables \-A OUTPUT \-d 10.0.2.3 \-j DROP
+(host)$ nsenter \-t $(cat /tmp/pid) \-U \-n
+(namespace)$ iptables \-A OUTPUT \-d 10.0.2.3 \-p udp \-\-dport 53 \-j ACCEPT
+(namespace)$ iptables \-A OUTPUT \-d 10.0.2.3 \-j DROP
 
 .fi
 .RE
@@ -260,55 +291,55 @@ slirp4netns can provide QMP\-like API server over an UNIX socket file:
 .RS
 
 .nf
-$ slirp4netns \-\-api\-socket /tmp/slirp4netns.sock ...
+(host)$ slirp4netns \-\-api\-socket /tmp/slirp4netns.sock ...
 
 .fi
 .RE
 
 .PP
-\fBadd\_hostfwd\fP: Expose a port (IPv4 only)
+\fB\fCadd\_hostfwd\fR: Expose a port (IPv4 only)
 
 .PP
 .RS
 
 .nf
-$ json='{"execute": "add\_hostfwd", "arguments": {"proto": "tcp", "host\_addr": "0.0.0.0", "host\_port": 8080, "guest\_addr": "10.0.2.100", "guest\_port": 80}}'
-$ echo \-n $json | nc \-U /tmp/slirp4netns.sock
-{ "return": {"id": 42}}
+(namespace)$ json='{"execute": "add\_hostfwd", "arguments": {"proto": "tcp", "host\_addr": "0.0.0.0", "host\_port": 8080, "guest\_addr": "10.0.2.100", "guest\_port": 80}}'
+(namespace)$ echo \-n $json | nc \-U /tmp/slirp4netns.sock
+{"return": {"id": 42}}
 
 .fi
 .RE
 
 .PP
-If \fBhost\_addr\fP is not specified, then it defaults to "0.0.0.0".
+If \fB\fChost\_addr\fR is not specified, then it defaults to "0.0.0.0".
 
 .PP
-If \fBguest\_addr\fP is not specified, then it will be set to the default address that corresponds to \-\-configure.
+If \fB\fCguest\_addr\fR is not specified, then it will be set to the default address that corresponds to \fB\fC\-\-configure\fR\&.
 
 .PP
-\fBlist\_hostfwd\fP: List exposed ports
+\fB\fClist\_hostfwd\fR: List exposed ports
 
 .PP
 .RS
 
 .nf
-$ json='{"execute": "list\_hostfwd"}'
-$ echo \-n $json | nc \-U /tmp/slirp4netns.sock
-{ "return": {"entries": [{"id": 42, "proto": "tcp", "host\_addr": "0.0.0.0", "host\_port": 8080, "guest\_addr": "10.0.2.100", "guest\_port": 80}]}}
+(namespace)$ json='{"execute": "list\_hostfwd"}'
+(namespace)$ echo \-n $json | nc \-U /tmp/slirp4netns.sock
+{"return": {"entries": [{"id": 42, "proto": "tcp", "host\_addr": "0.0.0.0", "host\_port": 8080, "guest\_addr": "10.0.2.100", "guest\_port": 80}]}}
 
 .fi
 .RE
 
 .PP
-\fBremove\_hostfwd\fP: Remove an exposed port
+\fB\fCremove\_hostfwd\fR: Remove an exposed port
 
 .PP
 .RS
 
 .nf
-$ json='{"execute": "remove\_hostfwd", "arguments": {"id": 42}}'
-$ echo \-n $json | nc \-U /tmp/slirp4netns.sock
-{ "return": {}}
+(namespace)$ json='{"execute": "remove\_hostfwd", "arguments": {"id": 42}}'
+(namespace)$ echo \-n $json | nc \-U /tmp/slirp4netns.sock
+{"return": {}}
 
 .fi
 .RE
@@ -318,14 +349,14 @@ Remarks:
 
 .RS
 .IP \(bu 2
-Client needs to \fBshutdown(2)\fP the socket with \fBSHUT\_WR\fP after sending every request.
+Client needs to \fB\fCshutdown(2)\fR the socket with \fB\fCSHUT\_WR\fR after sending every request.
 i.e. No support for keep\-alive and timeout.
 .IP \(bu 2
 slirp4netns "stops the world" during processing API requests.
 .IP \(bu 2
 A request must be less than 4096 bytes.
 .IP \(bu 2
-JSON responses may contain \fBerror\fP instead of \fBreturn\fP\&.
+JSON responses may contain \fB\fCerror\fR instead of \fB\fCreturn\fR\&.
 
 .RE
 
@@ -338,22 +369,22 @@ A user can define a network namespace path as opposed to the default process ID:
 .RS
 
 .nf
-$ slirp4netns \-\-netns\-type=path ... /path/to/netns tap0
+(host)$ slirp4netns \-\-netns\-type=path ... /path/to/netns tap0
 
 .fi
 .RE
 
 .PP
-Currently, the \fBnetns\-type=TYPE\fP argument supports \fBpath\fP or \fBpid\fP args with the default being \fBpid\fP\&.
+Currently, the \fB\fCnetns\-type=TYPE\fR argument supports \fB\fCpath\fR or \fB\fCpid\fR args with the default being \fB\fCpid\fR\&.
 
 .PP
-Additionally, a \fB\-\-userns\-path=PATH\fP argument can be included to override any user namespace path defaults
+Additionally, a \fB\fC\-\-userns\-path=PATH\fR argument can be included to override any user namespace path defaults
 
 .PP
 .RS
 
 .nf
-$ slirp4netns \-\-netns\-type=path \-\-userns\-path=/path/to/userns /path/to/netns tap0
+(host)$ slirp4netns \-\-netns\-type=path \-\-userns\-path=/path/to/userns /path/to/netns tap0
 
 .fi
 .RE
@@ -367,7 +398,7 @@ A user can defined preferred outbound ipv4 and ipv6 address in multi IP scenario
 .RS
 
 .nf
-$ slirp4netns \-\-outbound\-addr=10.2.2.10 \-\-outbound\-addr6=fe80::10 ...
+(host)$ slirp4netns \-\-outbound\-addr=10.2.2.10 \-\-outbound\-addr6=fe80::10 ...
 
 .fi
 .RE
@@ -379,26 +410,86 @@ Optionally you can use interface names instead of ip addresses.
 .RS
 
 .nf
-$ slirp4netns \-\-outbound\-addr=eth0 \-\-outbound\-addr6=eth0 ...
+(host)$ slirp4netns \-\-outbound\-addr=eth0 \-\-outbound\-addr6=eth0 ...
 
 .fi
 .RE
 
 
-.SH BUGS
+.SH INTER\-NAMESPACE COMMUNICATION
 .PP
-Kernel 4.20 bumped up the default value of \fB/proc/sys/net/ipv4/tcp\_rmem\fP from 87380 to 131072.
-This is known to slow down slirp4netns port forwarding: \fBhttps://github.com/rootless\-containers/slirp4netns/issues/128\fP\&.
+The easiest way to allow inter\-namespace communication is to nest network namespaces inside the slirp4netns's network namespace.
 
 .PP
-As a workaround, you can adjust the value of \fB/proc/sys/net/ipv4/tcp\_rmem\fP inside the namespace.
+.RS
+
+.nf
+(host)$ nsenter \-t $(cat /tmp/pid) \-U \-n \-m
+(namespace)$ mount \-t tmpfs none /run
+(namespace)$ ip netns add foo
+(namespace)$ ip netns add bar
+(namespace)$ ip link add veth\-foo type veth peer name veth\-bar
+(namespace)$ ip link set veth\-foo netns foo
+(namespace)$ ip link set veth\-bar netns bar
+(namespace)$ ip netns exec foo ip link set veth\-foo name eth0
+(namespace)$ ip netns exec bar ip link set veth\-bar name eth0
+(namespace)$ ip netns exec foo ip link set lo up
+(namespace)$ ip netns exec bar ip link set lo up
+(namespace)$ ip netns exec foo ip link set eth0 up
+(namespace)$ ip netns exec bar ip link set eth0 up
+(namespace)$ ip netns exec foo ip addr add 192.168.42.100/24 dev eth0
+(namespace)$ ip netns exec bar ip addr add 192.168.42.101/24 dev eth0
+(namespace)$ ip netns exec bar ping 192.168.42.100
+
+.fi
+.RE
+
+.PP
+However, this method does not work when you want to allow communication across multiple slirp4netns instances.
+To allow communication across multiple slirp4netns instances, you need to combine another network stack such as
+\fB\fCvde\_plug(1)\fR with slirp4netns.
+
+.PP
+.RS
+
+.nf
+(host)$ vde\_plug \-\-daemon switch:///tmp/switch null://
+(host)$ nsenter \-t $(cat /tmp/pid\-instance0) \-U \-n
+(namespace\-instance0)$ vde\_plug \-\-daemon vde:///tmp/switch tap://vde
+(namespace\-instance0)$ ip link set vde up
+(namespace\-instance0)$ ip addr add 192.168.42.100/24 dev vde
+(namespace\-instance0)$ exit
+(host)$ nsenter \-t $(cat /tmp/pid\-instance1) \-U \-n
+(namespace\-instance1)$ vde\_plug \-\-daemon vde:///tmp/switch tap://vde
+(namespace\-instance1)$ ip link set vde up
+(namespace\-instance1)$ ip addr add 192.168.42.101/24 dev vde
+(namespace\-instance1)$ ping 192.168.42.100
+
+.fi
+.RE
+
+
+.SH INTER\-HOST COMMUNICATION
+.PP
+VXLAN is known to work.
+See Usernetes project for the example of multi\-node rootless Kubernetes cluster with VXLAN: \fB\fChttps://github.com/rootless\-containers/usernetes\fR
+
+
+.SH BUGS
+.PP
+Kernel 4.20 bumped up the default value of \fB\fC/proc/sys/net/ipv4/tcp\_rmem\fR from 87380 to 131072.
+This is known to slow down slirp4netns port forwarding: \fB\fChttps://github.com/rootless\-containers/slirp4netns/issues/128\fR\&.
+
+.PP
+As a workaround, you can adjust the value of \fB\fC/proc/sys/net/ipv4/tcp\_rmem\fR inside the namespace.
 No real root privilege is needed to modify the file since kernel 4.15.
 
 .PP
 .RS
 
 .nf
-unshared$ c=$(cat /proc/sys/net/ipv4/tcp\_rmem); echo $c | sed \-e s/131072/87380/g > /proc/sys/net/ipv4/tcp\_rmem
+(host)$ nsenter \-t $(cat /tmp/pid) \-U \-n \-m
+(namespace)$ c=$(cat /proc/sys/net/ipv4/tcp\_rmem); echo $c | sed \-e s/131072/87380/g > /proc/sys/net/ipv4/tcp\_rmem
 
 .fi
 .RE
@@ -406,9 +497,9 @@ unshared$ c=$(cat /proc/sys/net/ipv4/tcp\_rmem); echo $c | sed \-e s/131072/8738
 
 .SH SEE ALSO
 .PP
-\fBnetwork\_namespaces\fP(7), \fBuser\_namespaces\fP(7), \fBveth\fP(4)
+\fB\fCnetwork\_namespaces(7)\fR, \fB\fCuser\_namespaces(7)\fR, \fB\fCveth(4)\fR
 
 
 .SH AVAILABILITY
 .PP
-The slirp4netns command is available from \fBhttps://github.com/rootless\-containers/slirp4netns\fP under GNU GENERAL PUBLIC LICENSE Version 2 (or later).
+The slirp4netns command is available from \fB\fChttps://github.com/rootless\-containers/slirp4netns\fR under GNU GENERAL PUBLIC LICENSE Version 2 (or later).
