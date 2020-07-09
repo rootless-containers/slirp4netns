@@ -1,4 +1,4 @@
-ARG LIBSLIRP_COMMIT=v4.3.0
+ARG LIBSLIRP_COMMIT=v4.3.1
 
 FROM --platform=$TARGETPLATFORM debian:10 AS build
 RUN apt update && apt install -y automake autotools-dev make gcc libglib2.0-dev libcap-dev libseccomp-dev git ninja-build python3-pip
