@@ -118,7 +118,9 @@ static int tftp_read_data(struct tftp_session *spt, uint32_t block_nr,
     }
 
     if (len) {
-        lseek(spt->fd, block_nr * spt->block_size, SEEK_SET);
+        if (lseek(spt->fd, block_nr * spt->block_size, SEEK_SET) == (off_t)-1) {
+            return -1;
+        }
 
         bytes_read = read(spt->fd, buf, len);
     }

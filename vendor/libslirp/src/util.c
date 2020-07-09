@@ -392,7 +392,7 @@ int slirp_fmt(char *str, size_t size, const char *format, ...)
     rv = slirp_vsnprintf(str, size, format, args);
     va_end(args);
 
-    if (rv > size) {
+    if (rv >= size) {
         g_critical("slirp_fmt() truncation");
     }
 

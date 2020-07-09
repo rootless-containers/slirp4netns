@@ -4,6 +4,8 @@
 #ifndef SLIRP_TFTP_H
 #define SLIRP_TFTP_H
 
+#include "util.h"
+
 #define TFTP_SESSIONS_MAX 20
 
 #define TFTP_SERVER 69
@@ -32,7 +34,7 @@ struct tftp_t {
         } tp_error;
         char tp_buf[TFTP_BLOCKSIZE_MAX + 2];
     } x;
-} __attribute__((packed));
+} SLIRP_PACKED;
 
 struct tftp_session {
     Slirp *slirp;

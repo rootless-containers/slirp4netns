@@ -75,8 +75,11 @@ void icmp_init(Slirp *slirp)
 
 void icmp_cleanup(Slirp *slirp)
 {
-    while (slirp->icmp.so_next != &slirp->icmp) {
-        icmp_detach(slirp->icmp.so_next);
+    struct socket *so, *so_next;
+
+    for (so = slirp->icmp.so_next; so != &slirp->icmp; so = so_next) {
+        so_next = so->so_next;
+        icmp_detach(so);
     }
 }
 
@@ -274,8 +277,8 @@ void icmp_send_error(struct mbuf *msrc, uint8_t type, uint8_t code, int minsize,
     ip = mtod(msrc, struct ip *);
     if (slirp_debug & DBG_MISC) {
         char bufa[20], bufb[20];
-        strcpy(bufa, inet_ntoa(ip->ip_src));
-        strcpy(bufb, inet_ntoa(ip->ip_dst));
+        slirp_pstrcpy(bufa, sizeof(bufa), inet_ntoa(ip->ip_src));
+        slirp_pstrcpy(bufb, sizeof(bufb), inet_ntoa(ip->ip_dst));
         DEBUG_MISC(" %.16s to %.16s", bufa, bufb);
     }
     if (ip->ip_off & IP_OFFMASK)

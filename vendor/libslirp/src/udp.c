@@ -52,7 +52,10 @@ void udp_init(Slirp *slirp)
 
 void udp_cleanup(Slirp *slirp)
 {
-    while (slirp->udb.so_next != &slirp->udb) {
+    struct socket *so, *so_next;
+
+    for (so = slirp->udb.so_next; so != &slirp->udb; so = so_next) {
+        so_next = so->so_next;
         udp_detach(slirp->udb.so_next);
     }
 }
@@ -326,6 +329,7 @@ struct socket *udp_listen(Slirp *slirp, uint32_t haddr, unsigned hport,
     struct socket *so;
     socklen_t addrlen = sizeof(struct sockaddr_in);
 
+    memset(&addr, 0, sizeof(addr));
     so = socreate(slirp);
     so->s = slirp_socket(AF_INET, SOCK_DGRAM, 0);
     if (so->s < 0) {
