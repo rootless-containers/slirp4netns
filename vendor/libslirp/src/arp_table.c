@@ -27,7 +27,8 @@
 
 #include <string.h>
 
-void arp_table_add(Slirp *slirp, uint32_t ip_addr, uint8_t ethaddr[ETH_ALEN])
+void arp_table_add(Slirp *slirp, uint32_t ip_addr,
+                   const uint8_t ethaddr[ETH_ALEN])
 {
     const uint32_t broadcast_addr =
         ~slirp->vnetwork_mask.s_addr | slirp->vnetwork_addr.s_addr;

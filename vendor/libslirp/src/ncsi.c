@@ -136,7 +136,8 @@ static const struct ncsi_rsp_handler {
 
 void ncsi_input(Slirp *slirp, const uint8_t *pkt, int pkt_len)
 {
-    struct ncsi_pkt_hdr *nh = (struct ncsi_pkt_hdr *)(pkt + ETH_HLEN);
+    const struct ncsi_pkt_hdr *nh =
+        (const struct ncsi_pkt_hdr *)(pkt + ETH_HLEN);
     uint8_t ncsi_reply[ETH_HLEN + NCSI_MAX_LEN];
     struct ethhdr *reh = (struct ethhdr *)ncsi_reply;
     struct ncsi_rsp_pkt_hdr *rnh =

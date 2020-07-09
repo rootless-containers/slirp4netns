@@ -551,7 +551,6 @@ void sorecvfrom(struct socket *so)
             break;
         default:
             g_assert_not_reached();
-            break;
         }
 
         /*
@@ -603,7 +602,6 @@ void sorecvfrom(struct socket *so)
                 break;
             default:
                 g_assert_not_reached();
-                break;
             }
             m_free(m);
         } else {
@@ -639,7 +637,6 @@ void sorecvfrom(struct socket *so)
                 break;
             default:
                 g_assert_not_reached();
-                break;
             }
         } /* rx error */
     } /* if ping packet */

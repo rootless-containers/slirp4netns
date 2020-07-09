@@ -119,7 +119,6 @@ void icmp6_send_error(struct mbuf *m, uint8_t type, uint8_t code)
         break;
     default:
         g_assert_not_reached();
-        break;
     }
     t->m_data += ICMP6_ERROR_MINLEN;
     memcpy(t->m_data, m->m_data, error_data_len);
