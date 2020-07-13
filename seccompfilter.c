@@ -2,6 +2,7 @@
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <errno.h>
+#include <string.h>
 #include <seccomp.h>
 #include "seccomparch.h"
 
@@ -16,9 +17,10 @@ int enable_seccomp()
     for (i = 0; i < seccomp_extra_archs_items; i++) {
         uint32_t arch = seccomp_extra_archs[i];
         rc = seccomp_arch_add(ctx, arch);
-        if (rc < 0 && rc != -EEXIST) {
-            fprintf(stderr, "seccomp: can't add extra arch (i=%d)\n", i);
-            goto ret;
+        if (rc < 0 && rc != -EEXIST && rc != -EDOM) {
+            fprintf(stderr,
+                    "seccomp: WARNING: can't add extra arch (i=%d): %s\n", i,
+                    strerror(-rc));
         }
     }
     printf("seccomp: The following syscalls will be blocked by seccomp:");
@@ -38,9 +40,10 @@ int enable_seccomp()
 #ifdef __NR_execveat
     BLOCK(execveat);
 #else
-    fprintf(stderr,
-            "seccomp: can't block execevat because __NR_execveat was not "
-            "defined in the build environment\n");
+    fprintf(
+        stderr,
+        "seccomp: WARNING: can't block execveat because __NR_execveat was not "
+        "defined in the build environment\n");
 #endif
     /* ideally we should also block open() and openat() but required for
      * resolv.conf */
