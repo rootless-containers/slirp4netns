@@ -103,7 +103,7 @@ If `unshare` fails, try the following commands (known to be needed on Debian, Ar
 
 ```console
 (host)$ sudo sh -c 'echo "user.max_user_namespaces=28633" >> /etc/sysctl.d/userns.conf'
-(host)$ [ -f /proc/sys/kernel/unprivileged_serns_clone ] && sudo sh -c 'echo "kernel.unprivileged_userns_clone=1" >> /etc/sysctl.d/userns.conf'
+(host)$ [ -f /proc/sys/kernel/unprivileged_userns_clone ] && sudo sh -c 'echo "kernel.unprivileged_userns_clone=1" >> /etc/sysctl.d/userns.conf'
 (host)$ sudo sysctl --system
 ```
 

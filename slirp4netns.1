@@ -157,7 +157,7 @@ If \fB\fCunshare\fR fails, try the following commands (known to be needed on Deb
 
 .nf
 (host)$ sudo sh \-c 'echo "user.max\_user\_namespaces=28633" >> /etc/sysctl.d/userns.conf'
-(host)$ [ \-f /proc/sys/kernel/unprivileged\_serns\_clone ] \&\& sudo sh \-c 'echo "kernel.unprivileged\_userns\_clone=1" >> /etc/sysctl.d/userns.conf'
+(host)$ [ \-f /proc/sys/kernel/unprivileged\_userns\_clone ] \&\& sudo sh \-c 'echo "kernel.unprivileged\_userns\_clone=1" >> /etc/sysctl.d/userns.conf'
 (host)$ sudo sysctl \-\-system
 
 .fi
