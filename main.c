@@ -22,6 +22,7 @@
 #include <libslirp.h>
 #include "slirp4netns.h"
 #include <ifaddrs.h>
+#include <seccomp.h>
 
 #define DEFAULT_MTU (1500)
 #define DEFAULT_CIDR ("10.0.2.0/24")
@@ -365,12 +366,18 @@ static void usage(const char *argv0)
 // version output is runc-compatible and machine-parsable
 static void version()
 {
+    const struct scmp_version *scmpv = seccomp_version();
     printf("slirp4netns version %s\n", VERSION ? VERSION : PACKAGE_VERSION);
 #ifdef COMMIT
     printf("commit: %s\n", COMMIT);
 #endif
     printf("libslirp: %s\n", slirp_version_string());
     printf("SLIRP_CONFIG_VERSION_MAX: %d\n", SLIRP_CONFIG_VERSION_MAX);
+    if (scmpv != NULL) {
+        printf("libseccomp: %d.%d.%d\n", scmpv->major, scmpv->minor,
+               scmpv->micro);
+        /* Do not free scmpv */
+    }
 }
 
 struct options {
