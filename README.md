@@ -50,11 +50,11 @@ Tools:
 Version                        | Status
 -------------------------------|------------------------------------------------------------------------
 v1.1.x                         | :white_check_mark: Active
-v1.0.x                         | :warning: End of Life (Jun 2, 2020)
-v0.4.x                         | :white_check_mark: Active (EOL: Sep 30, 2020)
-v0.3.x                         | :warning: End of Life (Mar 31, 2020)
-v0.2.x                         | :warning: End of Life (Aug 30, 2019)
-Early versions prior to v0.2.x | :warning: End of Life (Jan 5, 2019)
+v1.0.x                         | End of Life (Jun  2, 2020)
+v0.4.x                         | End of Life (Sep 30, 2020)
+v0.3.x                         | End of Life (Mar 31, 2020)
+v0.2.x                         | End of Life (Aug 30, 2019)
+Early versions prior to v0.2.x | End of Life (Jan  5, 2019)
 
 See https://github.com/rootless-containers/slirp4netns/releases for the releases.
 
