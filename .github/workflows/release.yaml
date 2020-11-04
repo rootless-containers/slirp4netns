@@ -42,13 +42,16 @@ jobs:
         debian_version=$(grep -oP '^ARG DEBIAN_VERSION=\K\S*' Dockerfile.artifact)
         cat << EOF | tee /tmp/release-note.txt
         ${tag}
+
         #### Changes
         (To be documented)
+
         #### Install
         \`\`\`
         curl -o slirp4netns --fail -L https://github.com/${{ github.repository }}/releases/download/${tag}/slirp4netns-\$(uname -m)
         chmod +x slirp4netns
         \`\`\`
+
         #### About the binaries
         The binaries are statically linked with libslirp ${libslirp_version} and libseccomp ${libseccomp_version} using Debian ${debian_version}.
 
