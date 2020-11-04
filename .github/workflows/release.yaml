@@ -6,14 +6,14 @@ on:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
     - name: "Register QEMU to /proc/sys/fs/binfmt_misc"
-      run: docker run --rm --privileged linuxkit/binfmt:v0.8
+      run: docker run --privileged --rm tonistiigi/binfmt --install all
     - name: "Fetch buildx binary"
       run: |
-        wget -O buildx https://github.com/docker/buildx/releases/download/v0.4.1/buildx-v0.4.1.linux-amd64
+        wget -O buildx https://github.com/docker/buildx/releases/download/v0.4.2/buildx-v0.4.2.linux-amd64
         chmod +x buildx
     - name: "Initialize buildx"
       run: |
@@ -31,66 +31,37 @@ jobs:
         mv /tmp/linux_ppc64le/slirp4netns /tmp/artifact/slirp4netns-ppc64le
     - name: "SHA256SUMS"
       run: (cd /tmp/artifact; sha256sum *) | tee /tmp/SHA256SUMS
+    - name: "The sha256sum of the SHA256SUMS file"
+      run: sha256sum /tmp/SHA256SUMS
+    - name: "Prepare the release note"
+      run: |
+        tag="${GITHUB_REF##*/}"
+        shasha=$(sha256sum /tmp/SHA256SUMS | awk '{print $1}')
+        libslirp_version=$(/tmp/artifact/slirp4netns-x86_64 -v | grep -oP '^libslirp: \K\S*')
+        libseccomp_version=$(/tmp/artifact/slirp4netns-x86_64 -v | grep -oP '^libseccomp: \K\S*')
+        debian_version=$(grep -oP '^ARG DEBIAN_VERSION=\K\S*' Dockerfile.artifact)
+        cat << EOF | tee /tmp/release-note.txt
+        ${tag}
+        #### Changes
+        (To be documented)
+        #### Install
+        \`\`\`
+        curl -o slirp4netns --fail -L https://github.com/${{ github.repository }}/releases/download/${tag}/slirp4netns-\$(uname -m)
+        chmod +x slirp4netns
+        \`\`\`
+        #### About the binaries
+        The binaries are statically linked with libslirp ${libslirp_version} and libseccomp ${libseccomp_version} using Debian ${debian_version}.
+
+        The binaries were built automatically on GitHub Actions.
+        See the log to verify SHA256SUMS.
+        https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        The sha256sum of the SHA256SUMS file itself is ${shasha} .
+        EOF
     - name: "Create release"
-      uses: actions/create-release@v1
-      id: create_release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: ${{ github.ref }}
-        draft: true
-    - name: "Upload slirp4netns-x86_64"
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: /tmp/artifact/slirp4netns-x86_64
-        asset_name: slirp4netns-x86_64
-        asset_content_type: application/octet-stream
-    - name: "Upload slirp4netns-aarch64"
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: /tmp/artifact/slirp4netns-aarch64
-        asset_name: slirp4netns-aarch64
-        asset_content_type: application/octet-stream
-    - name: "Upload slirp4netns-armv7l"
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: /tmp/artifact/slirp4netns-armv7l
-        asset_name: slirp4netns-armv7l
-        asset_content_type: application/octet-stream
-    - name: "Upload slirp4netns-s390x"
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: /tmp/artifact/slirp4netns-s390x
-        asset_name: slirp4netns-s390x
-        asset_content_type: application/octet-stream
-    - name: "Upload slirp4netns-ppc64le"
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: /tmp/artifact/slirp4netns-ppc64le
-        asset_name: slirp4netns-ppc64le
-        asset_content_type: application/octet-stream
-    - name: "Upload SHA256SUMS"
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: /tmp/SHA256SUMS
-        asset_name: SHA256SUMS
-        asset_content_type: text/plain
+      run: |
+        tag="${GITHUB_REF##*/}"
+        asset_flags=()
+        for f in ./tmp/artifact/* /tmp/SHA256SUMS; do asset_flags+=("-a" "$f"); done
+        hub release create "${asset_flags[@]}" -F /tmp/release-note.txt --draft "${tag}"
