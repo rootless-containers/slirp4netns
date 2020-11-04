@@ -1,4 +1,4 @@
-SLIRP4NETNS 1 "July 2020" "Rootless Containers" "User Commands"
+SLIRP4NETNS 1 "November 2020" "Rootless Containers" "User Commands"
 ==================================================
 
 # NAME
@@ -112,7 +112,7 @@ If `unshare` fails, try the following commands (known to be needed on Debian, Ar
 
 ```console
 (host)$ sudo sh -c 'echo "user.max_user_namespaces=28633" >> /etc/sysctl.d/userns.conf'
-(host)$ [ -f /proc/sys/kernel/unprivileged_userns_clone ] && sudo sh -c 'echo "kernel.unprivileged_userns_clone=1" >> /etc/sysctl.d/userns.conf'
+(host)$ if [ -f /proc/sys/kernel/unprivileged_userns_clone ]; then sudo sh -c 'echo "kernel.unprivileged_userns_clone=1" >> /etc/sysctl.d/userns.conf'; fi
 (host)$ sudo sysctl --system
 ```
 
