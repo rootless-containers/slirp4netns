@@ -16,6 +16,7 @@ RUN ./autogen.sh && ./configure && make -j $(nproc)
 
 FROM build AS test
 USER 0
-RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y git libtool iproute2 clang clang-format clang-tidy iputils-ping iperf3 nmap jq
+ARG UBUNTU_VERSION
+RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y git libtool iproute2 clang clang-format clang-tidy iputils-ping iperf3 nmap $( [ "${UBUNTU_VERSION}" = 20.04 ] && echo ncat ) jq
 USER 1000:1000
 CMD ["make", "ci"]
