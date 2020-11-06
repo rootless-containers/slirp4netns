@@ -6,11 +6,13 @@ jobs:
     strategy:
       matrix:
         libslirp_commit: [master, v4.3.1, v4.2.0, v4.1.0]
+        ubuntu_version: ['18.04', '20.04']
     steps:
     - uses: actions/checkout@v2
-    - run: docker build -t slirp4netns-tests --build-arg LIBSLIRP_COMMIT -f Dockerfile.tests .
+    - run: docker build -t slirp4netns-tests --build-arg LIBSLIRP_COMMIT --build-arg UBUNTU_VERSION -f Dockerfile.tests .
       env:
         LIBSLIRP_COMMIT: ${{ matrix.libslirp_commit }}
+        UBUNTU_VERSION: ${{ matrix.ubuntu_version }}
     - run: docker run --rm --privileged slirp4netns-tests
   test-build:
     runs-on: ubuntu-latest
