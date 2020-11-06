@@ -24,11 +24,10 @@ int enable_seccomp()
         }
     }
     printf("seccomp: The following syscalls will be blocked by seccomp:");
-#ifdef SCMP_ACT_KILL_PROCESS
-#define BLOCK_ACTION SCMP_ACT_KILL_PROCESS
-#else
+/* Setting BLOCK_ACTION to SCMP_ACT_KILL_PROCESS results in issues reported at:
+ *  - https://github.com/rootless-containers/slirp4netns/issues/221
+ *  - https://github.com/containers/podman/issues/6967 */
 #define BLOCK_ACTION SCMP_ACT_KILL
-#endif
 #define BLOCK(x)                                                  \
     {                                                             \
         rc = seccomp_rule_add(ctx, BLOCK_ACTION, SCMP_SYS(x), 0); \
