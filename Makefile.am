@@ -61,7 +61,7 @@ ci:
 	$(MAKE) indent
 	git diff --exit-code
 # TODO: make sure ./vendor is synced with ./vendor.sh
-	$(MAKE) lint
+#	$(MAKE) lint
 	$(MAKE) -j $(shell nproc) distcheck || ( find . -name test-suite.log | xargs cat; exit 1 )
 	PATH=$(shell pwd):$$PATH $(MAKE) benchmark MTU=1500
 	PATH=$(shell pwd):$$PATH $(MAKE) benchmark MTU=65520
