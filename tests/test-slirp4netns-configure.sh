@@ -8,7 +8,7 @@ child=$!
 
 wait_for_network_namespace $child
 
-slirp4netns -c $child tun11 &
+slirp4netns --enable-seccomp -c $child tun11 &
 slirp_pid=$!
 
 wait_for_network_device $child tun11
