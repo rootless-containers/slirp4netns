@@ -54,12 +54,12 @@ indent:
 	$(CLANGFORMAT) -i $(slirp4netns_SOURCES)
 
 benchmark:
-	benchmarks/benchmark-iperf3.sh
-	benchmarks/benchmark-iperf3-reverse.sh
+	"$(abs_srcdir)/benchmarks/benchmark-iperf3.sh"
+	"$(abs_srcdir)/benchmarks/benchmark-iperf3-reverse.sh"
 
 ci:
 	$(MAKE) indent
-	git diff --exit-code
+	git -C "$(abs_srcdir)" diff --exit-code
 # TODO: make sure ./vendor is synced with ./vendor.sh
 	$(MAKE) lint
 	$(MAKE) -j $(shell nproc) distcheck || ( find . -name test-suite.log | xargs cat; exit 1 )
