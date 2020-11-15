@@ -23,4 +23,4 @@ function cleanup {
 }
 trap cleanup EXIT
 
-nsenter --preserve-credentials -U -n --target=$child iperf3 -c 10.0.2.2 -t 60
+nsenter --preserve-credentials -U -n --target=$child iperf3 -c 10.0.2.2 -t "${BENCHMARK_IPERF3_DURATION:-60}"
