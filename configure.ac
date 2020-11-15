@@ -6,7 +6,8 @@ AC_CONFIG_HEADERS([config.h])
 AC_PROG_CC
 AC_PROG_RANLIB
 
-AM_INIT_AUTOMAKE([1.9 foreign subdir-objects])
+AM_INIT_AUTOMAKE([1.11.2 foreign subdir-objects])
+AM_PROG_AR
 
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h netdb.h netinet/in.h stddef.h stdint.h stdlib.h string.h sys/ioctl.h sys/mount.h sys/socket.h sys/timeb.h unistd.h getopt.h])
 
