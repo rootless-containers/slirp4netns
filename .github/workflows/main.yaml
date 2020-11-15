@@ -17,6 +17,39 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - run: DOCKER_BUILDKIT=1 docker build -f Dockerfile.buildtests .
+  test-centos:
+    runs-on: macos-latest
+    env:
+      LIBSECCOMP_COMMIT: v2.3.3
+      LIBSLIRP_COMMIT: v4.1.0
+      BENCHMARK_IPERF3_DURATION: 3
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup CentOS 7 VM
+      run: |
+        vagrant up --provision --no-tty
+        cat > ./run-vagrant-tests <<'EOF'
+        exec vagrant ssh --no-tty -c "
+          export LIBSECCOMP_COMMIT=\"${LIBSECCOMP_COMMIT}\"
+          export LIBSLIRP_COMMIT=\"${LIBSLIRP_COMMIT}\"
+          export BENCHMARK_IPERF3_DURATION=\"${BENCHMARK_IPERF3_DURATION}\"
+          /src/build-and-test
+        "
+        EOF
+    - name: Build and test with Debian 10's version of libseccomp
+      run: sh ./run-vagrant-tests
+    - name: Build and test with Ubuntu 20.04's versions of libseccomp/libslirp
+      run: sh ./run-vagrant-tests
+      env:
+        LIBSECCOMP_COMMIT: v2.4.3
+        LIBSLIRP_COMMIT: v4.1.0
+    - name: Build and test with recent versions of libseccomp/libslirp
+      run: sh ./run-vagrant-tests
+      env:
+        LIBSECCOMP_COMMIT: v2.5.0
+        LIBSLIRP_COMMIT: v4.2.0
+        # Fails with --disable-dns from libslirp >=4.3.0
+        # (no timeout in test-slirp4netns-disable-dns.sh).
   artifact:
     runs-on: ubuntu-latest
     steps:
