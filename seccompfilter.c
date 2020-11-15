@@ -3,8 +3,29 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#include <linux/seccomp.h>
 #include <seccomp.h>
 #include "seccomparch.h"
+
+#if defined(SCMP_ACT_KILL_PROCESS) && defined(SECCOMP_GET_ACTION_AVAIL) && \
+    defined(SECCOMP_RET_KILL_PROCESS)
+#include <unistd.h>
+#include <sys/syscall.h>
+
+uint32_t get_block_action()
+{
+    const uint32_t action = SECCOMP_RET_KILL_PROCESS;
+    /* Syscall fails if either actions_avail or kill_process is not available */
+    if (syscall(__NR_seccomp, SECCOMP_GET_ACTION_AVAIL, 0, &action) == 0)
+        return SCMP_ACT_KILL_PROCESS;
+    return SCMP_ACT_KILL;
+}
+#else
+uint32_t get_block_action()
+{
+    return SCMP_ACT_KILL;
+}
+#endif
 
 int enable_seccomp()
 {
@@ -24,14 +45,10 @@ int enable_seccomp()
         }
     }
     printf("seccomp: The following syscalls will be blocked by seccomp:");
-#ifdef SCMP_ACT_KILL_PROCESS
-#define BLOCK_ACTION SCMP_ACT_KILL_PROCESS
-#else
-#define BLOCK_ACTION SCMP_ACT_KILL
-#endif
+    uint32_t block_action = get_block_action();
 #define BLOCK(x)                                                  \
     {                                                             \
-        rc = seccomp_rule_add(ctx, BLOCK_ACTION, SCMP_SYS(x), 0); \
+        rc = seccomp_rule_add(ctx, block_action, SCMP_SYS(x), 0); \
         if (rc < 0)                                               \
             goto ret;                                             \
         printf(" %s", #x);                                        \
@@ -59,7 +76,6 @@ int enable_seccomp()
     BLOCK(umount2);
     BLOCK(unshare);
 #undef BLOCK
-#undef BLOCK_ACTION
     printf(".\n");
     rc = seccomp_load(ctx);
 ret:
