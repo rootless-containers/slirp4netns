@@ -11,7 +11,7 @@ mkdir /run/foo
 mount -t tmpfs tmpfs /run/foo
 mount --make-rshared /run
 
-unshare -n sleep infinity &
+unshare -r -n sleep infinity &
 child=$!
 
 wait_for_network_namespace $child
