@@ -30,6 +30,7 @@ uint32_t get_block_action()
 int enable_seccomp()
 {
     int rc = -1, i;
+    uint32_t block_action = get_block_action();
     /* Allow everything by default and block dangerous syscalls explicitly,
      * as it is hard to find the correct set of required syscalls */
     scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_ALLOW);
@@ -45,7 +46,6 @@ int enable_seccomp()
         }
     }
     printf("seccomp: The following syscalls will be blocked by seccomp:");
-    uint32_t block_action = get_block_action();
 #define BLOCK(x)                                                  \
     {                                                             \
         rc = seccomp_rule_add(ctx, block_action, SCMP_SYS(x), 0); \
