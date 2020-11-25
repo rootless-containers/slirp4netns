@@ -16,7 +16,7 @@ child=$!
 
 wait_for_network_namespace $child
 
-./slirp4netns --enable-sandbox --netns-type=path /proc/$child/ns/net tun11 &
+slirp4netns --enable-sandbox --netns-type=path /proc/$child/ns/net tun11 &
 slirp_pid=$!
 
 function cleanup {
