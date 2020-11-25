@@ -68,21 +68,7 @@ int enable_seccomp()
 #define BLOCK(x)                                                      \
     add_block_rule(ctx, #x, block_action, blocked, skipped_undefined, \
                    skipped_failed)
-
-    BLOCK(execve);
-    /* ideally we should also block open() and openat() but required for
-     * resolv.conf */
-    BLOCK(open_by_handle_at);
-    BLOCK(ptrace);
-    BLOCK(prctl);
-    BLOCK(process_vm_readv);
-    BLOCK(process_vm_writev);
-    BLOCK(mount);
-    BLOCK(name_to_handle_at);
-    BLOCK(setns);
-    BLOCK(umount);
-    BLOCK(umount2);
-    BLOCK(unshare);
+#include "seccompfilter_rules.h"
 #undef BLOCK
     if ((rc = seccomp_load(ctx)) != 0) {
         fprintf(stderr, "seccomp: seccomp_load(): %s\n", strerror(-rc));
