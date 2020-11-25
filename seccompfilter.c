@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 
-uint32_t get_block_action()
+static uint32_t get_block_action()
 {
     const uint32_t action = SECCOMP_RET_KILL_PROCESS;
     /* Syscall fails if either actions_avail or kill_process is not available */
@@ -21,7 +21,7 @@ uint32_t get_block_action()
     return SCMP_ACT_KILL;
 }
 #else
-uint32_t get_block_action()
+static uint32_t get_block_action()
 {
     return SCMP_ACT_KILL;
 }
