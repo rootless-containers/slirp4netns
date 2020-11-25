@@ -1,5 +1,5 @@
 #!/bin/bash
-set -xeuo pipefail
+set -xeu
 
 . $(dirname $0)/common.sh
 
