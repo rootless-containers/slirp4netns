@@ -32,12 +32,13 @@ function wait_for_network_namespace {
           flags="$flags -n"
         fi
         if nsenter ${flags} true >/dev/null 2>&1; then
-            break
+            return 0
         else
             sleep 0.5
         fi
         let COUNTER=COUNTER+1
     done
+    exit 1
 }
 
 function wait_for_network_device {
@@ -45,12 +46,13 @@ function wait_for_network_device {
     COUNTER=0
     while [ $COUNTER -lt 40 ]; do
         if nsenter $(nsenter_flags $1) ip addr show $2; then
-            break
+            return 0
         else
             sleep 0.5
         fi
         let COUNTER=COUNTER+1
     done
+    exit 1
 }
 
 function wait_process_exits {
@@ -59,34 +61,37 @@ function wait_process_exits {
         if  kill -0 $1; then
             sleep 0.5
         else
-            break
+            return 0
         fi
         let COUNTER=COUNTER+1
     done
+    exit 1
 }
 
 function wait_for_ping_connectivity {
     COUNTER=0
     while [ $COUNTER -lt 40 ]; do
         if nsenter $(nsenter_flags $1) ping -c 1 -w 1 $2; then
-            break
+            return 0
         else
             sleep 0.5
         fi
         let COUNTER=COUNTER+1
     done
+    exit 1
 }
 
 function wait_for_connectivity {
     COUNTER=0
     while [ $COUNTER -lt 40 ]; do
         if echo "wait_for_connectivity" | nsenter $(nsenter_flags $1) ncat -v $2 $3; then
-            break
+            return 0
         else
             sleep 0.5
         fi
         let COUNTER=COUNTER+1
     done
+    exit 1
 }
 
 function wait_for_file_content {
@@ -94,12 +99,13 @@ function wait_for_file_content {
     COUNTER=0
     while [ $COUNTER -lt 20 ]; do
         if grep $1 $2; then
-            break
+            return 0
         else
             sleep 0.5
         fi
         let COUNTER=COUNTER+1
     done
+    exit 1
 }
 
 function expose_tcp() {
