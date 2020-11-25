@@ -94,7 +94,7 @@ void api_ctx_free(struct api_ctx *ctx)
 static int api_handle_req_add_hostfwd(Slirp *slirp, int fd, struct api_ctx *ctx,
                                       JSON_Object *jo)
 {
-    int wrc = 0, slirprc = 0;
+    int wrc = 0;
     char idbuf[64];
     const char *proto_s = json_object_dotget_string(jo, "arguments.proto");
     const char *host_addr_s =
@@ -156,9 +156,8 @@ static int api_handle_req_add_hostfwd(Slirp *slirp, int fd, struct api_ctx *ctx,
         free(fwd);
         goto finish;
     }
-    if ((slirprc = slirp_add_hostfwd(slirp, fwd->is_udp, fwd->host_addr,
-                                     fwd->host_port, fwd->guest_addr,
-                                     fwd->guest_port)) < 0) {
+    if (slirp_add_hostfwd(slirp, fwd->is_udp, fwd->host_addr, fwd->host_port,
+                          fwd->guest_addr, fwd->guest_port) < 0) {
         const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: "
                           "slirp_add_hostfwd failed\"}}";
         wrc = write(fd, err, strlen(err));

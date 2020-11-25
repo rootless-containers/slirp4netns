@@ -2,7 +2,7 @@ name: Main
 on: [push, pull_request]
 jobs:
   test-main:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         libslirp_commit: [master, v4.3.1, v4.2.0, v4.1.0]
@@ -13,7 +13,7 @@ jobs:
         LIBSLIRP_COMMIT: ${{ matrix.libslirp_commit }}
     - run: docker run --rm --privileged slirp4netns-tests
   test-build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
     - run: DOCKER_BUILDKIT=1 docker build -f Dockerfile.buildtests .
@@ -51,7 +51,7 @@ jobs:
         # Fails with --disable-dns from libslirp >=4.3.0
         # (no timeout in test-slirp4netns-disable-dns.sh).
   artifact:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
     - run: DOCKER_BUILDKIT=1 docker build -o /tmp/artifact -f Dockerfile.artifact .

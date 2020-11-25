@@ -40,7 +40,8 @@ man1_MANS = slirp4netns.1
 generate-man:
 	go-md2man -in slirp4netns.1.md -out slirp4netns.1
 
-CLANGTIDY = clang-tidy -warnings-as-errors='*'
+# clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling is disabled because too nitpicky: https://github.com/rootless-containers/slirp4netns/issues/216
+CLANGTIDY = clang-tidy -warnings-as-errors='*' --checks='-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling'
 
 CLANGFORMAT = clang-format
 
