@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <string.h>
 #include <linux/seccomp.h>
+#include <glib.h>
 #include <seccomp.h>
 #include "seccomparch.h"
 
@@ -27,10 +28,29 @@ static uint32_t get_block_action()
 }
 #endif
 
+static void add_block_rule(scmp_filter_ctx ctx, const char *name,
+                           uint32_t block_action, GString *blocked,
+                           GString *skipped_undefined, GString *skipped_failed)
+{
+    int rc = -1, num = seccomp_syscall_resolve_name(name);
+    if (num == __NR_SCMP_ERROR) {
+        g_string_append_printf(skipped_undefined, " %s", name);
+        return;
+    }
+    if ((rc = seccomp_rule_add(ctx, block_action, num, 0)) != 0) {
+        g_string_append_printf(skipped_failed, " %s(%s)", name, strerror(-rc));
+        return;
+    }
+    g_string_append_printf(blocked, " %s", name);
+}
+
 int enable_seccomp()
 {
     int rc = -1, i;
     uint32_t block_action = get_block_action();
+    GString *blocked = g_string_new(NULL);
+    GString *skipped_undefined = g_string_new(NULL);
+    GString *skipped_failed = g_string_new(NULL);
     /* Allow everything by default and block dangerous syscalls explicitly,
      * as it is hard to find the correct set of required syscalls */
     scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_ALLOW);
@@ -45,23 +65,11 @@ int enable_seccomp()
                     strerror(-rc));
         }
     }
-    printf("seccomp: The following syscalls will be blocked by seccomp:");
-#define BLOCK(x)                                                  \
-    {                                                             \
-        rc = seccomp_rule_add(ctx, block_action, SCMP_SYS(x), 0); \
-        if (rc < 0)                                               \
-            goto ret;                                             \
-        printf(" %s", #x);                                        \
-    }
+#define BLOCK(x)                                                      \
+    add_block_rule(ctx, #x, block_action, blocked, skipped_undefined, \
+                   skipped_failed)
+
     BLOCK(execve);
-#ifdef __NR_execveat
-    BLOCK(execveat);
-#else
-    fprintf(
-        stderr,
-        "seccomp: WARNING: can't block execveat because __NR_execveat was not "
-        "defined in the build environment\n");
-#endif
     /* ideally we should also block open() and openat() but required for
      * resolv.conf */
     BLOCK(open_by_handle_at);
@@ -76,9 +84,28 @@ int enable_seccomp()
     BLOCK(umount2);
     BLOCK(unshare);
 #undef BLOCK
-    printf(".\n");
-    rc = seccomp_load(ctx);
+    if ((rc = seccomp_load(ctx)) != 0) {
+        fprintf(stderr, "seccomp: seccomp_load(): %s\n", strerror(-rc));
+        goto ret;
+    }
+    printf("seccomp: The following syscalls are blocked:%s\n", blocked->str);
+    if (skipped_undefined->len > 0) {
+        fprintf(stderr,
+                "seccomp: WARNING: the following syscalls are not defined "
+                "in libseccomp and cannot be "
+                "blocked:%s\n",
+                skipped_undefined->str);
+    }
+    if (skipped_failed->len > 0) {
+        fprintf(stderr,
+                "seccomp: WARNING: the following syscalls cannot be "
+                "blocked due to unexpected errors:%s\n",
+                skipped_failed->str);
+    }
 ret:
     seccomp_release(ctx);
+    g_string_free(blocked, TRUE);
+    g_string_free(skipped_undefined, TRUE);
+    g_string_free(skipped_failed, TRUE);
     return rc;
 }
