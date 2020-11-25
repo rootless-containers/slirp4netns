@@ -47,9 +47,7 @@ jobs:
       run: sh ./run-vagrant-tests
       env:
         LIBSECCOMP_COMMIT: v2.5.0
-        LIBSLIRP_COMMIT: v4.2.0
-        # Fails with --disable-dns from libslirp >=4.3.0
-        # (no timeout in test-slirp4netns-disable-dns.sh).
+        LIBSLIRP_COMMIT: v4.3.1
   artifact:
     runs-on: ubuntu-20.04
     steps:
