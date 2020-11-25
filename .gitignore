@@ -9,6 +9,7 @@ a.out
 config.h
 config.status
 INSTALL
+/.vagrant
 
 ################################################################################
 # https://github.com/github/gitignore/blob/c24cdc2175d7514d504d7f060a5d69675c8a9b50/Autotools.gitignore
