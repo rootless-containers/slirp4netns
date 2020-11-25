@@ -1,9 +1,11 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
-#ifndef SLIRP4NETNS_SECCOMPFILTER_RULES_H
-#define SLIRP4NETNS_SECCOMPFILTER_RULES_H
+
+/* We do not need ifndef _XXX_H guard: https://github.com/rootless-containers/slirp4netns/pull/238#discussion_r530214521 */
+
 #ifndef BLOCK
 #error "Included in an unexpected way?"
 #endif
+
 /*
   NOTE:
   - Run `sudo systemd-analyze syscall-filter` to show list of syscall groups.
@@ -58,5 +60,3 @@ BLOCK(reboot);
 
 /* group: @system-service */
 BLOCK(name_to_handle_at);
-
-#endif
