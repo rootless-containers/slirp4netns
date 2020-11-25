@@ -17,7 +17,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - run: DOCKER_BUILDKIT=1 docker build -f Dockerfile.buildtests .
-  test-centos:
+  test-centos7:
     runs-on: macos-latest
     env:
       LIBSECCOMP_COMMIT: v2.3.3
