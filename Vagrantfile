@@ -2,6 +2,8 @@ Vagrant.configure("2") do |config|
   require 'etc'
   config.vm.provider "virtualbox" do |vbox|
     vbox.cpus = [1, Etc.nprocessors].max
+# Change VirtualBox itself's slirp CIDR so that it doesn't conflict with slirp4netns
+    vbox.customize ["modifyvm", :id, "--natnet1", "10.0.200.0/24"]
   end
   config.vm.box = "centos/7"
   config.vm.synced_folder ".", "/vagrant", disabled: true
