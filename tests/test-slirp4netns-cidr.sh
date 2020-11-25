@@ -1,5 +1,5 @@
 #!/bin/bash
-set -xeu
+set -xeuo pipefail
 
 . $(dirname $0)/common.sh
 
@@ -44,4 +44,4 @@ function cleanup {
 trap cleanup EXIT
 
 result="$(nsenter --preserve-credentials -U -n --target=$child ip a show dev tun11)"
-echo "$result" | grep -om1 '^\s*inet .*/' | grep -qF 10.0.135.228
+echo "$result" | grep -o '^\s*inet .*/' | grep -F 10.0.135.228
