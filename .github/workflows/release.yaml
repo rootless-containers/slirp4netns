@@ -56,9 +56,9 @@ jobs:
         The binaries are statically linked with libslirp ${libslirp_version} and libseccomp ${libseccomp_version} using Debian ${debian_version}.
 
         The binaries were built automatically on GitHub Actions.
-        See the log to verify SHA256SUMS.
-        https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        The sha256sum of the SHA256SUMS file itself is ${shasha} .
+        The build log is available for 90 days: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+        The sha256sum of the SHA256SUMS file itself is \`${shasha}\` .
         EOF
     - name: "Create release"
       env:
