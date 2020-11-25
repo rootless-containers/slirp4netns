@@ -43,5 +43,5 @@ function cleanup {
 }
 trap cleanup EXIT
 
-ip=$(nsenter --preserve-credentials -U -n --target=$child ip -json a show dev tun11 | jq -r .[1].addr_info[0].local)
-[[ $ip = 10.0.135.228 ]]
+result="$(nsenter --preserve-credentials -U -n --target=$child ip a show dev tun11)"
+echo "$result" | grep -om1 '^\s*inet .*/' | grep -qF 10.0.135.228

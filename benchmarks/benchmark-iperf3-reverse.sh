@@ -30,4 +30,4 @@ function cleanup {
 }
 trap cleanup EXIT
 
-iperf3 -c 127.0.0.1 -p 15201 -t 60
+iperf3 -c 127.0.0.1 -p 15201 -t "${BENCHMARK_IPERF3_DURATION:-60}"
