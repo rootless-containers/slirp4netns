@@ -25,6 +25,8 @@ struct slirp4netns_config {
 #if SLIRP_CONFIG_VERSION_MAX >= 3
     bool disable_dns;
 #endif
+    struct sockaddr vmacaddress; // MAC address of interface
+    int vmacaddress_len; // MAC address byte length
 };
 int do_slirp(int tapfd, int readyfd, int exitfd, const char *api_socket,
              struct slirp4netns_config *cfg);
