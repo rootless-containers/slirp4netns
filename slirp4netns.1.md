@@ -90,6 +90,9 @@ specify outbound interface slirp should bind to (ipv6 traffic only)
 `--disable-dns` (since v1.1.0)
 disable built-in DNS (10.0.2.3 by default)
 
+`--macaddress` (since v1.1.9)
+specify MAC address of the TAP interface (only valid with -c)
+
 `-h`, `--help` (since v0.2.0)
 show help and exit
 

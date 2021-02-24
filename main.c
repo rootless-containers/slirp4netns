@@ -160,6 +160,14 @@ static int configure_network(const char *tapname,
         return -1;
     }
 
+    if (cfg->vmacaddress_len > 0) {
+        ifr.ifr_ifru.ifru_hwaddr = cfg->vmacaddress;
+        if (ioctl(sockfd, SIOCSIFHWADDR, &ifr) < 0) {
+            perror("cannot set MAC address");
+            return -1;
+        }
+    }
+
     sai->sin_family = AF_INET;
     sai->sin_port = 0;
     sai->sin_addr = cfg->recommended_vguest;
@@ -286,6 +294,11 @@ static int parent(int sock, int ready_fd, int exit_fd, const char *api_socket,
         }
     }
 #endif
+    if (cfg->vmacaddress_len > 0) {
+        unsigned char *mac = (unsigned char *)cfg->vmacaddress.sa_data;
+        printf("* MAC address:     %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0],
+               mac[1], mac[2], mac[3], mac[4], mac[5]);
+    }
     if (!cfg->disable_host_loopback) {
         printf(
             "WARNING: 127.0.0.1:* on the host is accessible as %s (set "
@@ -358,6 +371,8 @@ static void usage(const char *argv0)
     printf("--disable-dns            disables 10.0.2.3 (or configured internal "
            "ip) to host dns redirect (experimental)\n");
 #endif
+    printf("--macaddress=MAC         specify the MAC address of the TAP (only "
+           "valid with -c)\n");
     /* others */
     printf("-h, --help               show this help and exit\n");
     printf("-v, --version            show version and exit\n");
@@ -399,6 +414,7 @@ struct options {
     bool enable_sandbox; // --enable-sandbox
     bool enable_seccomp; // --enable-seccomp
     bool disable_dns; // --disable-dns
+    char *macaddress; // --macaddress
 };
 
 static void options_init(struct options *options)
@@ -442,6 +458,10 @@ static void options_destroy(struct options *options)
         free(options->outbound_addr6);
         options->outbound_addr6 = NULL;
     }
+    if (options->macaddress != NULL) {
+        free(options->macaddress);
+        options->macaddress = NULL;
+    }
 }
 
 // * caller does not need to call options_init()
@@ -457,6 +477,7 @@ static void parse_args(int argc, char *const argv[], struct options *options)
     char *optarg_api_socket = NULL;
     char *optarg_outbound_addr = NULL;
     char *optarg_outbound_addr6 = NULL;
+    char *optarg_macaddress = NULL;
 #define CIDR -42
 #define DISABLE_HOST_LOOPBACK -43
 #define NETNS_TYPE -44
@@ -466,6 +487,7 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 #define OUTBOUND_ADDR -48
 #define OUTBOUND_ADDR6 -49
 #define DISABLE_DNS -50
+#define MACADDRESS -51
 #define _DEPRECATED_NO_HOST_LOOPBACK \
     -10043 // deprecated in favor of disable-host-loopback
 #define _DEPRECATED_CREATE_SANDBOX \
@@ -490,6 +512,7 @@ static void parse_args(int argc, char *const argv[], struct options *options)
         { "outbound-addr", required_argument, NULL, OUTBOUND_ADDR },
         { "outbound-addr6", required_argument, NULL, OUTBOUND_ADDR6 },
         { "disable-dns", no_argument, NULL, DISABLE_DNS },
+        { "macaddress", required_argument, NULL, MACADDRESS },
         { 0, 0, 0, 0 },
     };
     options_init(options);
@@ -589,6 +612,9 @@ static void parse_args(int argc, char *const argv[], struct options *options)
         case DISABLE_DNS:
             options->disable_dns = true;
             break;
+        case MACADDRESS:
+            optarg_macaddress = optarg;
+            break;
         default:
             goto error;
             break;
@@ -612,6 +638,15 @@ static void parse_args(int argc, char *const argv[], struct options *options)
     if (optarg_outbound_addr6 != NULL) {
         options->outbound_addr6 = strdup(optarg_outbound_addr6);
     }
+    if (optarg_macaddress != NULL) {
+        if (!options->do_config_network) {
+            fprintf(stderr, "--macaddr cannot be specified when --configure or "
+                            "-c is not specified\n");
+            goto error;
+        } else {
+            options->macaddress = strdup(optarg_macaddress);
+        }
+    }
 #undef CIDR
 #undef DISABLE_HOST_LOOPBACK
 #undef NETNS_TYPE
@@ -622,6 +657,7 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 #undef OUTBOUND_ADDR
 #undef OUTBOUND_ADDR6
 #undef DISABLE_DNS
+#undef MACADDRESS
     if (argc - optind < 2) {
         goto error;
     }
@@ -772,6 +808,37 @@ static int get_interface_addr(const char *interface, int af, void *addr)
     return -1;
 }
 
+/*
+ * Convert a MAC string (macaddr) to bytes (data).
+ * macaddr must be a null-terminated string in the format of
+ * xx:xx:xx:xx:xx:xx.  The data buffer needs to be at least 6 bytes.
+ * Typically the data is put into sockaddr sa_data, which is 14 bytes.
+ */
+static int slirp4netns_macaddr_hexstring_to_data(char *macaddr, char *data)
+{
+    int temp;
+    char *macaddr_ptr;
+    char *data_ptr;
+    for (macaddr_ptr = macaddr, data_ptr = data;
+         macaddr_ptr != NULL && data_ptr < data + 6;
+         macaddr_ptr = strchr(macaddr_ptr, ':'), data_ptr++) {
+        if (macaddr_ptr != macaddr) {
+            macaddr_ptr++; // advance over the :
+        }
+        if (sscanf(macaddr_ptr, "%x", &temp) != 1 || temp < 0 || temp > 255) {
+            fprintf(stderr, "\"%s\" is an invalid MAC address.\n", macaddr);
+            return -1;
+        }
+        *data_ptr = temp;
+    }
+    if (macaddr_ptr != NULL) {
+        fprintf(stderr, "\"%s\" is an invalid MAC address.  Is it too long?\n",
+                macaddr);
+        return -1;
+    }
+    return (int)(data_ptr - data);
+}
+
 static int slirp4netns_config_from_options(struct slirp4netns_config *cfg,
                                            struct options *opt)
 {
@@ -851,6 +918,21 @@ static int slirp4netns_config_from_options(struct slirp4netns_config *cfg,
         goto finish;
     }
 #endif
+
+    cfg->vmacaddress_len = 0;
+    memset(&cfg->vmacaddress, 0, sizeof(cfg->vmacaddress));
+    if (opt->macaddress != NULL) {
+        cfg->vmacaddress.sa_family = AF_LOCAL;
+        int macaddr_len;
+        if ((macaddr_len = slirp4netns_macaddr_hexstring_to_data(
+                 opt->macaddress, cfg->vmacaddress.sa_data)) < 0) {
+            fprintf(stderr, "macaddress has to be a valid MAC address (hex "
+                            "string, 6 bytes, each byte separated by a ':').");
+            rc = -1;
+            goto finish;
+        }
+        cfg->vmacaddress_len = macaddr_len;
+    }
 finish:
     return rc;
 }
