@@ -41,9 +41,13 @@ int api_bindlisten(const char *api_socket)
 struct api_hostfwd {
     int id;
     int is_udp;
+    int is_ipv4;
+    int is_ipv6;
     struct in_addr host_addr;
+    struct in6_addr host_addr6;
     int host_port;
     struct in_addr guest_addr;
+    struct in6_addr guest_addr6;
     int guest_port;
 };
 
@@ -99,17 +103,19 @@ static int api_handle_req_add_hostfwd(Slirp *slirp, int fd, struct api_ctx *ctx,
     const char *proto_s = json_object_dotget_string(jo, "arguments.proto");
     const char *host_addr_s =
         json_object_dotget_string(jo, "arguments.host_addr");
+    char *host_addr6_s = NULL;
     const char *guest_addr_s =
         json_object_dotget_string(jo, "arguments.guest_addr");
+    char *guest_addr6_s = NULL;
     struct api_hostfwd *fwd = g_malloc0(sizeof(*fwd));
     if (fwd == NULL) {
         perror("fatal: malloc");
         exit(EXIT_FAILURE);
     }
     fwd->is_udp = -1; /* TODO: support SCTP */
-    if (strcmp(proto_s, "udp") == 0) {
+    if (strncmp(proto_s, "udp", 3) == 0) {
         fwd->is_udp = 1;
-    } else if (strcmp(proto_s, "tcp") == 0) {
+    } else if (strncmp(proto_s, "tcp", 3) == 0) {
         fwd->is_udp = 0;
     }
     if (fwd->is_udp == -1) {
@@ -119,30 +125,30 @@ static int api_handle_req_add_hostfwd(Slirp *slirp, int fd, struct api_ctx *ctx,
         free(fwd);
         goto finish;
     }
-    if (host_addr_s == NULL || host_addr_s[0] == '\0') {
-        host_addr_s = "0.0.0.0";
+    int flags = (fwd->is_udp ? SLIRP_HOSTFWD_UDP : 0);
+
+    if (strlen(proto_s) == 4) {
+        if (proto_s[3] == '4') {
+            fwd->is_ipv4 = 1;
+        } else if (proto_s[3] == '6') {
+            fwd->is_ipv6 = 1;
+        } else {
+            const char *err =
+                "{\"error\":{\"desc\":\"bad request: add_hostfwd: "
+                "bad arguments.proto\"}}";
+            wrc = write(fd, err, strlen(err));
+            free(fwd);
+            goto finish;
+        }
+    } else {
+        fwd->is_ipv4 = 1;
+        fwd->is_ipv6 = 1;
     }
-    if (inet_pton(AF_INET, host_addr_s, &fwd->host_addr) != 1) {
-        const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: "
-                          "bad arguments.host_addr\"}}";
-        wrc = write(fd, err, strlen(err));
-        free(fwd);
-        goto finish;
-    }
+
     fwd->host_port = (int)json_object_dotget_number(jo, "arguments.host_port");
     if (fwd->host_port == 0) {
         const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: "
                           "bad arguments.host_port\"}}";
-        wrc = write(fd, err, strlen(err));
-        free(fwd);
-        goto finish;
-    }
-
-    if (guest_addr_s == NULL || guest_addr_s[0] == '\0') {
-        fwd->guest_addr = ctx->cfg->recommended_vguest;
-    } else if (inet_pton(AF_INET, guest_addr_s, &fwd->guest_addr) != 1) {
-        const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: "
-                          "bad arguments.guest_addr\"}}";
         wrc = write(fd, err, strlen(err));
         free(fwd);
         goto finish;
@@ -156,13 +162,92 @@ static int api_handle_req_add_hostfwd(Slirp *slirp, int fd, struct api_ctx *ctx,
         free(fwd);
         goto finish;
     }
-    if (slirp_add_hostfwd(slirp, fwd->is_udp, fwd->host_addr, fwd->host_port,
-                          fwd->guest_addr, fwd->guest_port) < 0) {
-        const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: "
-                          "slirp_add_hostfwd failed\"}}";
-        wrc = write(fd, err, strlen(err));
-        free(fwd);
-        goto finish;
+
+    if (fwd->is_ipv4) {
+        if (guest_addr_s == NULL || guest_addr_s[0] == '\0') {
+            fwd->guest_addr = ctx->cfg->recommended_vguest;
+        } else if (inet_pton(AF_INET, guest_addr_s, &fwd->guest_addr) != 1) {
+            const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: "
+                              "bad arguments.guest_addr\"}}";
+            wrc = write(fd, err, strlen(err));
+            free(fwd);
+            goto finish;
+        }
+        if (host_addr_s == NULL || host_addr_s[0] == '\0') {
+            host_addr_s = "0.0.0.0";
+        }
+        if (inet_pton(AF_INET, host_addr_s, &fwd->host_addr) != 1) {
+            const char *err =
+                "{\"error\":{\"desc\":\"bad request: add_hostfwd: "
+                "bad arguments.host_addr\"}}";
+            wrc = write(fd, err, strlen(err));
+            free(fwd);
+            goto finish;
+        }
+        struct sockaddr_in host;
+        memset(&host, 0, sizeof(host));
+        host.sin_family = AF_INET;
+        host.sin_addr.s_addr = fwd->host_addr.s_addr;
+        host.sin_port = htons(fwd->host_port);
+        struct sockaddr_in guest;
+        memset(&guest, 0, sizeof(guest));
+        guest.sin_family = AF_INET;
+        guest.sin_addr.s_addr = fwd->guest_addr.s_addr;
+        guest.sin_port = htons(fwd->guest_port);
+        if (slirp_add_hostxfwd(slirp,
+              (const struct sockaddr*)&host, sizeof(host),
+              (const struct sockaddr*)&guest, sizeof(guest), flags) < 0) {
+            const char *err =
+                "{\"error\":{\"desc\":\"bad request: add_hostfwd: "
+                "slirp_add_hostxfwd failed\"}}";
+            wrc = write(fd, err, strlen(err));
+            free(fwd);
+            goto finish;
+        }
+    }
+    if (fwd->is_ipv6) {
+        if (guest_addr_s == NULL || guest_addr_s[0] == '\0') {
+            guest_addr_s = "fd00::100";
+        }
+        if (inet_pton(AF_INET6, guest_addr_s, &fwd->guest_addr6) != 1) {
+            const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: "
+                              "bad arguments.guest_addr\"}}";
+            wrc = write(fd, err, strlen(err));
+            free(fwd);
+            goto finish;
+        }
+        if (host_addr_s == NULL || host_addr_s[0] == '\0' ||
+            strcmp(host_addr_s, "0.0.0.0") == 0) {
+            host_addr_s = "::";
+        }
+        if (inet_pton(AF_INET6, host_addr_s, &fwd->host_addr6) != 1) {
+            const char *err =
+                "{\"error\":{\"desc\":\"bad request: add_hostfwd: "
+                "bad arguments.host_addr\"}}";
+            wrc = write(fd, err, strlen(err));
+            free(fwd);
+            goto finish;
+        }
+        struct sockaddr_in6 host;
+        memset(&host, 0, sizeof(host));
+        host.sin6_family = AF_INET6;
+        host.sin6_addr = fwd->host_addr6;
+        host.sin6_port = htons(fwd->host_port);
+        struct sockaddr_in6 guest;
+        memset(&guest, 0, sizeof(guest));
+        guest.sin6_family = AF_INET6;
+        guest.sin6_addr = fwd->guest_addr6;
+        guest.sin6_port = htons(fwd->guest_port);
+        if (slirp_add_hostxfwd(slirp,
+              (const struct sockaddr*)&host, sizeof(host),
+              (const struct sockaddr*)&guest, sizeof(guest), flags) < 0) {
+            const char *err =
+                "{\"error\":{\"desc\":\"bad request: add_hostfwd: "
+                "slirp_add_hostfwd failed\"}}";
+            wrc = write(fd, err, strlen(err));
+            free(fwd);
+            goto finish;
+        }
     }
     fwd->id = ctx->hostfwds_nextid;
     ctx->hostfwds_nextid++;

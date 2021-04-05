@@ -205,6 +205,58 @@ static int configure_network(const char *tapname,
     return 0;
 }
 
+struct in6_ifreq {
+    struct in6_addr ifr6_addr;
+    __u32 ifr6_prefixlen;
+    unsigned int ifr6_ifindex;
+};
+
+static int configure_network6(const char *tapname,
+                              struct slirp4netns_config *cfg)
+{
+    struct rtentry route;
+    struct ifreq ifr;
+    struct in6_ifreq ifr6;
+    struct sockaddr_in6 sai;
+    int sockfd;
+
+    sockfd = socket(AF_INET6, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        perror("cannot create socket");
+        return -1;
+    }
+
+    memset(&ifr, 0, sizeof(ifr));
+    ifr.ifr_flags = IFF_UP | IFF_RUNNING;
+    strncpy(ifr.ifr_name, tapname, sizeof(ifr.ifr_name) - 1);
+
+    if (ioctl(sockfd, SIOGIFINDEX, &ifr) < 0) {
+        perror("cannot get dev index");
+        return -1;
+    }
+
+    memset(&sai, 0, sizeof(struct sockaddr));
+    sai.sin6_family = AF_INET6;
+    sai.sin6_port = 0;
+
+    if (inet_pton(AF_INET6, "fd00::100", &sai.sin6_addr) != 1) {
+        perror("cannot create device address");
+        return -1;
+    }
+
+    memcpy((char *)&ifr6.ifr6_addr, &sai.sin6_addr, sizeof(struct in6_addr));
+
+    ifr6.ifr6_ifindex = ifr.ifr_ifindex;
+    ifr6.ifr6_prefixlen = 64;
+
+    if (ioctl(sockfd, SIOCSIFADDR, &ifr6) < 0) {
+        perror("cannot set device address");
+        return -1;
+    }
+
+    return 0;
+}
+
 static int child(int sock, pid_t target_pid, bool do_config_network,
                  const char *tapname, char *netns_path, char *userns_path,
                  struct slirp4netns_config *cfg)
@@ -217,6 +269,9 @@ static int child(int sock, pid_t target_pid, bool do_config_network,
         return tapfd;
     }
     if (do_config_network && configure_network(tapname, cfg) < 0) {
+        return -1;
+    }
+    if (do_config_network && configure_network6(tapname, cfg) < 0) {
         return -1;
     }
     if (sendfd(sock, tapfd) < 0) {
