@@ -35,7 +35,7 @@ libparson_a_CFLAGS = $(AM_CFLAGS) -I$(abs_top_builddir)/vendor/parson
 libparson_a_SOURCES = vendor/parson/parson.c
 
 slirp4netns_SOURCES = main.c slirp4netns.c api.c sandbox.c seccompfilter.c
-slirp4netns_LDADD = libparson.a @GLIB_LIBS@ @SLIRP_LIBS@ @LIBSECCOMP_LIBS@ -lpthread
+slirp4netns_LDADD = libparson.a @GLIB_LIBS@ @SLIRP_LIBS@ @LIBSECCOMP_LIBS@ -lpthread -lcrypto
 man1_MANS = slirp4netns.1
 
 generate-man:
