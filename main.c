@@ -524,6 +524,9 @@ static void usage(const char *argv0)
     printf(
         "--cidr=CIDR              specify network address CIDR (default=%s)\n",
         DEFAULT_CIDR);
+    printf(
+        "--cidr6=CIDR             specify network address CIDR (default=%s)\n",
+        DEFAULT_CIDR6);
     printf("--disable-host-loopback  prohibit connecting to 127.0.0.1:* on the "
            "host namespace\n");
     /* v0.4.0 */
@@ -611,6 +614,10 @@ static void options_destroy(struct options *options)
         free(options->cidr);
         options->cidr = NULL;
     }
+    if (options->cidr6 != NULL) {
+        free(options->cidr6);
+        options->cidr6 = NULL;
+    }
     if (options->api_socket != NULL) {
         free(options->api_socket);
         options->api_socket = NULL;
@@ -649,13 +656,15 @@ static void parse_args(int argc, char *const argv[], struct options *options)
     int opt;
     char *strtol_e = NULL;
     char *optarg_cidr = NULL;
+    char *optarg_cidr6 = NULL;
     char *optarg_netns_type = NULL;
     char *optarg_userns_path = NULL;
     char *optarg_api_socket = NULL;
     char *optarg_outbound_addr = NULL;
     char *optarg_outbound_addr6 = NULL;
     char *optarg_macaddress = NULL;
-#define CIDR -42
+#define CIDR -41
+#define CIDR6 -42
 #define DISABLE_HOST_LOOPBACK -43
 #define NETNS_TYPE -44
 #define USERNS_PATH -45
@@ -675,6 +684,7 @@ static void parse_args(int argc, char *const argv[], struct options *options)
         { "ready-fd", required_argument, NULL, 'r' },
         { "mtu", required_argument, NULL, 'm' },
         { "cidr", required_argument, NULL, CIDR },
+        { "cidr6", required_argument, NULL, CIDR6 },
         { "disable-host-loopback", no_argument, NULL, DISABLE_HOST_LOOPBACK },
         { "no-host-loopback", no_argument, NULL, _DEPRECATED_NO_HOST_LOOPBACK },
         { "netns-type", required_argument, NULL, NETNS_TYPE },
@@ -727,6 +737,9 @@ static void parse_args(int argc, char *const argv[], struct options *options)
             break;
         case CIDR:
             optarg_cidr = optarg;
+            break;
+        case CIDR6:
+            optarg_cidr6 = optarg;
             break;
         case _DEPRECATED_NO_HOST_LOOPBACK:
             // There was no tagged release with support for --no-host-loopback.
@@ -800,6 +813,9 @@ static void parse_args(int argc, char *const argv[], struct options *options)
     if (optarg_cidr != NULL) {
         options->cidr = strdup(optarg_cidr);
     }
+    if (optarg_cidr6 != NULL) {
+        options->cidr6 = strdup(optarg_cidr6);
+    }
     if (optarg_netns_type != NULL) {
         options->netns_type = strdup(optarg_netns_type);
     }
@@ -825,6 +841,7 @@ static void parse_args(int argc, char *const argv[], struct options *options)
         }
     }
 #undef CIDR
+#undef CIDR6
 #undef DISABLE_HOST_LOOPBACK
 #undef NETNS_TYPE
 #undef USERNS_PATH
@@ -940,10 +957,12 @@ static int parse_cidr6(struct in6_addr *network, struct in6_addr *netmask,
 {
     int rc = 0;
     regex_t r;
-    regmatch_t matches[4];
+    regmatch_t matches[5];
     size_t nmatch = sizeof(matches) / sizeof(matches[0]);
-    const char *cidr_regex = "^(([a-fA-F0-9]{1,4}):){1,4}:/([0-9]{1,3})";
-    char snetwork[INET6_ADDRSTRLEN], sprefix[INET6_ADDRSTRLEN];
+    const char *cidr_regex = "^((([a-fA-F0-9]{1,4}):){1,4}):/([0-9]{1,3})";
+    char snetwork[INET6_ADDRSTRLEN],
+         snetwork_end[INET6_ADDRSTRLEN],
+         sprefix[INET6_ADDRSTRLEN];
     int prefix;
     const char *random;
     rc = regcomp(&r, cidr_regex, REG_EXTENDED);
@@ -963,19 +982,28 @@ static int parse_cidr6(struct in6_addr *network, struct in6_addr *netmask,
         fprintf(stderr, "invalid CIDR: %s\n", cidr);
         goto finish;
     }
-    rc = from_regmatch(sprefix, sizeof(sprefix), matches[3], cidr);
+    rc = from_regmatch(snetwork_end, sizeof(snetwork_end), matches[2], cidr);
     if (rc < 0) {
         fprintf(stderr, "invalid CIDR: %s\n", cidr);
         goto finish;
     }
-    random = pseudo_random_global_id(NULL);
-    if (random == NULL) {
-        fprintf(stderr, "cannot create pseudo random global id\n");
-        rc = -1;
+    rc = from_regmatch(sprefix, sizeof(sprefix), matches[4], cidr);
+    if (rc < 0) {
+        fprintf(stderr, "invalid CIDR: %s\n", cidr);
         goto finish;
     }
-    strcpy(snetwork, random);
-    strcat(snetwork, "0");
+    if (strcmp(snetwork, snetwork_end) == 0) {
+        random = pseudo_random_global_id(NULL);
+        if (random == NULL) {
+            fprintf(stderr, "cannot create pseudo random global id\n");
+            rc = -1;
+            goto finish;
+        }
+        strcpy(snetwork, random);
+        strcat(snetwork, "0");
+    } else {
+        strcat(snetwork, ":0");
+    }
 
     if (inet_pton(AF_INET6, snetwork, network) != 1) {
         fprintf(stderr, "invalid network address: %s\n", snetwork);

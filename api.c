@@ -207,9 +207,8 @@ static int api_handle_req_add_hostfwd(Slirp *slirp, int fd, struct api_ctx *ctx,
     }
     if (fwd->is_ipv6) {
         if (guest_addr_s == NULL || guest_addr_s[0] == '\0') {
-            guest_addr_s = "fd00::100";
-        }
-        if (inet_pton(AF_INET6, guest_addr_s, &fwd->guest_addr6) != 1) {
+            fwd->guest_addr6 = ctx->cfg->recommended_vguest6;
+        } else if (inet_pton(AF_INET6, guest_addr_s, &fwd->guest_addr6) != 1) {
             const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: "
                               "bad arguments.guest_addr\"}}";
             wrc = write(fd, err, strlen(err));
@@ -270,6 +269,7 @@ static void api_handle_req_list_hostfwd_foreach(gpointer data,
     JSON_Value *entry_value = json_value_init_object();
     JSON_Object *entry_object = json_value_get_object(entry_value);
     char host_addr[INET_ADDRSTRLEN], guest_addr[INET_ADDRSTRLEN];
+    char host_addr6[INET6_ADDRSTRLEN], guest_addr6[INET6_ADDRSTRLEN];
     if (inet_ntop(AF_INET, &fwd->host_addr, host_addr, sizeof(host_addr)) ==
         NULL) {
         perror("fatal: inet_ntop");
@@ -280,11 +280,29 @@ static void api_handle_req_list_hostfwd_foreach(gpointer data,
         perror("fatal: inet_ntop");
         exit(EXIT_FAILURE);
     }
+    if (fwd->is_ipv6) {
+        if (inet_ntop(AF_INET6, &fwd->host_addr6, host_addr6, sizeof(host_addr6)) ==
+            NULL) {
+            perror("fatal: inet_ntop");
+            exit(EXIT_FAILURE);
+        }
+        if (inet_ntop(AF_INET6, &fwd->guest_addr6, guest_addr6, sizeof(guest_addr6)) ==
+            NULL) {
+            perror("fatal: inet_ntop");
+            exit(EXIT_FAILURE);
+        }
+    }
     json_object_set_number(entry_object, "id", fwd->id);
     json_object_set_string(entry_object, "proto", fwd->is_udp ? "udp" : "tcp");
     json_object_set_string(entry_object, "host_addr", host_addr);
+    if (fwd->is_ipv6) {
+        json_object_set_string(entry_object, "host_addr6", host_addr6);
+    }
     json_object_set_number(entry_object, "host_port", fwd->host_port);
     json_object_set_string(entry_object, "guest_addr", guest_addr);
+    if (fwd->is_ipv6) {
+        json_object_set_string(entry_object, "guest_addr6", guest_addr6);
+    }
     json_object_set_number(entry_object, "guest_port", fwd->guest_port);
     /* json_array_append_value does not copy passed value */
     if (json_array_append_value(entries_array, entry_value) != JSONSuccess) {
