@@ -279,7 +279,7 @@ You may want to set up iptables for limiting access to the built\-in DNS in such
 .RS
 
 .nf
-(host)$ nsenter \-t $(cat /tmp/pid) \-U \-n
+(host)$ nsenter \-t $(cat /tmp/pid) \-U \-\-preserve\-credentials \-n
 (namespace)$ iptables \-A OUTPUT \-d 10.0.2.3 \-p udp \-\-dport 53 \-j ACCEPT
 (namespace)$ iptables \-A OUTPUT \-d 10.0.2.3 \-j DROP
 
@@ -428,7 +428,7 @@ The easiest way to allow inter\-namespace communication is to nest network names
 .RS
 
 .nf
-(host)$ nsenter \-t $(cat /tmp/pid) \-U \-n \-m
+(host)$ nsenter \-t $(cat /tmp/pid) \-U \-\-preserve\-credentials \-n \-m
 (namespace)$ mount \-t tmpfs none /run
 (namespace)$ ip netns add foo
 (namespace)$ ip netns add bar
@@ -458,12 +458,12 @@ To allow communication across multiple slirp4netns instances, you need to combin
 
 .nf
 (host)$ vde\_plug \-\-daemon switch:///tmp/switch null://
-(host)$ nsenter \-t $(cat /tmp/pid\-instance0) \-U \-n
+(host)$ nsenter \-t $(cat /tmp/pid\-instance0) \-U \-\-preserve\-credentials \-n
 (namespace\-instance0)$ vde\_plug \-\-daemon vde:///tmp/switch tap://vde
 (namespace\-instance0)$ ip link set vde up
 (namespace\-instance0)$ ip addr add 192.168.42.100/24 dev vde
 (namespace\-instance0)$ exit
-(host)$ nsenter \-t $(cat /tmp/pid\-instance1) \-U \-n
+(host)$ nsenter \-t $(cat /tmp/pid\-instance1) \-U \-\-preserve\-credentials \-n
 (namespace\-instance1)$ vde\_plug \-\-daemon vde:///tmp/switch tap://vde
 (namespace\-instance1)$ ip link set vde up
 (namespace\-instance1)$ ip addr add 192.168.42.101/24 dev vde
@@ -492,7 +492,7 @@ No real root privilege is needed to modify the file since kernel 4.15.
 .RS
 
 .nf
-(host)$ nsenter \-t $(cat /tmp/pid) \-U \-n \-m
+(host)$ nsenter \-t $(cat /tmp/pid) \-U \-\-preserve\-credentials \-n \-m
 (namespace)$ c=$(cat /proc/sys/net/ipv4/tcp\_rmem); echo $c | sed \-e s/131072/87380/g > /proc/sys/net/ipv4/tcp\_rmem
 
 .fi
