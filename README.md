@@ -39,6 +39,7 @@ Container engines:
 * [Buildah](https://github.com/containers/buildah)
 * [ctnr](https://github.com/mgoltzsche/ctnr) (via slirp-cni-plugin)
 * [Docker & Moby](https://get.docker.com/rootless) (optionally, via RootlessKit)
+* [containerd/nerdctl](https://github.com/containerd/nerdctl) (optionally, via RootlessKit)
 
 Tools:
 * [RootlessKit](https://github.com/rootless-containers/rootlesskit)
