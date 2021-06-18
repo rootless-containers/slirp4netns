@@ -438,6 +438,13 @@ static int parent(int sock, int ready_fd, int exit_fd, const char *api_socket,
 {
     int rc, tapfd;
     char ipv6[INET6_ADDRSTRLEN];
+    struct in_addr vdhcp_end = {
+#define NB_BOOTP_CLIENTS 16
+        /* NB_BOOTP_CLIENTS is hard-coded to 16 in libslirp:
+           https://gitlab.freedesktop.org/slirp/libslirp/-/issues/49 */
+        .s_addr = htonl(ntohl(cfg->vdhcp_start.s_addr) + NB_BOOTP_CLIENTS - 1),
+#undef NB_BOOTP_CLIENTS
+    };
     if ((tapfd = recvfd(sock)) < 0) {
         return tapfd;
     }
@@ -449,6 +456,8 @@ static int parent(int sock, int ready_fd, int exit_fd, const char *api_socket,
     printf("* Netmask:         %s\n", inet_ntoa(cfg->vnetmask));
     printf("* Gateway:         %s\n", inet_ntoa(cfg->vhost));
     printf("* DNS:             %s\n", inet_ntoa(cfg->vnameserver));
+    printf("* DHCP begin:      %s\n", inet_ntoa(cfg->vdhcp_start));
+    printf("* DHCP end:        %s\n", inet_ntoa(vdhcp_end));
     printf("* Recommended IP:  %s\n", inet_ntoa(cfg->recommended_vguest));
     if (cfg->enable_ipv6) {
         inet_ntop(AF_INET6, &cfg->vnetwork6, ipv6, INET6_ADDRSTRLEN);

@@ -1,4 +1,4 @@
-ARG LIBSLIRP_COMMIT=v4.6.0
+ARG LIBSLIRP_COMMIT=v4.6.1
 
 # Alpine
 FROM alpine:3 AS buildtest-alpine3-static
