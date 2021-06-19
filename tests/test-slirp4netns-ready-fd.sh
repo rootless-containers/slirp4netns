@@ -10,7 +10,7 @@ wait_for_network_namespace $child
 
 touch keep_alive
 
-slirp4netns -c -r 10 $child tun11 10>configured &
+slirp4netns -c -r 10 $child tap11 10>configured &
 slirp_pid=$!
 
 function cleanup {
@@ -20,7 +20,7 @@ function cleanup {
 }
 trap cleanup EXIT
 
-wait_for_network_device $child tun11
+wait_for_network_device $child tap11
 
 wait_for_file_content 1 configured
 

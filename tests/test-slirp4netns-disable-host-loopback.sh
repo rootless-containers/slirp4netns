@@ -13,10 +13,10 @@ child=$!
 wait_for_network_namespace $child
 
 mtu=${MTU:=1500}
-slirp4netns -c --mtu $mtu --disable-host-loopback $child tun11 &
+slirp4netns -c --mtu $mtu --disable-host-loopback $child tap11 &
 slirp_pid=$!
 
-wait_for_network_device $child tun11
+wait_for_network_device $child tap11
 # ping to 10.0.2.2 is possible even with --disable-host-loopback
 wait_for_ping_connectivity $child 10.0.2.2
 

@@ -16,7 +16,7 @@ child=$!
 
 wait_for_network_namespace $child
 
-slirp4netns --enable-sandbox --netns-type=path /proc/$child/ns/net tun11 &
+slirp4netns --enable-sandbox --netns-type=path /proc/$child/ns/net tap11 &
 slirp_pid=$!
 
 function cleanup {
@@ -24,6 +24,6 @@ function cleanup {
 }
 trap cleanup EXIT
 
-wait_for_network_device $child tun11
+wait_for_network_device $child tap11
 
 findmnt /run/foo
