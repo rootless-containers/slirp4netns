@@ -18,10 +18,11 @@ TESTS = tests/test-slirp4netns-api-socket.sh \
 				tests/test-slirp4netns-hostfwd6.sh \
 				tests/test-slirp4netns-ipv6.sh \
 				tests/test-slirp4netns-macaddress.sh \
+				tests/test-slirp4netns-nspath.sh \
 				tests/test-slirp4netns-outbound-addr.sh \
 				tests/test-slirp4netns-ready-fd.sh \
-				tests/test-slirp4netns-seccomp.sh \
-				tests/test-slirp4netns.sh
+				tests/test-slirp4netns-sandbox.sh \
+				tests/test-slirp4netns-seccomp.sh
 
 EXTRA_DIST = \
 	slirp4netns.1.md \
