@@ -6,8 +6,8 @@ set -xeuo pipefail
 SLIRP_CONFIG_VERSION_MAX=$(slirp4netns -v | grep "SLIRP_CONFIG_VERSION_MAX: " | sed 's#SLIRP_CONFIG_VERSION_MAX: \(\)##')
 
 if [ "${SLIRP_CONFIG_VERSION_MAX:-0}" -lt 3 ]; then
-    printf "'--disable-dns' requires SLIRP_CONFIG_VERSION_MAX 3 or newer. Test skipped..."
-    exit "$TEST_EXIT_CODE_SKIP"
+	printf "'--disable-dns' requires SLIRP_CONFIG_VERSION_MAX 3 or newer. Test skipped..."
+	exit "$TEST_EXIT_CODE_SKIP"
 fi
 
 port=53
@@ -25,7 +25,7 @@ wait_for_network_device $child tap11
 wait_for_ping_connectivity $child 10.0.2.2
 
 function cleanup() {
-    kill -9 $child $slirp_pid
+	kill -9 $child $slirp_pid
 }
 trap cleanup EXIT
 

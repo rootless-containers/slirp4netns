@@ -10,7 +10,7 @@ child=$!
 wait_for_network_namespace $child
 
 function cleanup {
-    kill -9 $child $slirp_pid
+	kill -9 $child $slirp_pid
 }
 trap cleanup EXIT
 
@@ -22,8 +22,8 @@ wait_for_network_device $child tap11
 result=$(nsenter $(nsenter_flags $child) ip addr show tap11 | grep -o "ether $MACADDRESS")
 
 if [ -z "$result" ]; then
-  printf "expecting %s MAC address on the interface but didn't get it" "$MACADDRESS"
-  exit 1
+	printf "expecting %s MAC address on the interface but didn't get it" "$MACADDRESS"
+	exit 1
 fi
 
 cleanup

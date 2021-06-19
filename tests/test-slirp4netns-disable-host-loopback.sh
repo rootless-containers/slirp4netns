@@ -21,7 +21,7 @@ wait_for_network_device $child tap11
 wait_for_ping_connectivity $child 10.0.2.2
 
 function cleanup {
-    kill -9 $nc_pid $child $slirp_pid
+	kill -9 $nc_pid $child $slirp_pid
 }
 trap cleanup EXIT
 
@@ -29,4 +29,3 @@ set +e
 err=$(echo "should fail" | nsenter $(nsenter_flags $child) ncat -v 10.0.2.2 $port 2>&1)
 set -e
 echo $err | grep "Network is unreachable"
-

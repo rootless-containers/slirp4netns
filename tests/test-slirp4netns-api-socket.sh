@@ -13,10 +13,10 @@ apisocket=${tmpdir}/slirp4netns.sock
 apisocketlongpath=${tmpdir}/slirp4netns-TOO-LONG-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA.sock
 
 if slirp4netns -c $child --api-socket $apisocketlongpath tap11; then
-    echo "expected failure with apisocket path too long" >&2
-    kill -9 $child
-    rm -rf $tmpdir
-    exit 1
+	echo "expected failure with apisocket path too long" >&2
+	kill -9 $child
+	rm -rf $tmpdir
+	exit 1
 fi
 
 slirp4netns -c $child --api-socket $apisocket tap11 &

@@ -14,9 +14,9 @@ slirp4netns -c -r 10 $child tap11 10>configured &
 slirp_pid=$!
 
 function cleanup {
-    set +xeuo pipefail
-    kill -9 $child $slirp_pid
-    rm -f configured keep_alive
+	set +xeuo pipefail
+	kill -9 $child $slirp_pid
+	rm -f configured keep_alive
 }
 trap cleanup EXIT
 
