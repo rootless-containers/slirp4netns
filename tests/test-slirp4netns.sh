@@ -10,7 +10,7 @@ child=$!
 
 wait_for_network_namespace $child
 
-slirp4netns --ready-fd=3 --enable-sandbox $child tun11 3>ready.file &
+slirp4netns --ready-fd=3 --enable-sandbox $child tap11 3>ready.file &
 slirp_pid=$!
 
 # Wait that the sandbox is created
@@ -33,8 +33,8 @@ function cleanup {
 }
 trap cleanup EXIT
 
-nsenter $(nsenter_flags $child) ip -a netconf | grep tun11
-nsenter $(nsenter_flags $child) ip addr show tun11 | grep -v inet
+nsenter $(nsenter_flags $child) ip -a netconf | grep tap11
+nsenter $(nsenter_flags $child) ip addr show tap11 | grep -v inet
 
 kill -9 $child $slirp_pid
 
@@ -44,13 +44,13 @@ child=$!
 
 wait_for_network_namespace $child
 
-slirp4netns --userns-path=/proc/$child/ns/user --netns-type=path /proc/$child/ns/net tun11 &
+slirp4netns --userns-path=/proc/$child/ns/user --netns-type=path /proc/$child/ns/net tap11 &
 slirp_pid=$!
 
-wait_for_network_device $child tun11
+wait_for_network_device $child tap11
 
-nsenter $(nsenter_flags $child) ip -a netconf | grep tun11
-nsenter $(nsenter_flags $child) ip addr show tun11 | grep -v inet
+nsenter $(nsenter_flags $child) ip -a netconf | grep tap11
+nsenter $(nsenter_flags $child) ip addr show tap11 | grep -v inet
 
 kill -9 $child $slirp_pid
 
@@ -60,12 +60,12 @@ child=$!
 
 wait_for_network_namespace $child
 
-nsenter --preserve-credentials -U --target=$child slirp4netns --netns-type=path /proc/$child/ns/net tun11 &
+nsenter --preserve-credentials -U --target=$child slirp4netns --netns-type=path /proc/$child/ns/net tap11 &
 slirp_pid=$!
 
-wait_for_network_device $child tun11
+wait_for_network_device $child tap11
 
-nsenter $(nsenter_flags $child) ip -a netconf | grep tun11
-nsenter $(nsenter_flags $child) ip addr show tun11 | grep -v inet
+nsenter $(nsenter_flags $child) ip -a netconf | grep tap11
+nsenter $(nsenter_flags $child) ip addr show tap11 | grep -v inet
 
 unshare -rm $(readlink -f $(dirname $0)/slirp4netns-no-unmount.sh)

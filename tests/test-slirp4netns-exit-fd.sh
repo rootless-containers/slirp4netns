@@ -10,7 +10,7 @@ wait_for_network_namespace $child
 
 touch keep_alive
 
-slirp4netns -e 10 $child tun11 10<(while test -e keep_alive; do sleep 0.1; done) &
+slirp4netns -e 10 $child tap11 10<(while test -e keep_alive; do sleep 0.1; done) &
 
 slirp_pid=$!
 

@@ -36,10 +36,10 @@ for ip in "${IPs[@]}"; do
 
     wait_for_network_namespace $child
 
-    slirp4netns -c --mtu $mtu --outbound-addr="$ip" $child tun11 &
+    slirp4netns -c --mtu $mtu --outbound-addr="$ip" $child tap11 &
     slirp_pid=$!
 
-    wait_for_network_device $child tun11
+    wait_for_network_device $child tap11
 
     wait_for_connectivity $child 10.0.2.2 $port
 

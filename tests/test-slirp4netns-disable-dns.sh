@@ -17,10 +17,10 @@ child=$!
 wait_for_network_namespace $child
 
 mtu=${MTU:=1500}
-slirp4netns -c --mtu $mtu --disable-dns $child tun11 &
+slirp4netns -c --mtu $mtu --disable-dns $child tap11 &
 slirp_pid=$!
 
-wait_for_network_device $child tun11
+wait_for_network_device $child tap11
 # ping to 10.0.2.2
 wait_for_ping_connectivity $child 10.0.2.2
 
