@@ -22,6 +22,7 @@ TESTS = tests/test-slirp4netns-api-socket.sh \
 				tests/test-slirp4netns-outbound-addr.sh \
 				tests/test-slirp4netns-ready-fd.sh \
 				tests/test-slirp4netns-sandbox.sh \
+				tests/test-slirp4netns-sandbox-no-unmount.sh \
 				tests/test-slirp4netns-seccomp.sh
 
 EXTRA_DIST = \
@@ -35,7 +36,6 @@ EXTRA_DIST = \
 	seccomparch.h \
 	seccompfilter.h \
 	seccompfilter_rules.h \
-	tests/slirp4netns-no-unmount.sh \
 	vendor/parson/LICENSE \
 	vendor/parson/README.md \
 	vendor/parson/parson.h

@@ -1,10 +1,13 @@
 #!/bin/bash
 set -xeuo pipefail
 
-. $(dirname $0)/common.sh
+if [[ ! -v "CHILD" ]]; then
+  # reexec in a new mount namespace
+  export CHILD=1
+  exec unshare -rm "$0" "$@"
+fi
 
-# it is a part of test-slirp4netns.sh
-# must run in a new mount namespace
+. $(dirname $0)/common.sh
 
 mount -t tmpfs tmpfs /run
 mkdir /run/foo
