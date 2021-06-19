@@ -1,14 +1,14 @@
 #!/bin/bash
 set -xeuo pipefail
 
+. $(dirname $0)/common.sh
+
 SLIRP_CONFIG_VERSION_MAX=$(slirp4netns -v | grep "SLIRP_CONFIG_VERSION_MAX: " | sed 's#SLIRP_CONFIG_VERSION_MAX: \(\)##')
 
 if [ "${SLIRP_CONFIG_VERSION_MAX:-0}" -lt 2 ]; then
     printf "'--disable-dns' requires SLIRP_CONFIG_VERSION_MAX 2 or newer. Test skipped..."
-    exit 0
+    exit "$TEST_EXIT_CODE_SKIP"
 fi
-
-. $(dirname $0)/common.sh
 
 IPv4_1="127.0.0.1"
 IPv4_2=$(ip a | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p' | head -n 1)

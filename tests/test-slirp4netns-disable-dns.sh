@@ -1,14 +1,14 @@
 #!/bin/bash
 set -xeuo pipefail
 
+. $(dirname $0)/common.sh
+
 SLIRP_CONFIG_VERSION_MAX=$(slirp4netns -v | grep "SLIRP_CONFIG_VERSION_MAX: " | sed 's#SLIRP_CONFIG_VERSION_MAX: \(\)##')
 
 if [ "${SLIRP_CONFIG_VERSION_MAX:-0}" -lt 3 ]; then
     printf "'--disable-dns' requires SLIRP_CONFIG_VERSION_MAX 3 or newer. Test skipped..."
-    exit 0
+    exit "$TEST_EXIT_CODE_SKIP"
 fi
-
-. $(dirname $0)/common.sh
 
 port=53
 unshare -r -n sleep infinity &
