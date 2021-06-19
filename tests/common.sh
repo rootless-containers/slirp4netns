@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# See https://www.gnu.org/software/automake/manual/html_node/Scripts_002dbased-Testsuites.html#Testsuite-progress-on-console
+TEST_EXIT_CODE_SKIP=77
+
 function nsenter_flags {
   pid=$1
   flags="--target=${pid}"

@@ -1,4 +1,4 @@
-SLIRP4NETNS 1 "November 2020" "Rootless Containers" "User Commands"
+SLIRP4NETNS 1 "June 2021" "Rootless Containers" "User Commands"
 ==================================================
 
 # NAME
@@ -21,6 +21,8 @@ Default configuration:
 * CIDR:              10.0.2.0/24
 * Gateway/Host:      10.0.2.2    (network address + 2)
 * DNS:               10.0.2.3    (network address + 3)
+* DHCP begin:        10.0.2.15   (network address + 15)
+* DHCP end:          10.0.2.30   (network address + 30)
 * IPv6 CIDR:         fd00::/64
 * IPv6 Gateway/Host: fd00::2
 * IPv6 DNS:          fd00::3

@@ -23,6 +23,8 @@ Vagrant.configure("2") do |config|
         glib2-devel libcap-devel \
         git-core libtool iproute iputils iperf3 nmap jq
 
+      # TODO: install udhcpc (required by test-slirp4netns-dhcp.sh)
+
       cd /src
       chown vagrant .
 
