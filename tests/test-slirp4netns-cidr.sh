@@ -39,7 +39,7 @@ slirp_pid=$!
 wait_for_network_device $child tap11
 
 function cleanup {
-    kill -9 $child $slirp_pid
+	kill -9 $child $slirp_pid
 }
 trap cleanup EXIT
 

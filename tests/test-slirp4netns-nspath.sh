@@ -13,7 +13,7 @@ slirp4netns --userns-path=/proc/$child/ns/user --netns-type=path /proc/$child/ns
 slirp_pid=$!
 
 function cleanup {
-    kill -9 $child $slirp_pid
+	kill -9 $child $slirp_pid
 }
 trap cleanup EXIT
 
