@@ -43,5 +43,5 @@ function cleanup {
 }
 trap cleanup EXIT
 
-result="$(nsenter --preserve-credentials -U -n --target=$child ip a show dev tun11)"
+result="$(nsenter $(nsenter_flags $child) ip a show dev tun11)"
 echo "$result" | grep -o '^\s*inet .*/' | grep -F 10.0.135.228

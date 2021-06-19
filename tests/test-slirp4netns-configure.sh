@@ -18,6 +18,6 @@ function cleanup {
 }
 trap cleanup EXIT
 
-nsenter --preserve-credentials -U -n --target=$child ip -a netconf | grep tun11
+nsenter $(nsenter_flags $child) ip -a netconf | grep tun11
 
-nsenter --preserve-credentials -U -n --target=$child ip addr show tun11 | grep inet
+nsenter $(nsenter_flags $child) ip addr show tun11 | grep inet

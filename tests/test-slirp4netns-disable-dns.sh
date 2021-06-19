@@ -30,6 +30,6 @@ function cleanup() {
 trap cleanup EXIT
 
 set +e
-err=$(echo "should fail" | nsenter --preserve-credentials -U -n --target=$child ncat -v 10.0.2.3 $port 2>&1)
+err=$(echo "should fail" | nsenter $(nsenter_flags $child) ncat -v 10.0.2.3 $port 2>&1)
 set -e
 echo $err | grep 'Connection timed out\|TIMEOUT'

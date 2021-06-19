@@ -33,8 +33,8 @@ function cleanup {
 }
 trap cleanup EXIT
 
-nsenter --preserve-credentials -U -n --target=$child ip -a netconf | grep tun11
-nsenter --preserve-credentials -U -n --target=$child ip addr show tun11 | grep -v inet
+nsenter $(nsenter_flags $child) ip -a netconf | grep tun11
+nsenter $(nsenter_flags $child) ip addr show tun11 | grep -v inet
 
 kill -9 $child $slirp_pid
 
@@ -49,8 +49,8 @@ slirp_pid=$!
 
 wait_for_network_device $child tun11
 
-nsenter --preserve-credentials -U -n --target=$child ip -a netconf | grep tun11
-nsenter --preserve-credentials -U -n --target=$child ip addr show tun11 | grep -v inet
+nsenter $(nsenter_flags $child) ip -a netconf | grep tun11
+nsenter $(nsenter_flags $child) ip addr show tun11 | grep -v inet
 
 kill -9 $child $slirp_pid
 
@@ -65,7 +65,7 @@ slirp_pid=$!
 
 wait_for_network_device $child tun11
 
-nsenter --preserve-credentials -U -n --target=$child ip -a netconf | grep tun11
-nsenter --preserve-credentials -U -n --target=$child ip addr show tun11 | grep -v inet
+nsenter $(nsenter_flags $child) ip -a netconf | grep tun11
+nsenter $(nsenter_flags $child) ip addr show tun11 | grep -v inet
 
 unshare -rm $(readlink -f $(dirname $0)/slirp4netns-no-unmount.sh)

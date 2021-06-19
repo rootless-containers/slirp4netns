@@ -19,7 +19,7 @@ slirp_pid=$!
 
 wait_for_network_device $child tun11
 
-result=$(nsenter --preserve-credentials -U -n --target=$child ip addr show tun11 | grep -o "ether $MACADDRESS")
+result=$(nsenter $(nsenter_flags $child) ip addr show tun11 | grep -o "ether $MACADDRESS")
 
 if [ -z "$result" ]; then
   printf "expecting %s MAC address on the interface but didn't get it" "$MACADDRESS"
