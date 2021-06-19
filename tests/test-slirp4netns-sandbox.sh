@@ -33,6 +33,3 @@ trap cleanup EXIT
 
 nsenter $(nsenter_flags $child) ip -a netconf | grep tap11
 nsenter $(nsenter_flags $child) ip addr show tap11 | grep -v inet
-
-
-unshare -rm $(readlink -f $(dirname $0)/slirp4netns-no-unmount.sh)
