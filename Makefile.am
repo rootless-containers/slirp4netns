@@ -5,7 +5,20 @@ AM_CFLAGS = @GLIB_CFLAGS@ @SLIRP_CFLAGS@ @LIBCAP_CFLAGS@ @LIBSECCOMP_CFLAGS@
 noinst_LIBRARIES = libparson.a
 
 AM_TESTS_ENVIRONMENT = PATH="$(abs_top_builddir):$(PATH)"
-TESTS = tests/test-slirp4netns.sh tests/test-slirp4netns-configure.sh tests/test-slirp4netns-exit-fd.sh tests/test-slirp4netns-ready-fd.sh tests/test-slirp4netns-api-socket.sh tests/test-slirp4netns-disable-host-loopback.sh tests/test-slirp4netns-cidr.sh tests/test-slirp4netns-outbound-addr.sh tests/test-slirp4netns-disable-dns.sh tests/test-slirp4netns-seccomp.sh tests/test-slirp4netns-macaddress.sh tests/test-slirp4netns-dhcp.sh
+TESTS = tests/test-slirp4netns-api-socket.sh \
+				tests/test-slirp4netns-cidr.sh \
+				tests/test-slirp4netns-configure.sh \
+				tests/test-slirp4netns-dhcp.sh \
+				tests/test-slirp4netns-disable-dns.sh \
+				tests/test-slirp4netns-disable-host-loopback.sh \
+				tests/test-slirp4netns-exit-fd.sh \
+				tests/test-slirp4netns-macaddress.sh \
+				tests/test-slirp4netns-nspath.sh \
+				tests/test-slirp4netns-outbound-addr.sh \
+				tests/test-slirp4netns-ready-fd.sh \
+				tests/test-slirp4netns-sandbox.sh \
+				tests/test-slirp4netns-sandbox-no-unmount.sh \
+				tests/test-slirp4netns-seccomp.sh
 
 EXTRA_DIST = \
 	slirp4netns.1.md \
@@ -18,7 +31,6 @@ EXTRA_DIST = \
 	seccomparch.h \
 	seccompfilter.h \
 	seccompfilter_rules.h \
-	tests/slirp4netns-no-unmount.sh \
 	vendor/parson/LICENSE \
 	vendor/parson/README.md \
 	vendor/parson/parson.h

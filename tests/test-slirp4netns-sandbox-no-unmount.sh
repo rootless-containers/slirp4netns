@@ -1,10 +1,13 @@
 #!/bin/bash
 set -xeuo pipefail
 
-. $(dirname $0)/common.sh
+if [[ ! -v "CHILD" ]]; then
+	# reexec in a new mount namespace
+	export CHILD=1
+	exec unshare -rm "$0" "$@"
+fi
 
-# it is a part of test-slirp4netns.sh
-# must run in a new mount namespace
+. $(dirname $0)/common.sh
 
 mount -t tmpfs tmpfs /run
 mkdir /run/foo
@@ -16,14 +19,14 @@ child=$!
 
 wait_for_network_namespace $child
 
-slirp4netns --enable-sandbox --netns-type=path /proc/$child/ns/net tun11 &
+slirp4netns --enable-sandbox --netns-type=path /proc/$child/ns/net tap11 &
 slirp_pid=$!
 
 function cleanup {
-    kill -9 $child $slirp_pid
+	kill -9 $child $slirp_pid
 }
 trap cleanup EXIT
 
-wait_for_network_device $child tun11
+wait_for_network_device $child tap11
 
 findmnt /run/foo

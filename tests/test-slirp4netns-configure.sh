@@ -8,16 +8,16 @@ child=$!
 
 wait_for_network_namespace $child
 
-slirp4netns -c $child tun11 &
+slirp4netns -c $child tap11 &
 slirp_pid=$!
 
-wait_for_network_device $child tun11
+wait_for_network_device $child tap11
 
 function cleanup {
-    kill -9 $child $slirp_pid
+	kill -9 $child $slirp_pid
 }
 trap cleanup EXIT
 
-nsenter --preserve-credentials -U -n --target=$child ip -a netconf | grep tun11
+nsenter $(nsenter_flags $child) ip -a netconf | grep tap11
 
-nsenter --preserve-credentials -U -n --target=$child ip addr show tun11 | grep inet
+nsenter $(nsenter_flags $child) ip addr show tap11 | grep inet

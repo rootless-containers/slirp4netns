@@ -12,17 +12,17 @@ tmpdir=$(mktemp -d /tmp/slirp4netns-bench.XXXXXXXXXX)
 apisocket=${tmpdir}/slirp4netns.sock
 apisocketlongpath=${tmpdir}/slirp4netns-TOO-LONG-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA.sock
 
-if slirp4netns -c $child --api-socket $apisocketlongpath tun11; then
-    echo "expected failure with apisocket path too long" >&2
-    kill -9 $child
-    rm -rf $tmpdir
-    exit 1
+if slirp4netns -c $child --api-socket $apisocketlongpath tap11; then
+	echo "expected failure with apisocket path too long" >&2
+	kill -9 $child
+	rm -rf $tmpdir
+	exit 1
 fi
 
-slirp4netns -c $child --api-socket $apisocket tun11 &
+slirp4netns -c $child --api-socket $apisocket tap11 &
 slirp_pid=$!
 
-wait_for_network_device $child tun11
+wait_for_network_device $child tap11
 
 function cleanup() {
 	kill -9 $child $slirp_pid
