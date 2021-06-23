@@ -314,7 +314,7 @@ int do_slirp(int tapfd, int readyfd, int exitfd, const char *api_socket,
     GArray *pollfds = g_array_new(FALSE, FALSE, sizeof(GPollFD));
     int pollfds_exitfd_idx = -1;
     int pollfds_apifd_idx = -1;
-    size_t n_fds = 1;
+    size_t n_fds = 1; /* tapfd should be always present */
     GPollFD tap_pollfd = { .fd = tapfd,
                            .events = G_IO_IN | G_IO_HUP,
                            .revents = 0 };
@@ -334,9 +334,9 @@ int do_slirp(int tapfd, int readyfd, int exitfd, const char *api_socket,
     }
     g_array_append_val(pollfds, tap_pollfd);
     if (exitfd >= 0) {
-        n_fds++;
         g_array_append_val(pollfds, exit_pollfd);
-        pollfds_exitfd_idx = n_fds - 1;
+        pollfds_exitfd_idx = n_fds;
+        n_fds++;
     }
     if (api_socket != NULL) {
         if ((apifd = api_bindlisten(api_socket)) < 0) {
@@ -347,9 +347,9 @@ int do_slirp(int tapfd, int readyfd, int exitfd, const char *api_socket,
             goto err;
         }
         api_pollfd.fd = apifd;
-        n_fds++;
         g_array_append_val(pollfds, api_pollfd);
-        pollfds_apifd_idx = n_fds - 1;
+        pollfds_apifd_idx = n_fds;
+        n_fds++;
     }
     signal(SIGPIPE, SIG_IGN);
     if (cfg->enable_sandbox && create_sandbox() < 0) {
