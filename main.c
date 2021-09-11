@@ -1062,26 +1062,32 @@ static int slirp4netns_config_from_cidr6(struct slirp4netns_config *cfg,
         return -1;
     }
 
-    strcpy(tmp, net);
-    strcat(tmp, DEFAULT_VHOST_OFFSET6);
+#define MAX(a,b) (((a)>(b))?(a):(b))
+
+    strncpy(tmp, net, sizeof(tmp));
+    strncat(tmp, DEFAULT_VHOST_OFFSET6,
+            MAX(0, INET6_ADDRSTRLEN - strlen(tmp) - strlen(DEFAULT_VHOST_OFFSET6)));
     if (inet_pton(AF_INET6, tmp, &cfg->vhost6) != 1) {
         return -1;
     }
 
-    strcpy(tmp, net);
-    strcat(tmp, DEFAULT_VDHCPSTART_OFFSET6);
+    strncpy(tmp, net, sizeof(tmp));
+    strncat(tmp, DEFAULT_VDHCPSTART_OFFSET6,
+            MAX(0, INET6_ADDRSTRLEN - strlen(tmp) - strlen(DEFAULT_VDHCPSTART_OFFSET6)));
     if (inet_pton(AF_INET6, tmp, &cfg->vdhcp_start6) != 1) {
         return -1;
     }
 
-    strcpy(tmp, net);
-    strcat(tmp, DEFAULT_VNAMESERVER_OFFSET6);
+    strncpy(tmp, net, sizeof(tmp));
+    strncat(tmp, DEFAULT_VNAMESERVER_OFFSET6,
+            MAX(0, INET6_ADDRSTRLEN - strlen(tmp) - strlen(DEFAULT_VNAMESERVER_OFFSET6)));
     if (inet_pton(AF_INET6, tmp, &cfg->vnameserver6) != 1) {
         return -1;
     }
 
-    strcpy(tmp, net);
-    strcat(tmp, DEFAULT_RECOMMENDED_VGUEST_OFFSET6);
+    strncpy(tmp, net, sizeof(tmp));
+    strncat(tmp, DEFAULT_RECOMMENDED_VGUEST_OFFSET6,
+            MAX(0, INET6_ADDRSTRLEN - strlen(tmp) - strlen(DEFAULT_RECOMMENDED_VGUEST_OFFSET6)));
     if (inet_pton(AF_INET6, tmp, &cfg->recommended_vguest6) != 1) {
         return -1;
     }
