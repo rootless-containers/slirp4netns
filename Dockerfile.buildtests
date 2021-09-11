@@ -2,7 +2,7 @@ ARG LIBSLIRP_COMMIT=v4.6.1
 
 # Alpine
 FROM alpine:3 AS buildtest-alpine3-static
-RUN apk add --no-cache git build-base autoconf automake libtool linux-headers glib-dev glib-static libcap-static libcap-dev libseccomp-dev libseccomp-static git meson
+RUN apk add --no-cache git build-base autoconf automake libtool linux-headers glib-dev glib-static libcap-static libcap-dev libseccomp-dev openssl-dev openssl-libs-static libseccomp-static git meson
 RUN git clone https://gitlab.freedesktop.org/slirp/libslirp.git /libslirp
 WORKDIR /libslirp
 ARG LIBSLIRP_COMMIT
@@ -14,7 +14,7 @@ RUN ./autogen.sh && ./configure LDFLAGS="-static" && make && cp -f slirp4netns /
 # Ubuntu
 FROM ubuntu:18.04 AS buildtest-ubuntu1804-common
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt update && apt install -y automake autotools-dev make gcc libglib2.0-dev libcap-dev libseccomp-dev git ninja-build python3-pip
+RUN apt update && apt install -y automake autotools-dev make gcc libglib2.0-dev libcap-dev libseccomp-dev libssl-dev git ninja-build python3-pip
 RUN pip3 install meson
 RUN git clone https://gitlab.freedesktop.org/slirp/libslirp.git /libslirp
 WORKDIR /libslirp
@@ -32,7 +32,7 @@ RUN ./configure && make && cp -f slirp4netns /
 
 # openSUSE (dynamic only)
 FROM opensuse/leap:15 AS buildtest-opensuse15-common
-RUN zypper install -y --no-recommends autoconf automake gcc glib2-devel git make libcap-devel libseccomp-devel ninja python3-pip
+RUN zypper install -y --no-recommends autoconf automake gcc glib2-devel git make libcap-devel libseccomp-devel libopenssl-devel ninja python3-pip
 RUN pip3 install meson
 RUN git clone https://gitlab.freedesktop.org/slirp/libslirp.git /libslirp
 WORKDIR /libslirp

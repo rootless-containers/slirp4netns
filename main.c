@@ -12,6 +12,8 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/timex.h>
+#include <time.h>
 #include <linux/if_tun.h>
 #include <arpa/inet.h>
 #include <net/if.h>
@@ -23,18 +25,26 @@
 #include "slirp4netns.h"
 #include <ifaddrs.h>
 #include <seccomp.h>
+#include <openssl/sha.h>
 
 #define DEFAULT_MTU (1500)
 #define DEFAULT_CIDR ("10.0.2.0/24")
+#define DEFAULT_CIDR6 ("fd00::/64")
 #define DEFAULT_VHOST_OFFSET (2) // 10.0.2.2
+#define DEFAULT_VHOST_OFFSET6 (2)
 #define DEFAULT_VDHCPSTART_OFFSET (15) // 10.0.2.15
+#define DEFAULT_VDHCPSTART_OFFSET6 (15)
 #define DEFAULT_VNAMESERVER_OFFSET (3) // 10.0.2.3
+#define DEFAULT_VNAMESERVER_OFFSET6 (3)
 #define DEFAULT_RECOMMENDED_VGUEST_OFFSET (100) // 10.0.2.100
+#define DEFAULT_RECOMMENDED_VGUEST_OFFSET6 (100)
 #define DEFAULT_NETNS_TYPE ("pid")
 #define NETWORK_PREFIX_MIN (1)
 // >=26 is not supported because the recommended guest IP is set to network addr
 // + 100 .
 #define NETWORK_PREFIX_MAX (25)
+#define NETWORK_PREFIX_MIN6 (8)
+#define NETWORK_PREFIX_MAX6 (128)
 
 static int nsenter(pid_t target_pid, char *netns, char *userns,
                    bool only_userns)
@@ -205,6 +215,169 @@ static int configure_network(const char *tapname,
     return 0;
 }
 
+struct in6_ifreq {
+    struct in6_addr ifr6_addr;
+    __u32 ifr6_prefixlen;
+    unsigned int ifr6_ifindex;
+};
+
+static const char *pseudo_random_global_id(const char *device)
+{
+    static char id[INET6_ADDRSTRLEN];
+    char tmp[INET6_ADDRSTRLEN - 10];
+    unsigned char eui64[16];
+    unsigned char hash[SHA_DIGEST_LENGTH];
+    struct ntptimeval ntv;
+    time_t tv;
+    struct ifreq ifr;
+    unsigned char mac[18];
+    int sockfd;
+
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        perror("cannot create socket");
+        return NULL;
+    }
+
+    memset(&ifr, 0, sizeof(ifr));
+    ifr.ifr_flags = IFF_UP | IFF_RUNNING;
+
+    if (device == NULL) {
+        device = "lo";
+    }
+    strncpy(ifr.ifr_name, device, sizeof(ifr.ifr_name) - 1);
+
+    if (ioctl(sockfd, SIOCGIFHWADDR, &ifr) < 0) {
+        int rand = open("/dev/urandom", O_RDONLY);
+        if (rand == -1) {
+            rand = open("/dev/random", O_RDONLY);
+        }
+        if (rand == -1) {
+            perror("cannot get dev hwaddr and cannot open random");
+            return NULL;
+        }
+        if (read(rand, &mac, sizeof(mac)) != sizeof(mac)) {
+            perror("cannot get dev hwaddr and cannot read random");
+            return NULL;
+        }
+        close(rand);
+    } else {
+        strncpy((char *)mac, (const char *)ifr.ifr_ifru.ifru_addr.sa_data,
+                sizeof(mac));
+    }
+
+    /* https://tools.ietf.org/html/rfc4193
+     *
+     * 3.2.2.  Sample Code for Pseudo-Random Global ID Algorithm
+     */
+
+    /*
+     * 1) Obtain the current time of day in 64-bit NTP format [NTP].
+     */
+    time(&tv);
+    ntv.time.tv_sec = tv;
+    // TODO: check NTP format
+    ntv.time.tv_usec = 0;
+
+    /*
+     * 2) Obtain an EUI-64 identifier from the system running this
+     *    algorithm.  If an EUI-64 does not exist, one can be created from
+     *    a 48-bit MAC address as specified in [ADDARCH].  If an EUI-64
+     *    cannot be obtained or created, a suitably unique identifier,
+     *    local to the node, should be used (e.g., system serial number).
+     */
+    eui64[8] = mac[0];
+    eui64[9] = mac[1];
+    eui64[10] = mac[2];
+    eui64[11] = 0xff;
+    eui64[12] = 0xfe;
+    eui64[13] = mac[3];
+    eui64[14] = mac[4];
+    eui64[15] = mac[5];
+
+    /*
+     * 3) Concatenate the time of day with the system-specific identifier
+     *    in order to create a key.
+     */
+    memcpy(&eui64[0], (void *)&ntv.time.tv_sec, 4);
+    memcpy(&eui64[4], (void *)&ntv.time.tv_usec, 4);
+
+    /*
+     * 4) Compute an SHA-1 digest on the key as specified in [FIPS, SHA1];
+     *    the resulting value is 160 bits.
+     */
+    SHA1(eui64, sizeof(eui64), hash);
+
+    /*
+     * 5) Use the least significant 40 bits as the Global ID.
+     */
+    int i = 0, j = 0;
+    for (; j < 5; i += 2, j++) {
+        sprintf(&tmp[i], "%02x", hash[j]);
+        if (j > 0 && (j % 2)) {
+            tmp[i + 2] = ':';
+            i++;
+        }
+    }
+
+    /*
+     * 6) Concatenate FC00::/7, the L bit set to 1, and the 40-bit Global
+     *    ID to create a Local IPv6 address prefix.
+     */
+
+    snprintf(id, sizeof(id), "fd00:%s::/64", tmp);
+
+    return id;
+}
+
+static int configure_network6(const char *tapname,
+                              struct slirp4netns_config *cfg)
+{
+    struct rtentry route;
+    struct ifreq ifr;
+    struct in6_ifreq ifr6;
+    struct sockaddr_in6 sai;
+    int sockfd;
+    const char *id;
+
+    sockfd = socket(AF_INET6, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        perror("cannot create socket");
+        return -1;
+    }
+
+    memset(&ifr, 0, sizeof(ifr));
+    ifr.ifr_flags = IFF_UP | IFF_RUNNING;
+    strncpy(ifr.ifr_name, tapname, sizeof(ifr.ifr_name) - 1);
+
+    if (ioctl(sockfd, SIOCGIFHWADDR, &ifr) < 0) {
+        perror("cannot get dev hwaddr");
+        return -1;
+    }
+
+    if (ioctl(sockfd, SIOGIFINDEX, &ifr) < 0) {
+        perror("cannot get dev index");
+        return -1;
+    }
+
+    memset(&sai, 0, sizeof(struct sockaddr));
+    sai.sin6_family = AF_INET6;
+    sai.sin6_addr = cfg->recommended_vguest6;
+    sai.sin6_port = 0;
+
+    memcpy((char *)&ifr6.ifr6_addr, &sai.sin6_addr, sizeof(struct in6_addr));
+
+    ifr6.ifr6_ifindex = ifr.ifr_ifindex;
+    ifr6.ifr6_prefixlen = 64;
+
+    if (ioctl(sockfd, SIOCSIFADDR, &ifr6) < 0) {
+        perror("cannot set device address");
+        return -1;
+    }
+
+    return 0;
+}
+
 static int child(int sock, pid_t target_pid, bool do_config_network,
                  const char *tapname, char *netns_path, char *userns_path,
                  struct slirp4netns_config *cfg)
@@ -217,6 +390,9 @@ static int child(int sock, pid_t target_pid, bool do_config_network,
         return tapfd;
     }
     if (do_config_network && configure_network(tapname, cfg) < 0) {
+        return -1;
+    }
+    if (do_config_network && configure_network6(tapname, cfg) < 0) {
         return -1;
     }
     if (sendfd(sock, tapfd) < 0) {
@@ -266,6 +442,7 @@ static int parent(int sock, int ready_fd, int exit_fd, const char *api_socket,
                   struct slirp4netns_config *cfg, pid_t target_pid)
 {
     int rc, tapfd;
+    char ipv6[INET6_ADDRSTRLEN];
     struct in_addr vdhcp_end = {
 #define NB_BOOTP_CLIENTS 16
         /* NB_BOOTP_CLIENTS is hard-coded to 16 in libslirp:
@@ -287,6 +464,18 @@ static int parent(int sock, int ready_fd, int exit_fd, const char *api_socket,
     printf("* DHCP begin:      %s\n", inet_ntoa(cfg->vdhcp_start));
     printf("* DHCP end:        %s\n", inet_ntoa(vdhcp_end));
     printf("* Recommended IP:  %s\n", inet_ntoa(cfg->recommended_vguest));
+    if (cfg->enable_ipv6) {
+        inet_ntop(AF_INET6, &cfg->vnetwork6, ipv6, INET6_ADDRSTRLEN);
+        printf("* IPv6 Network:         %s\n", ipv6);
+        inet_ntop(AF_INET6, &cfg->vnetmask6, ipv6, INET6_ADDRSTRLEN);
+        printf("* IPv6 Netmask:         %s\n", ipv6);
+        inet_ntop(AF_INET6, &cfg->vhost6, ipv6, INET6_ADDRSTRLEN);
+        printf("* IPv6 Gateway:         %s\n", ipv6);
+        inet_ntop(AF_INET6, &cfg->vnameserver6, ipv6, INET6_ADDRSTRLEN);
+        printf("* IPv6 DNS:             %s\n", ipv6);
+        inet_ntop(AF_INET6, &cfg->recommended_vguest6, ipv6, INET6_ADDRSTRLEN);
+        printf("* IPv6 Recommended IP:  %s\n", ipv6);
+    }
     if (api_socket != NULL) {
         printf("* API Socket:      %s\n", api_socket);
     }
@@ -357,6 +546,9 @@ static void usage(const char *argv0)
     printf(
         "--cidr=CIDR              specify network address CIDR (default=%s)\n",
         DEFAULT_CIDR);
+    printf(
+        "--cidr6=CIDR             specify network address CIDR (default=%s)\n",
+        DEFAULT_CIDR6);
     printf("--disable-host-loopback  prohibit connecting to 127.0.0.1:* on the "
            "host namespace\n");
     /* v0.4.0 */
@@ -407,6 +599,7 @@ static void version()
 struct options {
     char *tapname; // argv[2]
     char *cidr; // --cidr
+    char *cidr6; // --cidr
     char *api_socket; // -a
     char *netns_type; // argv[1]
     char *netns_path; // --netns-path
@@ -420,6 +613,7 @@ struct options {
     bool do_config_network; // -c
     bool disable_host_loopback; // --disable-host-loopback
     bool enable_ipv6; // -6
+    bool ipv6_random; // --ipv6-random
     bool enable_sandbox; // --enable-sandbox
     bool enable_seccomp; // --enable-seccomp
     bool disable_dns; // --disable-dns
@@ -442,6 +636,10 @@ static void options_destroy(struct options *options)
     if (options->cidr != NULL) {
         free(options->cidr);
         options->cidr = NULL;
+    }
+    if (options->cidr6 != NULL) {
+        free(options->cidr6);
+        options->cidr6 = NULL;
     }
     if (options->api_socket != NULL) {
         free(options->api_socket);
@@ -481,13 +679,16 @@ static void parse_args(int argc, char *const argv[], struct options *options)
     int opt;
     char *strtol_e = NULL;
     char *optarg_cidr = NULL;
+    char *optarg_cidr6 = NULL;
     char *optarg_netns_type = NULL;
     char *optarg_userns_path = NULL;
     char *optarg_api_socket = NULL;
     char *optarg_outbound_addr = NULL;
     char *optarg_outbound_addr6 = NULL;
     char *optarg_macaddress = NULL;
-#define CIDR -42
+#define CIDR -40
+#define CIDR6 -41
+#define IPV6_RANDOM -42
 #define DISABLE_HOST_LOOPBACK -43
 #define NETNS_TYPE -44
 #define USERNS_PATH -45
@@ -507,12 +708,14 @@ static void parse_args(int argc, char *const argv[], struct options *options)
         { "ready-fd", required_argument, NULL, 'r' },
         { "mtu", required_argument, NULL, 'm' },
         { "cidr", required_argument, NULL, CIDR },
+        { "cidr6", required_argument, NULL, CIDR6 },
         { "disable-host-loopback", no_argument, NULL, DISABLE_HOST_LOOPBACK },
         { "no-host-loopback", no_argument, NULL, _DEPRECATED_NO_HOST_LOOPBACK },
         { "netns-type", required_argument, NULL, NETNS_TYPE },
         { "userns-path", required_argument, NULL, USERNS_PATH },
         { "api-socket", required_argument, NULL, 'a' },
         { "enable-ipv6", no_argument, NULL, '6' },
+        { "ipv6-random", no_argument, NULL, IPV6_RANDOM },
         { "enable-sandbox", no_argument, NULL, ENABLE_SANDBOX },
         { "create-sandbox", no_argument, NULL, _DEPRECATED_CREATE_SANDBOX },
         { "enable-seccomp", no_argument, NULL, ENABLE_SECCOMP },
@@ -560,6 +763,9 @@ static void parse_args(int argc, char *const argv[], struct options *options)
         case CIDR:
             optarg_cidr = optarg;
             break;
+        case CIDR6:
+            optarg_cidr6 = optarg;
+            break;
         case _DEPRECATED_NO_HOST_LOOPBACK:
             // There was no tagged release with support for --no-host-loopback.
             // So no one will be affected by removal of --no-host-loopback.
@@ -602,6 +808,9 @@ static void parse_args(int argc, char *const argv[], struct options *options)
             options->enable_ipv6 = true;
             printf("WARNING: Support for IPv6 is experimental\n");
             break;
+        case IPV6_RANDOM:
+            options->ipv6_random = true;
+            break;
         case 'h':
             usage(argv[0]);
             exit(EXIT_SUCCESS);
@@ -632,6 +841,9 @@ static void parse_args(int argc, char *const argv[], struct options *options)
     if (optarg_cidr != NULL) {
         options->cidr = strdup(optarg_cidr);
     }
+    if (optarg_cidr6 != NULL) {
+        options->cidr6 = strdup(optarg_cidr6);
+    }
     if (optarg_netns_type != NULL) {
         options->netns_type = strdup(optarg_netns_type);
     }
@@ -657,6 +869,7 @@ static void parse_args(int argc, char *const argv[], struct options *options)
         }
     }
 #undef CIDR
+#undef CIDR6
 #undef DISABLE_HOST_LOOPBACK
 #undef NETNS_TYPE
 #undef USERNS_PATH
@@ -767,6 +980,77 @@ finish:
     return rc;
 }
 
+static int parse_cidr6(struct in6_addr *network, struct in6_addr *netmask,
+                       const char *cidr)
+{
+    int rc = 0;
+    regex_t r;
+    regmatch_t matches[5];
+    size_t nmatch = sizeof(matches) / sizeof(matches[0]);
+    const char *cidr_regex = "^((([a-fA-F0-9]{1,4}):){1,4}):/([0-9]{1,3})";
+    char snetwork[INET6_ADDRSTRLEN], snetwork_end[INET6_ADDRSTRLEN],
+        sprefix[INET6_ADDRSTRLEN];
+    int prefix;
+    const char *random;
+    int i;
+
+    rc = regcomp(&r, cidr_regex, REG_EXTENDED);
+    if (rc != 0) {
+        fprintf(stderr, "internal regex error\n");
+        rc = -1;
+        goto finish;
+    }
+    rc = regexec(&r, cidr, nmatch, matches, 0);
+    if (rc != 0) {
+        fprintf(stderr, "invalid CIDR: %s\n", cidr);
+        rc = -1;
+        goto finish;
+    }
+    rc = from_regmatch(snetwork, sizeof(snetwork), matches[1], cidr);
+    if (rc < 0) {
+        fprintf(stderr, "invalid CIDR: %s\n", cidr);
+        goto finish;
+    }
+    rc = from_regmatch(sprefix, sizeof(sprefix), matches[4], cidr);
+    if (rc < 0) {
+        fprintf(stderr, "invalid CIDR: %s\n", cidr);
+        goto finish;
+    }
+    strncat(snetwork, ":", 2);
+    if (inet_pton(AF_INET6, snetwork, network) != 1) {
+        fprintf(stderr, "invalid network address: %s\n", snetwork);
+        rc = -1;
+        goto finish;
+    }
+    errno = 0;
+    prefix = strtoul(sprefix, NULL, 10);
+    if (errno) {
+        fprintf(stderr, "invalid prefix length: %s\n", sprefix);
+        rc = -1;
+        goto finish;
+    }
+    if (prefix < NETWORK_PREFIX_MIN6 || prefix > NETWORK_PREFIX_MAX6) {
+        fprintf(stderr, "prefix length needs to be %d-%d\n",
+                NETWORK_PREFIX_MIN6, NETWORK_PREFIX_MAX6);
+        rc = -1;
+        goto finish;
+    }
+
+    for (i = 0; i < 4; i++, prefix -= 32) {
+        if (prefix >= 32) {
+            netmask->s6_addr32[i] = 0xffffffff;
+        } else if (prefix > 0) {
+            netmask->s6_addr32[i] = htonl(~((1 << (32 - prefix)) - 1));
+        } else {
+            netmask->s6_addr32[i] = 0;
+        }
+    }
+
+finish:
+    regfree(&r);
+    return rc;
+}
+
 static int slirp4netns_config_from_cidr(struct slirp4netns_config *cfg,
                                         const char *cidr)
 {
@@ -783,6 +1067,62 @@ static int slirp4netns_config_from_cidr(struct slirp4netns_config *cfg,
         htonl(ntohl(cfg->vnetwork.s_addr) + DEFAULT_VNAMESERVER_OFFSET);
     cfg->recommended_vguest.s_addr =
         htonl(ntohl(cfg->vnetwork.s_addr) + DEFAULT_RECOMMENDED_VGUEST_OFFSET);
+finish:
+    return rc;
+}
+
+static int slirp4netns_config_from_cidr6(struct slirp4netns_config *cfg,
+                                         const char *cidr)
+{
+    int rc;
+    char net[INET6_ADDRSTRLEN];
+    char tmp[INET6_ADDRSTRLEN];
+    char portion[5];
+    rc = parse_cidr6(&cfg->vnetwork6, &cfg->vnetmask6, cidr);
+    if (rc < 0) {
+        goto finish;
+    }
+
+    if (inet_ntop(AF_INET6, &cfg->vnetwork6, net, INET6_ADDRSTRLEN) == NULL) {
+        return -1;
+    }
+
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+
+    snprintf(portion, sizeof(portion), "%u", DEFAULT_VHOST_OFFSET6);
+    strncpy(tmp, net, sizeof(tmp));
+    strncat(tmp, portion,
+            MAX(0, INET6_ADDRSTRLEN - strlen(tmp) - strlen(portion)));
+    if (inet_pton(AF_INET6, tmp, &cfg->vhost6) != 1) {
+        return -1;
+    }
+
+    snprintf(portion, sizeof(portion), "%u", DEFAULT_VDHCPSTART_OFFSET6);
+    strncpy(tmp, net, sizeof(tmp));
+    strncat(tmp, portion,
+            MAX(0, INET6_ADDRSTRLEN - strlen(tmp) - strlen(portion)));
+    if (inet_pton(AF_INET6, tmp, &cfg->vdhcp_start6) != 1) {
+        return -1;
+    }
+
+    snprintf(portion, sizeof(portion), "%u", DEFAULT_VNAMESERVER_OFFSET6);
+    strncpy(tmp, net, sizeof(tmp));
+    strncat(tmp, portion,
+            MAX(0, INET6_ADDRSTRLEN - strlen(tmp) - strlen(portion)));
+    if (inet_pton(AF_INET6, tmp, &cfg->vnameserver6) != 1) {
+        return -1;
+    }
+
+    snprintf(portion, sizeof(portion), "%u",
+             DEFAULT_RECOMMENDED_VGUEST_OFFSET6);
+    strncpy(tmp, net, sizeof(tmp));
+    strncat(tmp, portion,
+            MAX(0, INET6_ADDRSTRLEN - strlen(tmp) - strlen(portion)));
+    if (inet_pton(AF_INET6, tmp, &cfg->recommended_vguest6) != 1) {
+        return -1;
+    }
+#undef MAX
+
 finish:
     return rc;
 }
@@ -862,6 +1202,25 @@ static int slirp4netns_config_from_options(struct slirp4netns_config *cfg,
     cfg->disable_host_loopback = opt->disable_host_loopback;
     cfg->enable_sandbox = opt->enable_sandbox;
     cfg->enable_seccomp = opt->enable_seccomp;
+
+    if (cfg->enable_ipv6) {
+        const char *cidr = opt->cidr6;
+        if (cidr == NULL) {
+            cidr = DEFAULT_CIDR6;
+            if (opt->ipv6_random) {
+                cidr = pseudo_random_global_id("tap0");
+                if (cidr == NULL) {
+                    fprintf(stderr, "cannot create pseudo random global id\n");
+                    rc = -1;
+                    goto finish;
+                }
+            }
+        }
+        rc = slirp4netns_config_from_cidr6(cfg, cidr);
+        if (rc < 0) {
+            goto finish;
+        }
+    }
 
 #if SLIRP_CONFIG_VERSION_MAX >= 2
     cfg->enable_outbound_addr = false;

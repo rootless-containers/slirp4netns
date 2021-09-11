@@ -7,11 +7,16 @@ noinst_LIBRARIES = libparson.a
 AM_TESTS_ENVIRONMENT = PATH="$(abs_top_builddir):$(PATH)"
 TESTS = tests/test-slirp4netns-api-socket.sh \
 				tests/test-slirp4netns-cidr.sh \
+				tests/test-slirp4netns-cidr6.sh \
 				tests/test-slirp4netns-configure.sh \
 				tests/test-slirp4netns-dhcp.sh \
 				tests/test-slirp4netns-disable-dns.sh \
 				tests/test-slirp4netns-disable-host-loopback.sh \
 				tests/test-slirp4netns-exit-fd.sh \
+				tests/test-slirp4netns-hostfwd.sh \
+				tests/test-slirp4netns-hostfwd4.sh \
+				tests/test-slirp4netns-hostfwd6.sh \
+				tests/test-slirp4netns-ipv6.sh \
 				tests/test-slirp4netns-macaddress.sh \
 				tests/test-slirp4netns-nspath.sh \
 				tests/test-slirp4netns-outbound-addr.sh \
@@ -47,7 +52,7 @@ libparson_a_CFLAGS = $(AM_CFLAGS) -I$(abs_top_builddir)/vendor/parson
 libparson_a_SOURCES = vendor/parson/parson.c
 
 slirp4netns_SOURCES = main.c slirp4netns.c api.c sandbox.c seccompfilter.c
-slirp4netns_LDADD = libparson.a @GLIB_LIBS@ @SLIRP_LIBS@ @LIBSECCOMP_LIBS@ -lpthread
+slirp4netns_LDADD = libparson.a @GLIB_LIBS@ @SLIRP_LIBS@ @LIBSECCOMP_LIBS@ -lpthread -lcrypto
 man1_MANS = slirp4netns.1
 
 generate-man:
