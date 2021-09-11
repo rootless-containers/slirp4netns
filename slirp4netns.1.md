@@ -55,6 +55,12 @@ API socket path
 `--cidr` (since v0.3.0)
 specify CIDR, e.g. 10.0.2.0/24
 
+`--cidr6` (since v1.1.13, EXPERIMENTAL)
+specify IPv6 CIDR, e.g. fd00::/64
+
+`--ipv6-random` (since v1.1.13, EXPERIMENTAL)
+generate a random local IPv6 range
+
 `--disable-host-loopback` (since v0.3.0)
 prohibit connecting to 127.0.0.1:\* on the host namespace
 
@@ -139,7 +145,7 @@ starting slirp, MTU=65520
     link/ether c2:28:0c:0e:29:06 brd ff:ff:ff:ff:ff:ff
     inet 10.0.2.100/24 brd 10.0.2.255 scope global tap0
        valid_lft forever preferred_lft forever
-    inet6 fe80::c028:cff:fe0e:2906/64 scope link 
+    inet6 fe80::c028:cff:fe0e:2906/64 scope link
        valid_lft forever preferred_lft forever
 (namespace)$ echo "nameserver 10.0.2.3" > /tmp/resolv.conf
 (namespace)$ mount --bind /tmp/resolv.conf /etc/resolv.conf
@@ -207,13 +213,21 @@ slirp4netns can provide QMP-like API server over an UNIX socket file:
 (host)$ slirp4netns --api-socket /tmp/slirp4netns.sock ...
 ```
 
-`add_hostfwd`: Expose a port (IPv4 only)
+`add_hostfwd`: Expose a port (IPv4 and IPv6 if enabled and host_addr is "0.0.0.0" or "::")
 
 ```console
 (namespace)$ json='{"execute": "add_hostfwd", "arguments": {"proto": "tcp", "host_addr": "0.0.0.0", "host_port": 8080, "guest_addr": "10.0.2.100", "guest_port": 80}}'
 (namespace)$ echo -n $json | nc -U /tmp/slirp4netns.sock
 {"return": {"id": 42}}
 ```
+
+`add_hostfwd`: Expose a port (IPv4 only)
+
+specify `tcp4` as `proto`
+
+`add_hostfwd`: Expose a port (IPv6 only)
+
+specify `tcp6` as `proto`
 
 If `host_addr` is not specified, then it defaults to "0.0.0.0".
 
@@ -224,7 +238,7 @@ If `guest_addr` is not specified, then it will be set to the default address tha
 ```console
 (namespace)$ json='{"execute": "list_hostfwd"}'
 (namespace)$ echo -n $json | nc -U /tmp/slirp4netns.sock
-{"return": {"entries": [{"id": 42, "proto": "tcp", "host_addr": "0.0.0.0", "host_port": 8080, "guest_addr": "10.0.2.100", "guest_port": 80}]}}
+{"return": {"entries": [{"id": 42, "proto": "tcp", "host_addr": "0.0.0.0", "host_addr6": "::", "host_port": 8080, "guest_addr": "10.0.2.100", "guest_addr6": "fd00::100", "guest_port": 80}]}}
 ```
 
 `remove_hostfwd`: Remove an exposed port
@@ -243,7 +257,7 @@ Remarks:
 * A request must be less than 4096 bytes.
 * JSON responses may contain `error` instead of `return`.
 
-# DEFINED NAMESPACE PATHS 
+# DEFINED NAMESPACE PATHS
 A user can define a network namespace path as opposed to the default process ID:
 
 ```console
@@ -256,14 +270,14 @@ Additionally, a `--userns-path=PATH` argument can be included to override any us
 (host)$ slirp4netns --netns-type=path --userns-path=/path/to/userns /path/to/netns tap0
 ```
 
-# OUTBOUND ADDRESSES 
-A user can defined preferred outbound ipv4 and ipv6 address in multi IP scenarios. 
+# OUTBOUND ADDRESSES
+A user can defined preferred outbound ipv4 and ipv6 address in multi IP scenarios.
 
 ```console
 (host)$ slirp4netns --outbound-addr=10.2.2.10 --outbound-addr6=fe80::10 ...
 ```
 
-Optionally you can use interface names instead of ip addresses. 
+Optionally you can use interface names instead of ip addresses.
 
 ```console
 (host)$ slirp4netns --outbound-addr=eth0 --outbound-addr6=eth0 ...

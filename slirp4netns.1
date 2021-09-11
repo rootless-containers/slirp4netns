@@ -1,4 +1,3 @@
-.nh
 .TH SLIRP4NETNS 1 "June 2021" "Rootless Containers" "User Commands"
 
 .SH NAME
@@ -77,6 +76,14 @@ API socket path
 .PP
 \fB\fC\-\-cidr\fR (since v0.3.0)
 specify CIDR, e.g. 10.0.2.0/24
+
+.PP
+\fB\fC\-\-cidr6\fR (since v1.1.13, EXPERIMENTAL)
+specify IPv6 CIDR, e.g. fd00::/64
+
+.PP
+\fB\fC\-\-ipv6\-random\fR (since v1.1.13, EXPERIMENTAL)
+generate a random local IPv6 range
 
 .PP
 \fB\fC\-\-disable\-host\-loopback\fR (since v0.3.0)
@@ -199,7 +206,7 @@ starting slirp, MTU=65520
     link/ether c2:28:0c:0e:29:06 brd ff:ff:ff:ff:ff:ff
     inet 10.0.2.100/24 brd 10.0.2.255 scope global tap0
        valid\_lft forever preferred\_lft forever
-    inet6 fe80::c028:cff:fe0e:2906/64 scope link 
+    inet6 fe80::c028:cff:fe0e:2906/64 scope link
        valid\_lft forever preferred\_lft forever
 (namespace)$ echo "nameserver 10.0.2.3" > /tmp/resolv.conf
 (namespace)$ mount \-\-bind /tmp/resolv.conf /etc/resolv.conf
@@ -305,7 +312,7 @@ slirp4netns can provide QMP\-like API server over an UNIX socket file:
 .RE
 
 .PP
-\fB\fCadd\_hostfwd\fR: Expose a port (IPv4 only)
+\fB\fCadd\_hostfwd\fR: Expose a port (IPv4 and IPv6 if enabled and host\_addr is "0.0.0.0" or "::")
 
 .PP
 .RS
@@ -317,6 +324,18 @@ slirp4netns can provide QMP\-like API server over an UNIX socket file:
 
 .fi
 .RE
+
+.PP
+\fB\fCadd\_hostfwd\fR: Expose a port (IPv4 only)
+
+.PP
+specify \fB\fCtcp4\fR as \fB\fCproto\fR
+
+.PP
+\fB\fCadd\_hostfwd\fR: Expose a port (IPv6 only)
+
+.PP
+specify \fB\fCtcp6\fR as \fB\fCproto\fR
 
 .PP
 If \fB\fChost\_addr\fR is not specified, then it defaults to "0.0.0.0".
@@ -333,7 +352,7 @@ If \fB\fCguest\_addr\fR is not specified, then it will be set to the default add
 .nf
 (namespace)$ json='{"execute": "list\_hostfwd"}'
 (namespace)$ echo \-n $json | nc \-U /tmp/slirp4netns.sock
-{"return": {"entries": [{"id": 42, "proto": "tcp", "host\_addr": "0.0.0.0", "host\_port": 8080, "guest\_addr": "10.0.2.100", "guest\_port": 80}]}}
+{"return": {"entries": [{"id": 42, "proto": "tcp", "host\_addr": "0.0.0.0", "host\_addr6": "::", "host\_port": 8080, "guest\_addr": "10.0.2.100", "guest\_addr6": "fd00::100", "guest\_port": 80}]}}
 
 .fi
 .RE

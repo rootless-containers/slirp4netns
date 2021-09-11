@@ -1,4 +1,4 @@
-# slirp4netns: User-mode networking for unprivileged network namespaces 
+# slirp4netns: User-mode networking for unprivileged network namespaces
 
 slirp4netns provides user-mode networking ("slirp") for unprivileged network namespaces.
 
@@ -73,7 +73,7 @@ Also available as a package on almost all Linux distributions:
 * [Arch Linux](https://www.archlinux.org/packages/community/x86_64/slirp4netns/)
 * [openSUSE (since Leap 15.0)](https://build.opensuse.org/package/show/openSUSE%3AFactory/slirp4netns)
 * [SUSE Linux Enterprise (since 15)](https://build.opensuse.org/package/show/devel%3Akubic/slirp4netns)
-* [Debian GNU/Linux (since 10.0)](https://packages.debian.org/buster/slirp4netns) 
+* [Debian GNU/Linux (since 10.0)](https://packages.debian.org/buster/slirp4netns)
 * [Ubuntu (since 19.04)](https://packages.ubuntu.com/search?keywords=slirp4netns)
 * [NixOS](https://github.com/NixOS/nixpkgs/tree/master/pkgs/tools/networking/slirp4netns)
 * [Gentoo Linux](https://packages.gentoo.org/packages/app-emulation/slirp4netns)
@@ -126,7 +126,7 @@ starting slirp, MTU=65520
     link/ether c2:28:0c:0e:29:06 brd ff:ff:ff:ff:ff:ff
     inet 10.0.2.100/24 brd 10.0.2.255 scope global tap0
        valid_lft forever preferred_lft forever
-    inet6 fe80::c028:cff:fe0e:2906/64 scope link 
+    inet6 fe80::c028:cff:fe0e:2906/64 scope link
        valid_lft forever preferred_lft forever
 (namespace)$ echo "nameserver 10.0.2.3" > /tmp/resolv.conf
 (namespace)$ mount --bind /tmp/resolv.conf /etc/resolv.conf
@@ -187,7 +187,7 @@ $ make
 $ sudo make install
 ```
 
-* [libslirp](https://gitlab.freedesktop.org/slirp/libslirp) needs to be v4.1.0 or later.
+* [libslirp](https://gitlab.freedesktop.org/slirp/libslirp) needs to be v4.4.0.57 or later.
 * To build `slirp4netns` as a static binary, run `./configure` with `LDFLAGS=-static`.
 * If you set `--prefix` to `$HOME`, you don't need to run `make install` with `sudo`.
 
