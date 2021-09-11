@@ -43,7 +43,7 @@
 // + 100 .
 #define NETWORK_PREFIX_MAX (25)
 #define NETWORK_PREFIX_MIN6 (8)
-#define NETWORK_PREFIX_MAX6 (64)
+#define NETWORK_PREFIX_MAX6 (128)
 
 static int nsenter(pid_t target_pid, char *netns, char *userns,
                    bool only_userns)
@@ -241,7 +241,6 @@ static const char *pseudo_random_global_id(const char *device)
     ifr.ifr_flags = IFF_UP | IFF_RUNNING;
 
     if (device == NULL) {
-        /* TODO: which device should we get the mac address from? */
         device = "lo";
     }
     strncpy(ifr.ifr_name, device, sizeof(ifr.ifr_name) - 1);
@@ -312,7 +311,7 @@ static const char *pseudo_random_global_id(const char *device)
      *    ID to create a Local IPv6 address prefix.
      */
 
-    sprintf(id, "fd00:%s::", tmp);
+    sprintf(id, "fd00:%s::/64", tmp);
 
     return id;
 }
@@ -591,6 +590,7 @@ struct options {
     bool do_config_network; // -c
     bool disable_host_loopback; // --disable-host-loopback
     bool enable_ipv6; // -6
+    bool ipv6_random; // --ipv6-random
     bool enable_sandbox; // --enable-sandbox
     bool enable_seccomp; // --enable-seccomp
     bool disable_dns; // --disable-dns
@@ -663,8 +663,9 @@ static void parse_args(int argc, char *const argv[], struct options *options)
     char *optarg_outbound_addr = NULL;
     char *optarg_outbound_addr6 = NULL;
     char *optarg_macaddress = NULL;
-#define CIDR -41
-#define CIDR6 -42
+#define CIDR -40
+#define CIDR6 -41
+#define IPV6_RANDOM -42
 #define DISABLE_HOST_LOOPBACK -43
 #define NETNS_TYPE -44
 #define USERNS_PATH -45
@@ -691,6 +692,7 @@ static void parse_args(int argc, char *const argv[], struct options *options)
         { "userns-path", required_argument, NULL, USERNS_PATH },
         { "api-socket", required_argument, NULL, 'a' },
         { "enable-ipv6", no_argument, NULL, '6' },
+        { "ipv6-random", no_argument, NULL, IPV6_RANDOM },
         { "enable-sandbox", no_argument, NULL, ENABLE_SANDBOX },
         { "create-sandbox", no_argument, NULL, _DEPRECATED_CREATE_SANDBOX },
         { "enable-seccomp", no_argument, NULL, ENABLE_SECCOMP },
@@ -782,6 +784,9 @@ static void parse_args(int argc, char *const argv[], struct options *options)
         case '6':
             options->enable_ipv6 = true;
             printf("WARNING: Support for IPv6 is experimental\n");
+            break;
+        case IPV6_RANDOM:
+            options->ipv6_random = true;
             break;
         case 'h':
             usage(argv[0]);
@@ -982,29 +987,12 @@ static int parse_cidr6(struct in6_addr *network, struct in6_addr *netmask,
         fprintf(stderr, "invalid CIDR: %s\n", cidr);
         goto finish;
     }
-    rc = from_regmatch(snetwork_end, sizeof(snetwork_end), matches[2], cidr);
-    if (rc < 0) {
-        fprintf(stderr, "invalid CIDR: %s\n", cidr);
-        goto finish;
-    }
     rc = from_regmatch(sprefix, sizeof(sprefix), matches[4], cidr);
     if (rc < 0) {
         fprintf(stderr, "invalid CIDR: %s\n", cidr);
         goto finish;
     }
-    if (strcmp(snetwork, snetwork_end) == 0) {
-        random = pseudo_random_global_id(NULL);
-        if (random == NULL) {
-            fprintf(stderr, "cannot create pseudo random global id\n");
-            rc = -1;
-            goto finish;
-        }
-        strcpy(snetwork, random);
-        strcat(snetwork, "0");
-    } else {
-        strcat(snetwork, ":0");
-    }
-
+    strcat(snetwork, ":");
     if (inet_pton(AF_INET6, snetwork, network) != 1) {
         fprintf(stderr, "invalid network address: %s\n", snetwork);
         rc = -1;
@@ -1179,8 +1167,19 @@ static int slirp4netns_config_from_options(struct slirp4netns_config *cfg,
     cfg->enable_seccomp = opt->enable_seccomp;
 
     if (cfg->enable_ipv6) {
-        rc = slirp4netns_config_from_cidr6(cfg, opt->cidr6 == NULL ? DEFAULT_CIDR6 :
-                                                                     opt->cidr6);
+	const char *cidr = opt->cidr6;
+	if (cidr == NULL) {
+	    cidr = DEFAULT_CIDR6;
+            if (opt->ipv6_random) {
+                cidr = pseudo_random_global_id("lo");
+                if (cidr == NULL) {
+                    fprintf(stderr, "cannot create pseudo random global id\n");
+                    rc = -1;
+                    goto finish;
+                }
+	    }
+	}
+        rc = slirp4netns_config_from_cidr6(cfg, cidr);
         if (rc < 0) {
             goto finish;
         }
