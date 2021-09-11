@@ -228,7 +228,7 @@ static const char *pseudo_random_global_id(const char *device)
     unsigned char hash[SHA_DIGEST_LENGTH];
     struct ntptimeval ntv;
     struct ifreq ifr;
-    const unsigned char *mac;
+    unsigned char mac[18];
     int sockfd;
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -246,11 +246,20 @@ static const char *pseudo_random_global_id(const char *device)
     strncpy(ifr.ifr_name, device, sizeof(ifr.ifr_name) - 1);
 
     if (ioctl(sockfd, SIOCGIFHWADDR, &ifr) < 0) {
-        perror("cannot get dev hwaddr");
-        return NULL;
+	int rand = open("/dev/urandom", O_RDONLY);
+	if (rand == -1) {
+	    rand = open("/dev/random", O_RDONLY);
+	}
+	if (rand == -1) {
+            perror("cannot get dev hwaddr and cannot open random");
+            return NULL;
+	}
+	read(rand, &mac, sizeof(mac));
+	close(rand);
     }
-
-    mac = (unsigned char*)ifr.ifr_ifru.ifru_addr.sa_data;
+    else {
+        strncpy(mac, ifr.ifr_ifru.ifru_addr.sa_data, sizeof(mac));
+    }
 
     /* https://tools.ietf.org/html/rfc4193
      *
@@ -1177,7 +1186,7 @@ static int slirp4netns_config_from_options(struct slirp4netns_config *cfg,
 	if (cidr == NULL) {
 	    cidr = DEFAULT_CIDR6;
             if (opt->ipv6_random) {
-                cidr = pseudo_random_global_id("lo");
+                cidr = pseudo_random_global_id("tap0");
                 if (cidr == NULL) {
                     fprintf(stderr, "cannot create pseudo random global id\n");
                     rc = -1;
