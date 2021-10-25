@@ -18,7 +18,7 @@ jobs:
     - uses: actions/checkout@v2
     - run: DOCKER_BUILDKIT=1 docker build -f Dockerfile.buildtests .
   test-centos7:
-    # vagrant is now installed on macOS 11 instances
+    # vagrant is not installed on macOS 11 instances
     runs-on: macos-10.15
     env:
       LIBSECCOMP_COMMIT: v2.3.3
