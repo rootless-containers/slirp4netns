@@ -12,6 +12,13 @@ struct slirp4netns_config {
     struct in_addr vnameserver; // 10.0.2.3
     struct in_addr
         recommended_vguest; // 10.0.2.100 (slirp itself is unaware of vguest)
+    struct in6_addr vnetwork6; // fd00:RANDOM:0
+    struct in6_addr vnetmask6; // /64
+    struct in6_addr vhost6; // fd00:RANDOM:2
+    struct in6_addr vdhcp_start6; // fd00:RANDOM:15
+    struct in6_addr vnameserver6; // fd00:RANDOM:3
+    struct in6_addr
+        recommended_vguest6; // fdd00::RANDOM:100 (slirp itself is unaware of vguest)
     bool enable_ipv6;
     bool disable_host_loopback;
     bool enable_sandbox;

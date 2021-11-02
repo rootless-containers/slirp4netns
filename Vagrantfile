@@ -20,8 +20,8 @@ Vagrant.configure("2") do |config|
       yum install -y \
         autoconf automake make gcc gperf libtool \
         git-core meson ninja-build \
-        glib2-devel libcap-devel \
-        git-core libtool iproute iputils iperf3 nmap jq
+        glib2-devel libcap-devel openssl-devel \
+        git-core libtool iproute iputils iperf3 nmap jq socat
 
       # TODO: install udhcpc (required by test-slirp4netns-dhcp.sh)
 
