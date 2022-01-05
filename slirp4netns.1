@@ -1,5 +1,5 @@
 .nh
-.TH SLIRP4NETNS 1 "June 2021" "Rootless Containers" "User Commands"
+.TH SLIRP4NETNS 1 "January 2022" "Rootless Containers" "User Commands"
 
 .SH NAME
 .PP
@@ -8,7 +8,7 @@ slirp4netns \- User\-mode networking for unprivileged network namespaces
 
 .SH SYNOPSIS
 .PP
-slirp4netns [OPTION]... PID|PATH TAPNAME
+slirp4netns [OPTION]... PID|PATH [TAPNAME]
 
 
 .SH DESCRIPTION
@@ -130,6 +130,14 @@ disable built\-in DNS (10.0.2.3 by default)
 .PP
 \fB\fC\-\-macaddress\fR (since v1.1.9)
 specify MAC address of the TAP interface (only valid with \-c)
+
+.PP
+\fB\fC\-\-target\-type=TYPE\fR (since v1.2.0)
+specify the target type ([netns|bess], default=netns).
+
+.PP
+The \fB\fCbess\fR mode (since v1.2.0, EXPERIMENTAL) is expected to be used with User Mode Linux.
+The \fB\fCbess\fR mode conflicts with \fB\fC\-\-configure\fR, \fB\fC\-\-netns\-type\fR, and \fB\fC\-\-userns\-path\fR\&.
 
 .PP
 \fB\fC\-h\fR, \fB\fC\-\-help\fR (since v0.2.0)
@@ -481,6 +489,44 @@ To allow communication across multiple slirp4netns instances, you need to combin
 .PP
 VXLAN is known to work.
 See Usernetes project for the example of multi\-node rootless Kubernetes cluster with VXLAN: \fB\fChttps://github.com/rootless\-containers/usernetes\fR
+
+
+.SH BESS MODE (FOR USER MODE LINUX)
+.PP
+slirp4netns (since v1.2.0) can be also used as a BESS\-compatible server to provide network connectivity to User Mode Linux.
+
+.PP
+\fBTerminal 1\fP: Start slirp4netns
+
+.PP
+.RS
+
+.nf
+(host)$ slirp4netns \-\-target\-type=bess /tmp/bess.sock
+
+.fi
+.RE
+
+.PP
+\fBTerminal 2\fP: Start User Mode Linux
+
+.PP
+.RS
+
+.nf
+(host)$ linux.uml vec0:transport=bess,dst=/tmp/bess.sock,depth=128,gro=1 root=/dev/root rootfstype=hostfs init=/bin/bash mem=2G
+(UML)$ ip addr add 10.0.2.100/24 dev vec0
+(UML)$ ip link set vec0 up
+(UML)$ ip route add default via 10.0.2.2
+
+.fi
+.RE
+
+.PP
+Currently, only a single instance of User Mode Linux can be connected to the slirp4netns BESS server.
+
+.PP
+See also User Mode Linux documentation: \fB\fChttps://www.kernel.org/doc/html/latest/virt/uml/user\_mode\_linux\_howto\_v2.html#bess\-socket\-transport\fR
 
 
 .SH BUGS
