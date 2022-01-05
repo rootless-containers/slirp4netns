@@ -83,6 +83,10 @@ static int open_tap(const char *tapname)
 {
     int fd;
     struct ifreq ifr;
+    if (tapname == NULL) {
+        fprintf(stderr, "tapname is NULL\n");
+        return -1;
+    }
     if ((fd = open("/dev/net/tun", O_RDWR)) < 0) {
         perror("open(\"/dev/net/tun\")");
         return fd;
