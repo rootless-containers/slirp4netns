@@ -11,6 +11,7 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/un.h>
 #include <sys/wait.h>
 #include <linux/if_tun.h>
 #include <arpa/inet.h>
@@ -31,6 +32,7 @@
 #define DEFAULT_VNAMESERVER_OFFSET (3) // 10.0.2.3
 #define DEFAULT_RECOMMENDED_VGUEST_OFFSET (100) // 10.0.2.100
 #define DEFAULT_NETNS_TYPE ("pid")
+#define DEFAULT_TARGET_TYPE ("netns")
 #define NETWORK_PREFIX_MIN (1)
 // >=26 is not supported because the recommended guest IP is set to network addr
 // + 100 .
@@ -81,6 +83,10 @@ static int open_tap(const char *tapname)
 {
     int fd;
     struct ifreq ifr;
+    if (tapname == NULL) {
+        fprintf(stderr, "tapname is NULL\n");
+        return -1;
+    }
     if ((fd = open("/dev/net/tun", O_RDWR)) < 0) {
         perror("open(\"/dev/net/tun\")");
         return fd;
@@ -205,6 +211,7 @@ static int configure_network(const char *tapname,
     return 0;
 }
 
+/* Child (--target-type=netns) */
 static int child(int sock, pid_t target_pid, bool do_config_network,
                  const char *tapname, char *netns_path, char *userns_path,
                  struct slirp4netns_config *cfg)
@@ -227,6 +234,70 @@ static int child(int sock, pid_t target_pid, bool do_config_network,
     fprintf(stderr, "sent tapfd=%d for %s\n", tapfd, tapname);
     close(sock);
     return 0;
+}
+
+/*
+ * Child (--target-type=bess)
+ *
+ * FIXME: We do not really need to fork the child for BESS mode
+ */
+static int child_bess(int sock, const char *bess_socket)
+{
+    int bess_listenfd = -1, bess_acceptfd = -1;
+    struct sockaddr_un bess_listenaddr, bess_acceptaddr;
+    socklen_t bess_acceptaddrlen = sizeof(struct sockaddr_un);
+    memset(&bess_acceptaddr, 0, sizeof(bess_acceptaddr));
+    memset(&bess_listenaddr, 0, sizeof(bess_listenaddr));
+
+    /* Listen on the BESS socket */
+    if ((bess_listenfd = socket(AF_UNIX, SOCK_SEQPACKET, 0)) == -1) {
+        perror("child_bess: socket");
+        goto error;
+    }
+    bess_listenaddr.sun_family = AF_UNIX;
+    if (bess_socket == NULL) {
+        fprintf(stderr, "the specified BESS socket path is NULL\n");
+        goto error;
+    }
+    if (strlen(bess_socket) >= sizeof(bess_listenaddr.sun_path)) {
+        fprintf(stderr, "the specified BESS socket path is too long (>= %lu)\n",
+                sizeof(bess_listenaddr.sun_path));
+        goto error;
+    }
+    strncpy(bess_listenaddr.sun_path, bess_socket,
+            sizeof(bess_listenaddr.sun_path) - 1);
+    unlink(bess_socket); /* avoid EADDRINUSE */
+    if (bind(bess_listenfd, (struct sockaddr *)&bess_listenaddr,
+             sizeof(bess_listenaddr)) < 0) {
+        perror("child_bess: bind");
+        goto error;
+    }
+    if (listen(bess_listenfd, 0) < 0) {
+        perror("child_bess: listen");
+        goto error;
+    }
+
+    /* Accept a connection, and send its connection to the parent */
+    fprintf(stderr, "Waiting for connection to %s\n", bess_socket);
+    if ((bess_acceptfd =
+             accept(bess_listenfd, (struct sockaddr *)&bess_acceptaddr,
+                    &bess_acceptaddrlen)) < 0) {
+        perror("child_bess: accept");
+        goto error;
+    }
+    if (sendfd(sock, bess_acceptfd) < 0) {
+        goto error;
+    }
+    fprintf(stderr, "sent \"tapfd\"=%d (not really TAP) for %s\n",
+            bess_acceptfd, bess_socket);
+    close(sock);
+    close(bess_listenfd);
+    return 0;
+error:
+    close(bess_acceptfd);
+    close(bess_listenfd);
+    close(sock);
+    return -1;
 }
 
 static int recvfd(int sock)
@@ -341,7 +412,7 @@ static int parent(int sock, int ready_fd, int exit_fd, const char *api_socket,
 
 static void usage(const char *argv0)
 {
-    printf("Usage: %s [OPTION]... PID|PATH TAPNAME\n", argv0);
+    printf("Usage: %s [OPTION]... PID|PATH [TAPNAME]\n", argv0);
     printf("User-mode networking for unprivileged network namespaces.\n\n");
     printf("-c, --configure          bring up the interface\n");
     printf("-e, --exit-fd=FD         specify the FD for terminating "
@@ -380,8 +451,13 @@ static void usage(const char *argv0)
     printf("--disable-dns            disables 10.0.2.3 (or configured internal "
            "ip) to host dns redirect (experimental)\n");
 #endif
+    /* v1.1.9 */
     printf("--macaddress=MAC         specify the MAC address of the TAP (only "
            "valid with -c)\n");
+    /* v1.2.0 */
+    printf("--target-type=TYPE       specify the target type ([netns|bess], "
+           "default=%s)\n",
+           DEFAULT_TARGET_TYPE);
     /* others */
     printf("-h, --help               show this help and exit\n");
     printf("-v, --version            show version and exit\n");
@@ -424,6 +500,8 @@ struct options {
     bool enable_seccomp; // --enable-seccomp
     bool disable_dns; // --disable-dns
     char *macaddress; // --macaddress
+    char *target_type; // --target-type
+    char *bess_socket; // argv[1] (When --target-type="bess")
 };
 
 static void options_init(struct options *options)
@@ -471,6 +549,14 @@ static void options_destroy(struct options *options)
         free(options->macaddress);
         options->macaddress = NULL;
     }
+    if (options->target_type != NULL) {
+        free(options->target_type);
+        options->target_type = NULL;
+    }
+    if (options->bess_socket != NULL) {
+        free(options->bess_socket);
+        options->bess_socket = NULL;
+    }
 }
 
 // * caller does not need to call options_init()
@@ -487,6 +573,7 @@ static void parse_args(int argc, char *const argv[], struct options *options)
     char *optarg_outbound_addr = NULL;
     char *optarg_outbound_addr6 = NULL;
     char *optarg_macaddress = NULL;
+    char *optarg_target_type = NULL;
 #define CIDR -42
 #define DISABLE_HOST_LOOPBACK -43
 #define NETNS_TYPE -44
@@ -497,6 +584,7 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 #define OUTBOUND_ADDR6 -49
 #define DISABLE_DNS -50
 #define MACADDRESS -51
+#define TARGET_TYPE -52
 #define _DEPRECATED_NO_HOST_LOOPBACK \
     -10043 // deprecated in favor of disable-host-loopback
 #define _DEPRECATED_CREATE_SANDBOX \
@@ -522,6 +610,7 @@ static void parse_args(int argc, char *const argv[], struct options *options)
         { "outbound-addr6", required_argument, NULL, OUTBOUND_ADDR6 },
         { "disable-dns", no_argument, NULL, DISABLE_DNS },
         { "macaddress", required_argument, NULL, MACADDRESS },
+        { "target-type", required_argument, NULL, TARGET_TYPE },
         { 0, 0, 0, 0 },
     };
     options_init(options);
@@ -624,6 +713,9 @@ static void parse_args(int argc, char *const argv[], struct options *options)
         case MACADDRESS:
             optarg_macaddress = optarg;
             break;
+        case TARGET_TYPE:
+            optarg_target_type = optarg;
+            break;
         default:
             goto error;
             break;
@@ -656,6 +748,9 @@ static void parse_args(int argc, char *const argv[], struct options *options)
             options->macaddress = strdup(optarg_macaddress);
         }
     }
+    if (optarg_target_type != NULL) {
+        options->target_type = strdup(optarg_target_type);
+    }
 #undef CIDR
 #undef DISABLE_HOST_LOOPBACK
 #undef NETNS_TYPE
@@ -667,8 +762,48 @@ static void parse_args(int argc, char *const argv[], struct options *options)
 #undef OUTBOUND_ADDR6
 #undef DISABLE_DNS
 #undef MACADDRESS
+#undef TARGET_TYPE
+
+    /* BESS mode */
+    if (options->target_type != NULL &&
+        strcmp(options->target_type, "bess") == 0) {
+        if (argc - optind < 1) {
+            goto error;
+        }
+        if (argc - optind > 1) {
+            fprintf(stderr, "too many arguments\n");
+            goto error;
+        }
+        options->bess_socket = strdup(argv[optind]);
+        if (options->do_config_network) {
+            fprintf(stderr, "--configure conflicts with --target-type=bess\n");
+            goto error;
+        }
+        if (options->netns_type != NULL) {
+            fprintf(stderr, "--netns-type conflicts with --target-type=bess\n");
+            goto error;
+        }
+        if (options->userns_path != NULL) {
+            fprintf(stderr,
+                    "--userns-path conflicts with --target-type=bess\n");
+            goto error;
+        }
+        printf("WARNING: BESS mode is experimental\n");
+        return;
+    }
+
+    /* NetNS mode*/
+    if (options->target_type != NULL &&
+        strcmp(options->target_type, "netns") != 0) {
+        fprintf(stderr, "--target-type must be either \"netns\" or \"bess\"\n");
+        goto error;
+    }
     if (argc - optind < 2) {
         goto error;
+    }
+    if (argc - optind > 2) {
+        // not an error, for preventing potential compatibility issue
+        printf("WARNING: too many arguments\n");
     }
     if (!options->netns_type ||
         strcmp(options->netns_type, DEFAULT_NETNS_TYPE) == 0) {
@@ -970,9 +1105,16 @@ int main(int argc, char *const argv[])
         goto finish;
     }
     if (child_pid == 0) {
-        if (child(sv[1], options.target_pid, options.do_config_network,
-                  options.tapname, options.netns_path, options.userns_path,
-                  &slirp4netns_config) < 0) {
+        int ret;
+        if (options.target_type != NULL &&
+            strcmp(options.target_type, "bess") == 0) {
+            ret = child_bess(sv[1], options.bess_socket);
+        } else {
+            ret = child(sv[1], options.target_pid, options.do_config_network,
+                        options.tapname, options.netns_path,
+                        options.userns_path, &slirp4netns_config);
+        }
+        if (ret < 0) {
             exit_status = EXIT_FAILURE;
             goto finish;
         }

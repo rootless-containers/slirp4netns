@@ -1,4 +1,4 @@
-SLIRP4NETNS 1 "June 2021" "Rootless Containers" "User Commands"
+SLIRP4NETNS 1 "January 2022" "Rootless Containers" "User Commands"
 ==================================================
 
 # NAME
@@ -7,7 +7,7 @@ slirp4netns - User-mode networking for unprivileged network namespaces
 
 # SYNOPSIS
 
-slirp4netns [OPTION]... PID|PATH TAPNAME
+slirp4netns [OPTION]... PID|PATH [TAPNAME]
 
 # DESCRIPTION
 
@@ -94,6 +94,12 @@ disable built-in DNS (10.0.2.3 by default)
 
 `--macaddress` (since v1.1.9)
 specify MAC address of the TAP interface (only valid with -c)
+
+`--target-type=TYPE` (since v1.2.0)
+specify the target type ([netns|bess], default=netns).
+
+The `bess` mode (since v1.2.0, EXPERIMENTAL) is expected to be used with User Mode Linux.
+The `bess` mode conflicts with `--configure`, `--netns-type`, and `--userns-path`.
 
 `-h`, `--help` (since v0.2.0)
 show help and exit
@@ -314,6 +320,28 @@ To allow communication across multiple slirp4netns instances, you need to combin
 
 VXLAN is known to work.
 See Usernetes project for the example of multi-node rootless Kubernetes cluster with VXLAN: `https://github.com/rootless-containers/usernetes`
+
+# BESS MODE (FOR USER MODE LINUX)
+slirp4netns (since v1.2.0) can be also used as a BESS-compatible server to provide network connectivity to User Mode Linux.
+
+**Terminal 1**: Start slirp4netns
+
+```console
+(host)$ slirp4netns --target-type=bess /tmp/bess.sock
+```
+
+**Terminal 2**: Start User Mode Linux
+
+```console
+(host)$ linux.uml vec0:transport=bess,dst=/tmp/bess.sock,depth=128,gro=1 root=/dev/root rootfstype=hostfs init=/bin/bash mem=2G
+(UML)$ ip addr add 10.0.2.100/24 dev vec0
+(UML)$ ip link set vec0 up
+(UML)$ ip route add default via 10.0.2.2
+```
+
+Currently, only a single instance of User Mode Linux can be connected to the slirp4netns BESS server.
+
+See also User Mode Linux documentation: `https://www.kernel.org/doc/html/latest/virt/uml/user_mode_linux_howto_v2.html#bess-socket-transport`
 
 # BUGS
 
