@@ -34,7 +34,7 @@ Vagrant.configure("2") do |config|
         git clone --depth=1 --no-checkout https://github.com/seccomp/libseccomp
         git -C ./libseccomp fetch --tags --depth=1
 
-        git clone --depth=1 --no-checkout https://gitlab.freedesktop.org/slirp/libslirp.git
+        git clone --depth=1 --no-checkout git://git.qemu.org/libslirp.git
         git -C ./libslirp fetch --tags --depth=1
 
         touch ./build-and-test
