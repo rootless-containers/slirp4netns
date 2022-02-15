@@ -336,6 +336,7 @@ static int recvfd(int sock)
 static int parent(int sock, int ready_fd, int exit_fd, const char *api_socket,
                   struct slirp4netns_config *cfg, pid_t target_pid)
 {
+    char str[INET6_ADDRSTRLEN];
     int rc, tapfd;
     struct in_addr vdhcp_end = {
 #define NB_BOOTP_CLIENTS 16
@@ -351,25 +352,32 @@ static int parent(int sock, int ready_fd, int exit_fd, const char *api_socket,
     close(sock);
     printf("Starting slirp\n");
     printf("* MTU:             %d\n", cfg->mtu);
-    printf("* Network:         %s\n", inet_ntoa(cfg->vnetwork));
-    printf("* Netmask:         %s\n", inet_ntoa(cfg->vnetmask));
-    printf("* Gateway:         %s\n", inet_ntoa(cfg->vhost));
-    printf("* DNS:             %s\n", inet_ntoa(cfg->vnameserver));
-    printf("* DHCP begin:      %s\n", inet_ntoa(cfg->vdhcp_start));
-    printf("* DHCP end:        %s\n", inet_ntoa(vdhcp_end));
-    printf("* Recommended IP:  %s\n", inet_ntoa(cfg->recommended_vguest));
+    printf("* Network:         %s\n",
+           inet_ntop(AF_INET, &cfg->vnetwork, str, sizeof(str)));
+    printf("* Netmask:         %s\n",
+           inet_ntop(AF_INET, &cfg->vnetmask, str, sizeof(str)));
+    printf("* Gateway:         %s\n",
+           inet_ntop(AF_INET, &cfg->vhost, str, sizeof(str)));
+    printf("* DNS:             %s\n",
+           inet_ntop(AF_INET, &cfg->vnameserver, str, sizeof(str)));
+    printf("* DHCP begin:      %s\n",
+           inet_ntop(AF_INET, &cfg->vdhcp_start, str, sizeof(str)));
+    printf("* DHCP end:        %s\n",
+           inet_ntop(AF_INET, &vdhcp_end, str, sizeof(str)));
+    printf("* Recommended IP:  %s\n",
+           inet_ntop(AF_INET, &cfg->recommended_vguest, str, sizeof(str)));
     if (api_socket != NULL) {
         printf("* API Socket:      %s\n", api_socket);
     }
 #if SLIRP_CONFIG_VERSION_MAX >= 2
     if (cfg->enable_outbound_addr) {
-        printf("* Outbound IPv4:    %s\n",
-               inet_ntoa(cfg->outbound_addr.sin_addr));
+        printf(
+            "* Outbound IPv4:    %s\n",
+            inet_ntop(AF_INET, &cfg->outbound_addr.sin_addr, str, sizeof(str)));
     }
     if (cfg->enable_outbound_addr6) {
-        char str[INET6_ADDRSTRLEN];
         if (inet_ntop(AF_INET6, &cfg->outbound_addr6.sin6_addr, str,
-                      INET6_ADDRSTRLEN) != NULL) {
+                      sizeof(str)) != NULL) {
             printf("* Outbound IPv6:    %s\n", str);
         }
     }
@@ -383,7 +391,7 @@ static int parent(int sock, int ready_fd, int exit_fd, const char *api_socket,
         printf(
             "WARNING: 127.0.0.1:* on the host is accessible as %s (set "
             "--disable-host-loopback to prohibit connecting to 127.0.0.1:*)\n",
-            inet_ntoa(cfg->vhost));
+            inet_ntop(AF_INET, &cfg->vhost, str, sizeof(str)));
     }
     if (cfg->enable_sandbox && geteuid() != 0) {
         if ((rc = nsenter(target_pid, NULL, NULL, true)) < 0) {
