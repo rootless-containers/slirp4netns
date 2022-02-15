@@ -30,7 +30,7 @@ AC_FUNC_STRTOD
 AC_FUNC_FORK
 AC_FUNC_MALLOC
 AC_FUNC_REALLOC
-AC_CHECK_FUNCS([atexit clock_gettime dup2 getopt_long inet_ntoa memmove memset mkdir regcomp rmdir socket strcasecmp strchr strdup strerror strstr strtol strtoul])
+AC_CHECK_FUNCS([atexit clock_gettime dup2 getopt_long memmove memset mkdir regcomp rmdir socket strcasecmp strchr strdup strerror strstr strtol strtoul])
 
 PKG_CHECK_MODULES(GLIB, glib-2.0)
 PKG_CHECK_MODULES(SLIRP, slirp >= 4.1.0)
