@@ -708,11 +708,11 @@ static void parse_args(int argc, char *const argv[], struct options *options)
             exit(EXIT_SUCCESS);
             break;
         case OUTBOUND_ADDR:
-            printf("WARNING: Support for --outbount-addr is experimental\n");
+            printf("WARNING: Support for --outbound-addr is experimental\n");
             optarg_outbound_addr = optarg;
             break;
         case OUTBOUND_ADDR6:
-            printf("WARNING: Support for --outbount-addr6 is experimental\n");
+            printf("WARNING: Support for --outbound-addr6 is experimental\n");
             optarg_outbound_addr6 = optarg;
             break;
         case DISABLE_DNS:
