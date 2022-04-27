@@ -5,7 +5,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        libslirp_commit: [master, v4.6.1, v4.5.0, v4.1.0]
+        libslirp_commit: [master, v4.7.0, v4.6.1, v4.1.0]
     steps:
     - uses: actions/checkout@v2
     - run: docker build -t slirp4netns-tests --build-arg LIBSLIRP_COMMIT -f Dockerfile.tests .
@@ -47,8 +47,8 @@ jobs:
     - name: Build and test with recent versions of libseccomp/libslirp
       run: sh ./run-vagrant-tests
       env:
-        LIBSECCOMP_COMMIT: v2.5.0
-        LIBSLIRP_COMMIT: v4.6.1
+        LIBSECCOMP_COMMIT: v2.5.4
+        LIBSLIRP_COMMIT: v4.7.0
   artifact:
     runs-on: ubuntu-20.04
     steps:
