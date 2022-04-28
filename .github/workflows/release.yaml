@@ -13,14 +13,14 @@ jobs:
       run: docker run --privileged --rm tonistiigi/binfmt --install all
     - name: "Fetch buildx binary"
       run: |
-        wget -O buildx https://github.com/docker/buildx/releases/download/v0.4.2/buildx-v0.4.2.linux-amd64
+        wget -O buildx https://github.com/docker/buildx/releases/download/v0.8.2/buildx-v0.8.2.linux-amd64
         chmod +x buildx
     - name: "Initialize buildx"
       run: |
-        ./buildx create --name cross --platform=amd64,arm,arm64,s390x,ppc64le  --use
+        ./buildx create --name cross --platform=amd64,arm,arm64,s390x,ppc64le,riscv64  --use
         ./buildx inspect --bootstrap
     - name: "Build binaries from Dockerfile.artifact"
-      run: ./buildx build -o /tmp --platform=amd64,arm64,arm,s390x,ppc64le -f Dockerfile.artifact .
+      run: ./buildx build -o /tmp --platform=amd64,arm64,arm,s390x,ppc64le,riscv64 -f Dockerfile.artifact .
     - name: "Create /tmp/artifact"
       run: |
         mkdir -p /tmp/artifact
@@ -29,6 +29,7 @@ jobs:
         mv /tmp/linux_arm_v7/slirp4netns /tmp/artifact/slirp4netns-armv7l
         mv /tmp/linux_s390x/slirp4netns /tmp/artifact/slirp4netns-s390x
         mv /tmp/linux_ppc64le/slirp4netns /tmp/artifact/slirp4netns-ppc64le
+        mv /tmp/linux_riscv64/slirp4netns /tmp/artifact/slirp4netns-riscv64
     - name: "SHA256SUMS"
       run: (cd /tmp/artifact; sha256sum *) | tee /tmp/SHA256SUMS
     - name: "The sha256sum of the SHA256SUMS file"
