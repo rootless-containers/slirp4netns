@@ -1,6 +1,6 @@
 ARG LIBSLIRP_COMMIT=v4.7.0
 
-FROM ubuntu:20.04 AS build
+FROM ubuntu:22.04 AS build
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update && apt install -y automake autotools-dev make gcc libglib2.0-dev libcap-dev libseccomp-dev git ninja-build python3-pip
 RUN pip3 install meson
