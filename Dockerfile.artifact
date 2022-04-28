@@ -1,7 +1,7 @@
 ARG LIBSLIRP_COMMIT=v4.7.0
-ARG DEBIAN_VERSION=11
+ARG UBUNTU_VERSION=22.04
 
-FROM --platform=$TARGETPLATFORM debian:${DEBIAN_VERSION} AS build
+FROM --platform=$TARGETPLATFORM ubuntu:${UBUNTU_VERSION} AS build
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update && apt install -y automake autotools-dev make gcc libglib2.0-dev libcap-dev libseccomp-dev git ninja-build python3-pip
 RUN pip3 install meson

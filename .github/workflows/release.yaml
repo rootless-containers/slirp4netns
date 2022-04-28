@@ -39,7 +39,7 @@ jobs:
         shasha=$(sha256sum /tmp/SHA256SUMS | awk '{print $1}')
         libslirp_version=$(/tmp/artifact/slirp4netns-x86_64 -v | grep -oP '^libslirp: \K\S*')
         libseccomp_version=$(/tmp/artifact/slirp4netns-x86_64 -v | grep -oP '^libseccomp: \K\S*')
-        debian_version=$(grep -oP '^ARG DEBIAN_VERSION=\K\S*' Dockerfile.artifact)
+        ubuntu_version=$(grep -oP '^ARG UBUNTU_VERSION=\K\S*' Dockerfile.artifact)
         cat << EOF | tee /tmp/release-note.txt
         ${tag}
 
@@ -53,7 +53,7 @@ jobs:
         \`\`\`
 
         #### About the binaries
-        The binaries are statically linked with libslirp ${libslirp_version} and libseccomp ${libseccomp_version} using Debian ${debian_version}.
+        The binaries are statically linked with libslirp ${libslirp_version} and libseccomp ${libseccomp_version} using Ubuntu ${ubuntu_version}.
 
         The binaries were built automatically on GitHub Actions.
         The build log is available for 90 days: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
