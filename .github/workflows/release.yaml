@@ -1,26 +1,17 @@
 name: Release
 on:
   push:
-    tags:
-    - 'v*'
+  pull_request:
 
 jobs:
   release:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v2
-    - name: "Register QEMU to /proc/sys/fs/binfmt_misc"
-      run: docker run --privileged --rm tonistiigi/binfmt --install all
-    - name: "Fetch buildx binary"
-      run: |
-        wget -O buildx https://github.com/docker/buildx/releases/download/v0.4.2/buildx-v0.4.2.linux-amd64
-        chmod +x buildx
-    - name: "Initialize buildx"
-      run: |
-        ./buildx create --name cross --platform=amd64,arm,arm64,s390x,ppc64le  --use
-        ./buildx inspect --bootstrap
+    - uses: actions/checkout@v3
+    - uses: docker/setup-qemu-action@v1
+    - uses: docker/setup-buildx-action@v1
     - name: "Build binaries from Dockerfile.artifact"
-      run: ./buildx build -o /tmp --platform=amd64,arm64,arm,s390x,ppc64le -f Dockerfile.artifact .
+      run: docker buildx build -o /tmp --platform=amd64,arm64,arm,s390x,ppc64le,riscv64 -f Dockerfile.artifact .
     - name: "Create /tmp/artifact"
       run: |
         mkdir -p /tmp/artifact
@@ -29,6 +20,7 @@ jobs:
         mv /tmp/linux_arm_v7/slirp4netns /tmp/artifact/slirp4netns-armv7l
         mv /tmp/linux_s390x/slirp4netns /tmp/artifact/slirp4netns-s390x
         mv /tmp/linux_ppc64le/slirp4netns /tmp/artifact/slirp4netns-ppc64le
+        mv /tmp/linux_riscv64/slirp4netns /tmp/artifact/slirp4netns-riscv64
     - name: "SHA256SUMS"
       run: (cd /tmp/artifact; sha256sum *) | tee /tmp/SHA256SUMS
     - name: "The sha256sum of the SHA256SUMS file"
@@ -39,7 +31,7 @@ jobs:
         shasha=$(sha256sum /tmp/SHA256SUMS | awk '{print $1}')
         libslirp_version=$(/tmp/artifact/slirp4netns-x86_64 -v | grep -oP '^libslirp: \K\S*')
         libseccomp_version=$(/tmp/artifact/slirp4netns-x86_64 -v | grep -oP '^libseccomp: \K\S*')
-        debian_version=$(grep -oP '^ARG DEBIAN_VERSION=\K\S*' Dockerfile.artifact)
+        ubuntu_version=$(grep -oP '^ARG UBUNTU_VERSION=\K\S*' Dockerfile.artifact)
         cat << EOF | tee /tmp/release-note.txt
         ${tag}
 
@@ -53,7 +45,7 @@ jobs:
         \`\`\`
 
         #### About the binaries
-        The binaries are statically linked with libslirp ${libslirp_version} and libseccomp ${libseccomp_version} using Debian ${debian_version}.
+        The binaries are statically linked with libslirp ${libslirp_version} and libseccomp ${libseccomp_version} using Ubuntu ${ubuntu_version}.
 
         The binaries were built automatically on GitHub Actions.
         The build log is available for 90 days: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -61,6 +53,7 @@ jobs:
         The sha256sum of the SHA256SUMS file itself is \`${shasha}\` .
         EOF
     - name: "Create release"
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |

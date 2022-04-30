@@ -65,7 +65,7 @@ See https://github.com/rootless-containers/slirp4netns/security/advisories for t
 
 ### Install
 
-Statically linked binaries available for x86\_64, aarch64, armv7l, s390x, and ppc64le: https://github.com/rootless-containers/slirp4netns/releases
+Statically linked binaries available for x86\_64, aarch64, armv7l, s390x, ppc64le, and riscv64: https://github.com/rootless-containers/slirp4netns/releases
 
 Also available as a package on almost all Linux distributions:
 * [RHEL/CentOS (since 7.7 and 8.0)](https://pkgs.org/search/?q=slirp4netns)

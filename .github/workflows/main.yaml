@@ -49,14 +49,3 @@ jobs:
       env:
         LIBSECCOMP_COMMIT: v2.5.4
         LIBSLIRP_COMMIT: v4.7.0
-  artifact:
-    runs-on: ubuntu-20.04
-    steps:
-    - uses: actions/checkout@v2
-    - run: DOCKER_BUILDKIT=1 docker build -o /tmp/artifact -f Dockerfile.artifact .
-    - run: (cd /tmp/artifact; mv slirp4netns slirp4netns-x86_64)
-    - run: (cd /tmp/artifact; sha256sum *)
-    - uses: actions/upload-artifact@v1
-      with:
-        name: slirp4netns-x86_64
-        path: /tmp/artifact/slirp4netns-x86_64
