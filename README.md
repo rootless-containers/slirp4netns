@@ -50,7 +50,8 @@ Tools:
 
 Version                        | Status
 -------------------------------|------------------------------------------------------------------------
-v1.1.x                         | :white_check_mark: Active
+v1.2.x                         | :white_check_mark: Active
+v1.1.x                         | End of Life (May  2, 2022)
 v1.0.x                         | End of Life (Jun  2, 2020)
 v0.4.x                         | End of Life (Sep 30, 2020)
 v0.3.x                         | End of Life (Mar 31, 2020)
@@ -59,7 +60,30 @@ Early versions prior to v0.2.x | End of Life (Jan  5, 2019)
 
 See https://github.com/rootless-containers/slirp4netns/releases for the releases.
 
+### Security advisories
 See https://github.com/rootless-containers/slirp4netns/security/advisories for the past security advisories.
+
+:warning: We had been collecting [the vulnerabilities of QEMU/libslirp](https://www.cvedetails.com/product/57329/Libslirp-Project-Libslirp.html?vendor_id=20192) in this slirp4netns repo until the end of 2020,
+as the slirp4netns releases prior to v1.0.0 were always statically linked with a specific version of QEMU/libslirp.
+Starting with 2021, the vulnerabilities of libslirp are no longer collected in this slirp4netns repo, as slirp4netns >= v1.0.0 can be linked with an arbitrary version of libslirp.
+
+<details>
+<summary> Run <code>slirp4netns --version</code> to check the version of the linked libslirp. </summary>
+
+<p>
+
+```console
+$ slirp4netns --version
+slirp4netns version 1.1.8
+commit: d361001f495417b880f20329121e3aa431a8f90f
+libslirp: 4.4.0
+SLIRP_CONFIG_VERSION_MAX: 3
+libseccomp: 2.4.3
+```
+
+</p>
+
+</details>
 
 ## Quick start
 
