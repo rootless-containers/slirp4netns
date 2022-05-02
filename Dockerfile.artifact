@@ -22,7 +22,12 @@ RUN meson_setup_flags="--default-library=both" ; \
 FROM build-libslirp AS build
 COPY . /src
 WORKDIR /src
-RUN ./autogen.sh && ./configure LDFLAGS="-static" --host=$(xx-info) && make && xx-verify --static slirp4netns && cp -f slirp4netns /
+RUN ./autogen.sh && \
+  ./configure LDFLAGS="-static" --host=$(xx-info) && \
+  make && \
+  $(xx-info)-strip slirp4netns && \
+  xx-verify --static slirp4netns && \
+  cp -a slirp4netns /
 
 FROM scratch
 COPY --from=build /slirp4netns /slirp4netns
