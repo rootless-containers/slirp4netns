@@ -1,5 +1,5 @@
 SLIRP4NETNS 1 "January 2022" "Rootless Containers" "User Commands"
-==================================================
+==================================================================
 
 # NAME
 
@@ -145,7 +145,7 @@ starting slirp, MTU=65520
     link/ether c2:28:0c:0e:29:06 brd ff:ff:ff:ff:ff:ff
     inet 10.0.2.100/24 brd 10.0.2.255 scope global tap0
        valid_lft forever preferred_lft forever
-    inet6 fe80::c028:cff:fe0e:2906/64 scope link 
+    inet6 fe80::c028:cff:fe0e:2906/64 scope link
        valid_lft forever preferred_lft forever
 (namespace)$ echo "nameserver 10.0.2.3" > /tmp/resolv.conf
 (namespace)$ mount --bind /tmp/resolv.conf /etc/resolv.conf
@@ -249,7 +249,8 @@ Remarks:
 * A request must be less than 4096 bytes.
 * JSON responses may contain `error` instead of `return`.
 
-# DEFINED NAMESPACE PATHS 
+# DEFINED NAMESPACE PATHS
+
 A user can define a network namespace path as opposed to the default process ID:
 
 ```console
@@ -262,14 +263,15 @@ Additionally, a `--userns-path=PATH` argument can be included to override any us
 (host)$ slirp4netns --netns-type=path --userns-path=/path/to/userns /path/to/netns tap0
 ```
 
-# OUTBOUND ADDRESSES 
-A user can defined preferred outbound ipv4 and ipv6 address in multi IP scenarios. 
+# OUTBOUND ADDRESSES
+
+A user can define preferred outbound ipv4 and ipv6 address in multi IP scenarios.
 
 ```console
 (host)$ slirp4netns --outbound-addr=10.2.2.10 --outbound-addr6=fe80::10 ...
 ```
 
-Optionally you can use interface names instead of ip addresses. 
+Optionally you can use interface names instead of ip addresses.
 
 ```console
 (host)$ slirp4netns --outbound-addr=eth0 --outbound-addr6=eth0 ...
@@ -322,6 +324,7 @@ VXLAN is known to work.
 See Usernetes project for the example of multi-node rootless Kubernetes cluster with VXLAN: `https://github.com/rootless-containers/usernetes`
 
 # BESS MODE (FOR USER MODE LINUX)
+
 slirp4netns (since v1.2.0) can be also used as a BESS-compatible server to provide network connectivity to User Mode Linux.
 
 **Terminal 1**: Start slirp4netns
