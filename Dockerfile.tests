@@ -4,7 +4,7 @@ FROM ubuntu:22.04 AS build
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update && apt install -y automake autotools-dev make gcc libglib2.0-dev libcap-dev libseccomp-dev git ninja-build python3-pip
 RUN pip3 install meson
-RUN git clone git://git.qemu.org/libslirp.git /libslirp
+RUN git clone https://git.qemu.org/libslirp.git /libslirp
 WORKDIR /libslirp
 ARG LIBSLIRP_COMMIT
 RUN  git pull && git checkout ${LIBSLIRP_COMMIT} && meson setup build && ninja -C build install

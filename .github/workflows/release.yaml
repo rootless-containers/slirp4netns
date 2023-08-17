@@ -5,21 +5,22 @@ on:
 
 jobs:
   release:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v3
-    - uses: docker/setup-buildx-action@v1
+    - uses: docker/setup-qemu-action@v2
+    - uses: docker/setup-buildx-action@v2
     - name: "Build binaries from Dockerfile.artifact"
-      run: docker buildx build -o /tmp --platform=amd64,arm64,arm,s390x,ppc64le,riscv64 -f Dockerfile.artifact .
+      run: docker buildx build -o /tmp/slirpbuilds --platform=amd64,arm64,arm,s390x,ppc64le,riscv64 -f Dockerfile.artifact .
     - name: "Create /tmp/artifact"
       run: |
         mkdir -p /tmp/artifact
-        mv /tmp/linux_amd64/slirp4netns /tmp/artifact/slirp4netns-x86_64
-        mv /tmp/linux_arm64/slirp4netns /tmp/artifact/slirp4netns-aarch64
-        mv /tmp/linux_arm_v7/slirp4netns /tmp/artifact/slirp4netns-armv7l
-        mv /tmp/linux_s390x/slirp4netns /tmp/artifact/slirp4netns-s390x
-        mv /tmp/linux_ppc64le/slirp4netns /tmp/artifact/slirp4netns-ppc64le
-        mv /tmp/linux_riscv64/slirp4netns /tmp/artifact/slirp4netns-riscv64
+        mv /tmp/slirpbuilds/linux_amd64/slirp4netns /tmp/artifact/slirp4netns-x86_64
+        mv /tmp/slirpbuilds/linux_arm64/slirp4netns /tmp/artifact/slirp4netns-aarch64
+        mv /tmp/slirpbuilds/linux_arm_v7/slirp4netns /tmp/artifact/slirp4netns-armv7l
+        mv /tmp/slirpbuilds/linux_s390x/slirp4netns /tmp/artifact/slirp4netns-s390x
+        mv /tmp/slirpbuilds/linux_ppc64le/slirp4netns /tmp/artifact/slirp4netns-ppc64le
+        mv /tmp/slirpbuilds/linux_riscv64/slirp4netns /tmp/artifact/slirp4netns-riscv64
     - name: "SHA256SUMS"
       run: (cd /tmp/artifact; sha256sum *) | tee /tmp/SHA256SUMS
     - name: "The sha256sum of the SHA256SUMS file"
