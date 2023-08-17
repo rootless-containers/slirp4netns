@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 #define _GNU_SOURCE
 #include <errno.h>
+#include <fcntl.h>
 #include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,7 +28,8 @@ static int add_mount(const char *from, const char *to)
                 MS_BIND | MS_REC | MS_SLAVE | MS_NOSUID | MS_NODEV | MS_NOEXEC,
                 NULL);
     if (ret < 0) {
-        fprintf(stderr, "cannot bind mount %s to %s\n", from, to);
+        fprintf(stderr, "cannot bind mount %s to %s (errno: %d)\n", from, to,
+                errno);
         return ret;
     }
     ret = mount("", to, "", MS_SLAVE | MS_REC, NULL);
@@ -46,21 +48,54 @@ static int add_mount(const char *from, const char *to)
     return 0;
 }
 
-/* Warn (not error) if /etc/resolv.conf is a symlink to a file outside /etc or
+/* Bind /etc/resolv.conf if it is a symlink to a file outside /etc or
  * /run. */
-static void validate_etc_resolv_conf()
+static int bind_escaped_resolv_conf(const char *root)
 {
-    char *p = realpath("/etc/resolv.conf", NULL);
-    if (p == NULL) {
-        return;
+    char *real_resolv = realpath("/etc/resolv.conf", NULL);
+
+    /* Doesn't exist or is not an escaping symlink */
+    if (real_resolv == NULL || g_str_has_prefix(real_resolv, "/etc") ||
+        g_str_has_prefix(real_resolv, "/run")) {
+        free(real_resolv);
+        return 0;
     }
-    if (!g_str_has_prefix(p, "/etc") && !g_str_has_prefix(p, "/run")) {
-        fprintf(stderr,
-                "sandbox: /etc/resolv.conf (-> %s) seems a symlink to a file "
-                "outside {/etc, /run}. DNS will not work.\n",
-                p);
+
+    char *resolv_dest = g_strconcat(root, real_resolv, NULL);
+    char *resolv_dest_dir = g_path_get_dirname(resolv_dest);
+    int ret = 0;
+
+    fprintf(stderr,
+            "sandbox: /etc/resolv.conf (-> %s) seems a symlink to a file "
+            "outside {/etc, /run}, attempting to bind it as well.\n",
+            real_resolv);
+
+    ret = g_mkdir_with_parents(resolv_dest_dir, 0755);
+    if (ret < 0) {
+        fprintf(stderr, "cannot create resolve dest dir path: %s\n",
+                resolv_dest_dir);
+        goto finish;
     }
-    free(p);
+
+    ret = creat(resolv_dest, 0644);
+    if (ret < 0) {
+        fprintf(stderr, "cannot create empty resolv.conf dest file %s\n",
+                resolv_dest);
+        goto finish;
+    }
+    close(ret);
+
+    ret = add_mount(real_resolv, resolv_dest);
+    if (ret < 0) {
+        fprintf(stderr, "cannot bind mount resolv.conf\n");
+    }
+
+finish:
+
+    free(real_resolv);
+    g_free(resolv_dest);
+    g_free(resolv_dest_dir);
+    return ret;
 }
 
 /* lock down the process doing the following:
@@ -74,8 +109,6 @@ int create_sandbox()
     int ret, i;
     struct __user_cap_header_struct hdr = { _LINUX_CAPABILITY_VERSION_3, 0 };
     struct __user_cap_data_struct data[2] = { { 0 } };
-
-    validate_etc_resolv_conf();
 
     ret = unshare(CLONE_NEWNS);
     if (ret < 0) {
@@ -114,6 +147,11 @@ int create_sandbox()
     }
 
     ret = add_mount("/etc", "/tmp/etc");
+    if (ret < 0) {
+        return ret;
+    }
+
+    ret = bind_escaped_resolv_conf("/tmp");
     if (ret < 0) {
         return ret;
     }
