@@ -1,19 +1,47 @@
+# Usage:
+# docker buildx build \
+#   -o /tmp/slirpbuilds \
+#   --build-arg SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) \
+#   --platform=amd64,arm64,arm,s390x,ppc64le,riscv64 \
+#   -f Dockerfile.artifact .
+
 ARG LIBSLIRP_COMMIT=v4.7.0
-ARG UBUNTU_VERSION=22.04
+ARG UBUNTU_VERSION=jammy-20230804
 ARG XX_VERSION=1.2.1@sha256:8879a398dedf0aadaacfbd332b29ff2f84bc39ae6d4e9c0a1109db27ac5ba012
+ARG REPRO_SOURCES_LIST_VERSION=v0.1.0
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
 
 FROM --platform=$BUILDPLATFORM ubuntu:${UBUNTU_VERSION} AS build-libslirp
+ARG REPRO_SOURCES_LIST_VERSION
+ADD --chmod=0755 \
+  https://raw.githubusercontent.com/reproducible-containers/repro-sources-list.sh/${REPRO_SOURCES_LIST_VERSION}/repro-sources-list.sh \
+  /usr/local/bin/repro-sources-list.sh
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y apt-utils automake autotools-dev make git ninja-build meson
+RUN \
+  --mount=type=cache,target=/var/cache/apt,sharing=locked \
+  --mount=type=cache,target=/var/lib/apt,sharing=locked \
+  repro-sources-list.sh && \
+  apt-get update && \
+  apt-get install -y apt-utils automake autotools-dev file make git ninja-build meson
+# Set SOURCE_DATE_EPOCH after running repro-sources-list.sh, for cache efficiency
+ARG SOURCE_DATE_EPOCH
 RUN git clone https://git.qemu.org/libslirp.git /libslirp
 WORKDIR /libslirp
 ARG LIBSLIRP_COMMIT
 RUN  git pull && git checkout ${LIBSLIRP_COMMIT}
 COPY --from=xx / /
 ARG TARGETPLATFORM
-RUN xx-apt-get install -y gcc libglib2.0-dev libcap-dev libseccomp-dev
+# xx-apt-get cannot be used, as it clobbers /etc/apt/sources.list created by repro-sources-list.sh
+RUN \
+  --mount=type=cache,target=/var/cache/apt,sharing=locked \
+  --mount=type=cache,target=/var/lib/apt,sharing=locked \
+  darch="$(xx-info debian-arch)" && \
+  dpkg --add-architecture ${darch} && \
+  apt-get update && \
+  gcc="gcc" && \
+  if xx-info is-cross; then gcc="gcc-$(xx-info triple)"; fi; \
+  apt-get install -y "${gcc}" "libglib2.0-dev:${darch}" "libcap-dev:${darch}" "libseccomp-dev:${darch}"
 COPY Dockerfile.artifact.d/meson-cross /meson-cross
 RUN meson_setup_flags="--default-library=both" ; \
  if xx-info is-cross; then meson_setup_flags="${meson_setup_flags} --cross-file=/meson-cross/$(xx-info) -Dprefix=/usr/local/$(xx-info)"; fi ; \

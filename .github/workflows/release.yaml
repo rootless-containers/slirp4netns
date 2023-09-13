@@ -7,10 +7,45 @@ jobs:
   release:
     runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
+      with:
+        # Reproduce the exact commit hash value
+        fetch-depth: 0
+        ref: ${{ github.event.pull_request.head.sha }}
+    - run: echo "SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)" >> $GITHUB_ENV
     - uses: docker/setup-buildx-action@v2
+    - name: Cache var-cache-apt
+      uses: actions/cache@v3
+      with:
+        path: var-cache-apt
+        key: var-cache-apt-${{ hashFiles('Dockerfile.artifact') }}
+    - name: Cache var-lib-apt
+      uses: actions/cache@v3
+      with:
+        path: var-lib-apt
+        key: var-lib-apt-${{ hashFiles('Dockerfile.artifact') }}
+    - name: inject var-cache-apt into docker
+      uses: overmindtech/buildkit-cache-dance/inject@306d31a77191f643c0c4a95083f36c6ddccb4a16
+      with:
+        cache-source: var-cache-apt
+        cache-target: /var/cache/apt
+    - name: inject var-lib-apt into docker
+      uses: overmindtech/buildkit-cache-dance/inject@306d31a77191f643c0c4a95083f36c6ddccb4a16
+      with:
+        cache-source: var-lib-apt
+        cache-target: /var/lib/apt
     - name: "Build binaries from Dockerfile.artifact"
-      run: docker buildx build -o /tmp/slirpbuilds --platform=amd64,arm64,arm,s390x,ppc64le,riscv64 -f Dockerfile.artifact .
+      run: docker buildx build -o /tmp/slirpbuilds --build-arg SOURCE_DATE_EPOCH --platform=amd64,arm64,arm,s390x,ppc64le,riscv64 -f Dockerfile.artifact .
+    - name: extract var-cache-apt into docker
+      uses: overmindtech/buildkit-cache-dance/extract@306d31a77191f643c0c4a95083f36c6ddccb4a16
+      with:
+        cache-source: var-cache-apt
+        cache-target: /var/cache/apt
+    - name: extract var-lib-apt into docker
+      uses: overmindtech/buildkit-cache-dance/extract@306d31a77191f643c0c4a95083f36c6ddccb4a16
+      with:
+        cache-source: var-lib-apt
+        cache-target: /var/lib/apt
     - name: "Create /tmp/artifact"
       run: |
         mkdir -p /tmp/artifact
@@ -20,6 +55,7 @@ jobs:
         mv /tmp/slirpbuilds/linux_s390x/slirp4netns /tmp/artifact/slirp4netns-s390x
         mv /tmp/slirpbuilds/linux_ppc64le/slirp4netns /tmp/artifact/slirp4netns-ppc64le
         mv /tmp/slirpbuilds/linux_riscv64/slirp4netns /tmp/artifact/slirp4netns-riscv64
+        echo "${SOURCE_DATE_EPOCH}" >/tmp/artifact/SOURCE_DATE_EPOCH
     - name: "SHA256SUMS"
       run: (cd /tmp/artifact; sha256sum *) | tee /tmp/SHA256SUMS
     - name: "The sha256sum of the SHA256SUMS file"
@@ -50,6 +86,16 @@ jobs:
         The build log is available for 90 days: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
         The sha256sum of the SHA256SUMS file itself is \`${shasha}\` .
+
+        The binaries should be reproducible with the following command:
+        \`\`\`
+        docker buildx build \
+          -o /tmp/slirpbuilds \
+          --build-arg SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH} \
+          --platform=amd64,arm64,arm,s390x,ppc64le,riscv64 \
+          -f Dockerfile.artifact \
+          "https://github.com/${{ github.repository }}.git#${{ github.event.pull_request.head.sha }}"
+        \`\`\`
         EOF
     - name: "Create release"
       if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
