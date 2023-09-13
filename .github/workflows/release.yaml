@@ -92,6 +92,7 @@ jobs:
         docker buildx build \
           -o /tmp/slirpbuilds \
           --build-arg SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH} \
+          --build-arg BUILDKIT_CONTEXT_KEEP_GIT_DIR=1 \
           --platform=amd64,arm64,arm,s390x,ppc64le,riscv64 \
           -f Dockerfile.artifact \
           "https://github.com/${{ github.repository }}.git#${tag}"
