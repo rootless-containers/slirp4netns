@@ -52,14 +52,11 @@ jobs:
       run: sha256sum /tmp/SHA256SUMS
     - name: "Prepare the release note"
       run: |
-        tag="${GITHUB_REF##*/}"
         shasha=$(sha256sum /tmp/SHA256SUMS | awk '{print $1}')
         libslirp_version=$(/tmp/artifact/slirp4netns-x86_64 -v | grep -oP '^libslirp: \K\S*')
         libseccomp_version=$(/tmp/artifact/slirp4netns-x86_64 -v | grep -oP '^libseccomp: \K\S*')
         ubuntu_version=$(grep -oP '^ARG UBUNTU_VERSION=\K\S*' Dockerfile.artifact)
         cat << EOF | tee /tmp/release-note.txt
-        ${tag}
-
         #### Changes
         (To be documented)
 
@@ -94,6 +91,4 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         tag="${GITHUB_REF##*/}"
-        asset_flags=()
-        for f in /tmp/artifact/* /tmp/SHA256SUMS; do asset_flags+=("-a" "$f"); done
-        hub release create "${asset_flags[@]}" -F /tmp/release-note.txt --draft "${tag}"
+        gh release create -F /tmp/release-note.txt --draft --title "${tag}" "${tag}" /tmp/artifact/* /tmp/SHA256SUMS
