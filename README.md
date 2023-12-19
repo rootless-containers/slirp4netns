@@ -94,7 +94,7 @@ Statically linked binaries available for x86\_64, aarch64, armv7l, s390x, ppc64l
 Also available as a package on almost all Linux distributions:
 * [RHEL/CentOS (since 7.7 and 8.0)](https://pkgs.org/search/?q=slirp4netns)
 * [Fedora (since 28)](https://src.fedoraproject.org/rpms/slirp4netns)
-* [Arch Linux](https://archlinux.org/packages/extra/x86_64/slirp4netns/)
+* [Arch Linux](https://www.archlinux.org/packages/community/x86_64/slirp4netns/)
 * [openSUSE (since Leap 15.0)](https://build.opensuse.org/package/show/openSUSE%3AFactory/slirp4netns)
 * [SUSE Linux Enterprise (since 15)](https://build.opensuse.org/package/show/devel%3Akubic/slirp4netns)
 * [Debian GNU/Linux (since 10.0)](https://packages.debian.org/buster/slirp4netns) 
