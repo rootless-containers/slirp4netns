@@ -165,7 +165,7 @@ static int configure_network(const char *tapname,
                             .ifr_flags = IFF_UP | IFF_RUNNING };
     if (ioctl(sockfd, SIOCSIFFLAGS, &ifr_lo) < 0) {
         perror("cannot set device up");
-        return -1;
+        goto fail;
     }
 
     memset(&ifr, 0, sizeof(ifr));
@@ -174,20 +174,20 @@ static int configure_network(const char *tapname,
 
     if (ioctl(sockfd, SIOCSIFFLAGS, &ifr) < 0) {
         perror("cannot set device up");
-        return -1;
+        goto fail;
     }
 
     ifr.ifr_mtu = (int)cfg->mtu;
     if (ioctl(sockfd, SIOCSIFMTU, &ifr) < 0) {
         perror("cannot set MTU");
-        return -1;
+        goto fail;
     }
 
     if (cfg->vmacaddress_len > 0) {
         ifr.ifr_ifru.ifru_hwaddr = cfg->vmacaddress;
         if (ioctl(sockfd, SIOCSIFHWADDR, &ifr) < 0) {
             perror("cannot set MAC address");
-            return -1;
+            goto fail;
         }
     }
 
@@ -197,13 +197,13 @@ static int configure_network(const char *tapname,
 
     if (ioctl(sockfd, SIOCSIFADDR, &ifr) < 0) {
         perror("cannot set device address");
-        return -1;
+        goto fail;
     }
 
     sai->sin_addr = cfg->vnetmask;
     if (ioctl(sockfd, SIOCSIFNETMASK, &ifr) < 0) {
         perror("cannot set device netmask");
-        return -1;
+        goto fail;
     }
 
     memset(&route, 0, sizeof(route));
@@ -223,9 +223,12 @@ static int configure_network(const char *tapname,
 
     if (ioctl(sockfd, SIOCADDRT, &route) < 0) {
         perror("set route");
-        return -1;
+        goto fail;
     }
     return 0;
+fail:
+    close(sockfd);
+    return -1;
 }
 
 /* Child (--target-type=netns) */
