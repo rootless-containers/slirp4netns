@@ -17,25 +17,28 @@ int api_bindlisten(const char *api_socket)
     unlink(api_socket); /* avoid EADDRINUSE */
     if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
         perror("api_bindlisten: socket");
-        return -1;
+        goto cleanup_and_fail;
     }
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
     if (strlen(api_socket) >= sizeof(addr.sun_path)) {
         fprintf(stderr, "the specified API socket path is too long (>= %lu)\n",
                 sizeof(addr.sun_path));
-        return -1;
+        goto cleanup_and_fail;
     }
     strncpy(addr.sun_path, api_socket, sizeof(addr.sun_path) - 1);
     if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         perror("api_bindlisten: bind");
-        return -1;
+        goto cleanup_and_fail;
     }
     if (listen(fd, 0) < 0) {
         perror("api_bindlisten: listen");
-        return -1;
+        goto cleanup_and_fail;
     }
     return fd;
+cleanup_and_fail:
+    close(fd);
+    return -1;
 }
 
 struct api_hostfwd {
