@@ -42,41 +42,58 @@ static int nsenter(pid_t target_pid, char *netns, char *userns,
                    bool only_userns)
 {
     int usernsfd = -1, netnsfd = -1;
+    char *netns_allocated = NULL;
+    char *userns_allocated = NULL;
+
     if (!only_userns && !netns) {
-        if (asprintf(&netns, "/proc/%d/ns/net", target_pid) < 0) {
+        if (asprintf(&netns_allocated, "/proc/%d/ns/net", target_pid) < 0) {
             perror("cannot get netns path");
-            return -1;
+            goto fail;
         }
+        netns = netns_allocated;
     }
     if (!userns && target_pid) {
-        if (asprintf(&userns, "/proc/%d/ns/user", target_pid) < 0) {
+        if (asprintf(&userns_allocated, "/proc/%d/ns/user", target_pid) < 0) {
             perror("cannot get userns path");
-            return -1;
+            goto fail;
         }
+        userns = userns_allocated;
     }
     if (!only_userns && (netnsfd = open(netns, O_RDONLY)) < 0) {
         perror(netns);
-        return netnsfd;
+        goto fail;
     }
     if (userns && (usernsfd = open(userns, O_RDONLY)) < 0) {
         perror(userns);
-        return usernsfd;
+        goto fail;
     }
 
     if (usernsfd != -1) {
         int r = setns(usernsfd, CLONE_NEWUSER);
         if (only_userns && r < 0) {
             perror("setns(CLONE_NEWUSER)");
-            return -1;
+            goto fail;
         }
         close(usernsfd);
+        usernsfd = -1;
     }
-    if (netnsfd != -1 && setns(netnsfd, CLONE_NEWNET) < 0) {
-        perror("setns(CLONE_NEWNET)");
-        return -1;
+    if (netnsfd != -1) {
+        if (setns(netnsfd, CLONE_NEWNET) < 0) {
+            perror("setns(CLONE_NEWNET)");
+            goto fail;
+        }
+        close(netnsfd);
     }
-    close(netnsfd);
     return 0;
+fail:
+    free(netns_allocated);
+    free(userns_allocated);
+
+    if (usernsfd != -1)
+        close(usernsfd);
+    if (netnsfd != -1)
+        close(netnsfd);
+    return -1;
 }
 
 static int open_tap(const char *tapname)
@@ -148,7 +165,7 @@ static int configure_network(const char *tapname,
                             .ifr_flags = IFF_UP | IFF_RUNNING };
     if (ioctl(sockfd, SIOCSIFFLAGS, &ifr_lo) < 0) {
         perror("cannot set device up");
-        return -1;
+        goto fail;
     }
 
     memset(&ifr, 0, sizeof(ifr));
@@ -157,20 +174,20 @@ static int configure_network(const char *tapname,
 
     if (ioctl(sockfd, SIOCSIFFLAGS, &ifr) < 0) {
         perror("cannot set device up");
-        return -1;
+        goto fail;
     }
 
     ifr.ifr_mtu = (int)cfg->mtu;
     if (ioctl(sockfd, SIOCSIFMTU, &ifr) < 0) {
         perror("cannot set MTU");
-        return -1;
+        goto fail;
     }
 
     if (cfg->vmacaddress_len > 0) {
         ifr.ifr_ifru.ifru_hwaddr = cfg->vmacaddress;
         if (ioctl(sockfd, SIOCSIFHWADDR, &ifr) < 0) {
             perror("cannot set MAC address");
-            return -1;
+            goto fail;
         }
     }
 
@@ -180,13 +197,13 @@ static int configure_network(const char *tapname,
 
     if (ioctl(sockfd, SIOCSIFADDR, &ifr) < 0) {
         perror("cannot set device address");
-        return -1;
+        goto fail;
     }
 
     sai->sin_addr = cfg->vnetmask;
     if (ioctl(sockfd, SIOCSIFNETMASK, &ifr) < 0) {
         perror("cannot set device netmask");
-        return -1;
+        goto fail;
     }
 
     memset(&route, 0, sizeof(route));
@@ -206,9 +223,12 @@ static int configure_network(const char *tapname,
 
     if (ioctl(sockfd, SIOCADDRT, &route) < 0) {
         perror("set route");
-        return -1;
+        goto fail;
     }
     return 0;
+fail:
+    close(sockfd);
+    return -1;
 }
 
 /* Child (--target-type=netns) */
@@ -224,6 +244,7 @@ static int child(int sock, pid_t target_pid, bool do_config_network,
         return tapfd;
     }
     if (do_config_network && configure_network(tapname, cfg) < 0) {
+        close(tapfd);
         return -1;
     }
     if (sendfd(sock, tapfd) < 0) {
@@ -232,6 +253,7 @@ static int child(int sock, pid_t target_pid, bool do_config_network,
         return -1;
     }
     fprintf(stderr, "sent tapfd=%d for %s\n", tapfd, tapname);
+    close(tapfd);
     close(sock);
     return 0;
 }

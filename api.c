@@ -17,25 +17,28 @@ int api_bindlisten(const char *api_socket)
     unlink(api_socket); /* avoid EADDRINUSE */
     if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
         perror("api_bindlisten: socket");
-        return -1;
+        goto cleanup_and_fail;
     }
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
     if (strlen(api_socket) >= sizeof(addr.sun_path)) {
         fprintf(stderr, "the specified API socket path is too long (>= %lu)\n",
                 sizeof(addr.sun_path));
-        return -1;
+        goto cleanup_and_fail;
     }
     strncpy(addr.sun_path, api_socket, sizeof(addr.sun_path) - 1);
     if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         perror("api_bindlisten: bind");
-        return -1;
+        goto cleanup_and_fail;
     }
     if (listen(fd, 0) < 0) {
         perror("api_bindlisten: listen");
-        return -1;
+        goto cleanup_and_fail;
     }
     return fd;
+cleanup_and_fail:
+    close(fd);
+    return -1;
 }
 
 struct api_hostfwd {
@@ -57,7 +60,7 @@ struct api_ctx {
 
 struct api_ctx *api_ctx_alloc(struct slirp4netns_config *cfg)
 {
-    struct api_ctx *ctx = (struct api_ctx *)g_malloc0(sizeof(*ctx));
+    struct api_ctx *ctx = (struct api_ctx *)calloc(1, sizeof(*ctx));
     if (ctx == NULL) {
         return NULL;
     }
@@ -116,7 +119,7 @@ static int api_handle_req_add_hostfwd(Slirp *slirp, int fd, struct api_ctx *ctx,
         const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: "
                           "bad arguments.proto\"}}";
         wrc = write(fd, err, strlen(err));
-        free(fwd);
+        g_free(fwd);
         goto finish;
     }
     if (host_addr_s == NULL || host_addr_s[0] == '\0') {
@@ -126,7 +129,7 @@ static int api_handle_req_add_hostfwd(Slirp *slirp, int fd, struct api_ctx *ctx,
         const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: "
                           "bad arguments.host_addr\"}}";
         wrc = write(fd, err, strlen(err));
-        free(fwd);
+        g_free(fwd);
         goto finish;
     }
     fwd->host_port = (int)json_object_dotget_number(jo, "arguments.host_port");
@@ -134,7 +137,7 @@ static int api_handle_req_add_hostfwd(Slirp *slirp, int fd, struct api_ctx *ctx,
         const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: "
                           "bad arguments.host_port\"}}";
         wrc = write(fd, err, strlen(err));
-        free(fwd);
+        g_free(fwd);
         goto finish;
     }
 
@@ -144,7 +147,7 @@ static int api_handle_req_add_hostfwd(Slirp *slirp, int fd, struct api_ctx *ctx,
         const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: "
                           "bad arguments.guest_addr\"}}";
         wrc = write(fd, err, strlen(err));
-        free(fwd);
+        g_free(fwd);
         goto finish;
     }
     fwd->guest_port =
@@ -153,7 +156,7 @@ static int api_handle_req_add_hostfwd(Slirp *slirp, int fd, struct api_ctx *ctx,
         const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: "
                           "bad arguments.guest_port\"}}";
         wrc = write(fd, err, strlen(err));
-        free(fwd);
+        g_free(fwd);
         goto finish;
     }
     if (slirp_add_hostfwd(slirp, fwd->is_udp, fwd->host_addr, fwd->host_port,
@@ -161,7 +164,7 @@ static int api_handle_req_add_hostfwd(Slirp *slirp, int fd, struct api_ctx *ctx,
         const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: "
                           "slirp_add_hostfwd failed\"}}";
         wrc = write(fd, err, strlen(err));
-        free(fwd);
+        g_free(fwd);
         goto finish;
     }
     fwd->id = ctx->hostfwds_nextid;
