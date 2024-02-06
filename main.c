@@ -244,6 +244,7 @@ static int child(int sock, pid_t target_pid, bool do_config_network,
         return tapfd;
     }
     if (do_config_network && configure_network(tapname, cfg) < 0) {
+        close(tapfd);
         return -1;
     }
     if (sendfd(sock, tapfd) < 0) {
@@ -252,6 +253,7 @@ static int child(int sock, pid_t target_pid, bool do_config_network,
         return -1;
     }
     fprintf(stderr, "sent tapfd=%d for %s\n", tapfd, tapname);
+    close(tapfd);
     close(sock);
     return 0;
 }
