@@ -60,7 +60,7 @@ struct api_ctx {
 
 struct api_ctx *api_ctx_alloc(struct slirp4netns_config *cfg)
 {
-    struct api_ctx *ctx = (struct api_ctx *)g_malloc0(sizeof(*ctx));
+    struct api_ctx *ctx = (struct api_ctx *)calloc(1, sizeof(*ctx));
     if (ctx == NULL) {
         return NULL;
     }
