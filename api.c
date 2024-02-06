@@ -119,7 +119,7 @@ static int api_handle_req_add_hostfwd(Slirp *slirp, int fd, struct api_ctx *ctx,
         const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: "
                           "bad arguments.proto\"}}";
         wrc = write(fd, err, strlen(err));
-        free(fwd);
+        g_free(fwd);
         goto finish;
     }
     if (host_addr_s == NULL || host_addr_s[0] == '\0') {
@@ -129,7 +129,7 @@ static int api_handle_req_add_hostfwd(Slirp *slirp, int fd, struct api_ctx *ctx,
         const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: "
                           "bad arguments.host_addr\"}}";
         wrc = write(fd, err, strlen(err));
-        free(fwd);
+        g_free(fwd);
         goto finish;
     }
     fwd->host_port = (int)json_object_dotget_number(jo, "arguments.host_port");
@@ -137,7 +137,7 @@ static int api_handle_req_add_hostfwd(Slirp *slirp, int fd, struct api_ctx *ctx,
         const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: "
                           "bad arguments.host_port\"}}";
         wrc = write(fd, err, strlen(err));
-        free(fwd);
+        g_free(fwd);
         goto finish;
     }
 
@@ -147,7 +147,7 @@ static int api_handle_req_add_hostfwd(Slirp *slirp, int fd, struct api_ctx *ctx,
         const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: "
                           "bad arguments.guest_addr\"}}";
         wrc = write(fd, err, strlen(err));
-        free(fwd);
+        g_free(fwd);
         goto finish;
     }
     fwd->guest_port =
@@ -156,7 +156,7 @@ static int api_handle_req_add_hostfwd(Slirp *slirp, int fd, struct api_ctx *ctx,
         const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: "
                           "bad arguments.guest_port\"}}";
         wrc = write(fd, err, strlen(err));
-        free(fwd);
+        g_free(fwd);
         goto finish;
     }
     if (slirp_add_hostfwd(slirp, fwd->is_udp, fwd->host_addr, fwd->host_port,
@@ -164,7 +164,7 @@ static int api_handle_req_add_hostfwd(Slirp *slirp, int fd, struct api_ctx *ctx,
         const char *err = "{\"error\":{\"desc\":\"bad request: add_hostfwd: "
                           "slirp_add_hostfwd failed\"}}";
         wrc = write(fd, err, strlen(err));
-        free(fwd);
+        g_free(fwd);
         goto finish;
     }
     fwd->id = ctx->hostfwds_nextid;
