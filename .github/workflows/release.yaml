@@ -52,6 +52,7 @@ jobs:
       run: sha256sum /tmp/SHA256SUMS
     - name: "Prepare the release note"
       run: |
+        tag="${GITHUB_REF##*/}"
         shasha=$(sha256sum /tmp/SHA256SUMS | awk '{print $1}')
         libslirp_version=$(/tmp/artifact/slirp4netns-x86_64 -v | grep -oP '^libslirp: \K\S*')
         libseccomp_version=$(/tmp/artifact/slirp4netns-x86_64 -v | grep -oP '^libseccomp: \K\S*')
