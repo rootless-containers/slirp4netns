@@ -225,6 +225,7 @@ static int configure_network(const char *tapname,
         perror("set route");
         goto fail;
     }
+    close(sockfd);
     return 0;
 fail:
     close(sockfd);
