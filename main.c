@@ -355,11 +355,11 @@ static int recvfd(int sock)
     return fd;
 }
 
-static int parent(int sock, int ready_fd, int exit_fd, const char *api_socket,
+static int parent(int tapfd, int ready_fd, int exit_fd, const char *api_socket,
                   struct slirp4netns_config *cfg, pid_t target_pid)
 {
     char str[INET6_ADDRSTRLEN];
-    int rc, tapfd;
+    int rc;
     struct in_addr vdhcp_end = {
 #define NB_BOOTP_CLIENTS 16
         /* NB_BOOTP_CLIENTS is hard-coded to 16 in libslirp:
@@ -367,11 +367,6 @@ static int parent(int sock, int ready_fd, int exit_fd, const char *api_socket,
         .s_addr = htonl(ntohl(cfg->vdhcp_start.s_addr) + NB_BOOTP_CLIENTS - 1),
 #undef NB_BOOTP_CLIENTS
     };
-    if ((tapfd = recvfd(sock)) < 0) {
-        return tapfd;
-    }
-    fprintf(stderr, "received tapfd=%d\n", tapfd);
-    close(sock);
     printf("Starting slirp\n");
     printf("* MTU:             %d\n", cfg->mtu);
     printf("* Network:         %s\n",
@@ -442,7 +437,7 @@ static int parent(int sock, int ready_fd, int exit_fd, const char *api_socket,
 
 static void usage(const char *argv0)
 {
-    printf("Usage: %s [OPTION]... PID|PATH [TAPNAME]\n", argv0);
+    printf("Usage: %s [OPTION]... PID|PATH|FD [TAPNAME]\n", argv0);
     printf("User-mode networking for unprivileged network namespaces.\n\n");
     printf("-c, --configure          bring up the interface\n");
     printf("-e, --exit-fd=FD         specify the FD for terminating "
@@ -461,8 +456,8 @@ static void usage(const char *argv0)
     printf("--disable-host-loopback  prohibit connecting to 127.0.0.1:* on the "
            "host namespace\n");
     /* v0.4.0 */
-    printf("--netns-type=TYPE 	 specify network namespace type ([path|pid], "
-           "default=%s)\n",
+    printf("--netns-type=TYPE 	 specify network namespace type "
+           "([path|pid|tapfd], default=%s)\n",
            DEFAULT_NETNS_TYPE);
     printf("--userns-path=PATH	 specify user namespace path\n");
     printf(
@@ -532,6 +527,7 @@ struct options {
     char *macaddress; // --macaddress
     char *target_type; // --target-type
     char *bess_socket; // argv[1] (When --target-type="bess")
+    int tapfd; // argv[1] (When --netns-type="tapfd")
 };
 
 static void options_init(struct options *options)
@@ -539,6 +535,7 @@ static void options_init(struct options *options)
     memset(options, 0, sizeof(*options));
     options->exit_fd = options->ready_fd = -1;
     options->mtu = DEFAULT_MTU;
+    options->tapfd = -1;
 }
 
 static void options_destroy(struct options *options)
@@ -828,12 +825,8 @@ static void parse_args(int argc, char *const argv[], struct options *options)
         fprintf(stderr, "--target-type must be either \"netns\" or \"bess\"\n");
         goto error;
     }
-    if (argc - optind < 2) {
+    if (argc - optind < 1) {
         goto error;
-    }
-    if (argc - optind > 2) {
-        // not an error, for preventing potential compatibility issue
-        printf("WARNING: too many arguments\n");
     }
     if (!options->netns_type ||
         strcmp(options->netns_type, DEFAULT_NETNS_TYPE) == 0) {
@@ -843,6 +836,14 @@ static void parse_args(int argc, char *const argv[], struct options *options)
             fprintf(stderr, "PID must be a positive integer\n");
             goto error;
         }
+    } else if (options->netns_type &&
+               strcmp(options->netns_type, "tapfd") == 0) {
+        errno = 0;
+        options->tapfd = strtol(argv[optind], &strtol_e, 10);
+        if (errno || *strtol_e != '\0' || options->tapfd < 0) {
+            fprintf(stderr, "TAPFD must a file descriptor\n");
+            goto error;
+        }
     } else {
         options->netns_path = strdup(argv[optind]);
         if (access(options->netns_path, F_OK) == -1) {
@@ -850,7 +851,21 @@ static void parse_args(int argc, char *const argv[], struct options *options)
             goto error;
         }
     }
-    options->tapname = strdup(argv[optind + 1]);
+    if (options->tapfd >= 0) {
+        if (argc - optind > 1) {
+            // not an error, for preventing potential compatibility issue
+            printf("WARNING: too many arguments\n");
+        }
+    } else {
+        if (argc - optind < 2) {
+            goto error;
+        }
+        if (argc - optind > 2) {
+            // not an error, for preventing potential compatibility issue
+            printf("WARNING: too many arguments\n");
+        }
+        options->tapname = strdup(argv[optind + 1]);
+    }
     return;
 error:
     usage(argv[0]);
@@ -1114,7 +1129,7 @@ finish:
 int main(int argc, char *const argv[])
 {
     int sv[2];
-    pid_t child_pid;
+    pid_t child_pid = -1;
     struct options options;
     struct slirp4netns_config slirp4netns_config;
     int exit_status = 0;
@@ -1129,11 +1144,12 @@ int main(int argc, char *const argv[])
         exit_status = EXIT_FAILURE;
         goto finish;
     }
-    if ((child_pid = fork()) < 0) {
-        perror("fork");
-        exit_status = EXIT_FAILURE;
-        goto finish;
-    }
+    if (options.tapfd < 0)
+        if ((child_pid = fork()) < 0) {
+            perror("fork");
+            exit_status = EXIT_FAILURE;
+            goto finish;
+        }
     if (child_pid == 0) {
         int ret;
         if (options.target_type != NULL &&
@@ -1149,28 +1165,40 @@ int main(int argc, char *const argv[])
             goto finish;
         }
     } else {
-        int ret, child_wstatus, child_status;
-        do
-            ret = waitpid(child_pid, &child_wstatus, 0);
-        while (ret < 0 && errno == EINTR);
-        if (ret < 0) {
-            perror("waitpid");
-            exit_status = EXIT_FAILURE;
-            goto finish;
+        int tapfd;
+        if (options.tapfd >= 0) {
+            tapfd = options.tapfd;
+        } else {
+            int ret, child_wstatus, child_status;
+            do
+                ret = waitpid(child_pid, &child_wstatus, 0);
+            while (ret < 0 && errno == EINTR);
+            if (ret < 0) {
+                perror("waitpid");
+                exit_status = EXIT_FAILURE;
+                goto finish;
+            }
+            if (!WIFEXITED(child_wstatus)) {
+                fprintf(stderr, "child failed(wstatus=%d, !WIFEXITED)\n",
+                        child_wstatus);
+                exit_status = EXIT_FAILURE;
+                goto finish;
+            }
+            child_status = WEXITSTATUS(child_wstatus);
+            if (child_status != 0) {
+                fprintf(stderr, "child failed(%d)\n", child_status);
+                exit_status = child_status;
+                goto finish;
+            }
+            if ((tapfd = recvfd(sv[0])) < 0) {
+                fprintf(stderr, "failed to receive tapfd from child\n");
+                exit_status = EXIT_FAILURE;
+                goto finish;
+            }
+            fprintf(stderr, "received tapfd=%d\n", tapfd);
+            close(sv[0]);
         }
-        if (!WIFEXITED(child_wstatus)) {
-            fprintf(stderr, "child failed(wstatus=%d, !WIFEXITED)\n",
-                    child_wstatus);
-            exit_status = EXIT_FAILURE;
-            goto finish;
-        }
-        child_status = WEXITSTATUS(child_wstatus);
-        if (child_status != 0) {
-            fprintf(stderr, "child failed(%d)\n", child_status);
-            exit_status = child_status;
-            goto finish;
-        }
-        if (parent(sv[0], options.ready_fd, options.exit_fd, options.api_socket,
+        if (parent(tapfd, options.ready_fd, options.exit_fd, options.api_socket,
                    &slirp4netns_config, options.target_pid) < 0) {
             fprintf(stderr, "parent failed\n");
             exit_status = EXIT_FAILURE;
