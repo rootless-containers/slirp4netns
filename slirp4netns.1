@@ -8,7 +8,7 @@ slirp4netns \- User\-mode networking for unprivileged network namespaces
 
 .SH SYNOPSIS
 .PP
-slirp4netns [OPTION]... PID|PATH [TAPNAME]
+slirp4netns [OPTION]... PID|PATH|FD [TAPNAME]
 
 
 .SH DESCRIPTION
@@ -84,7 +84,10 @@ prohibit connecting to 127.0.0.1:* on the host namespace
 
 .PP
 \fB\fC\-\-netns\-type=TYPE\fR (since v0.4.0)
-specify network namespace type ([path|pid], default=pid)
+specify network namespace type ([path|pid|tapfd], default=pid)
+
+If the namespace type is tapfd, the first positional argument is expected to be an inherited file descriptor that corresponds to a \fB\fC/dev/net/tun\fR connection.
+This conflicts with \fB\fC\-\-configure\fR and a \fB\fcTAPNAME\fR is ignored.
 
 .PP
 \fB\fC\-\-userns\-path=PATH\fR (since v0.4.0)
