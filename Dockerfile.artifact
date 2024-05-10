@@ -5,7 +5,7 @@
 #   --platform=amd64,arm64,arm,s390x,ppc64le,riscv64 \
 #   -f Dockerfile.artifact .
 
-ARG LIBSLIRP_COMMIT=v4.7.0
+ARG LIBSLIRP_COMMIT=v4.8.0
 ARG UBUNTU_VERSION=jammy-20240125
 ARG XX_VERSION=1.2.1@sha256:8879a398dedf0aadaacfbd332b29ff2f84bc39ae6d4e9c0a1109db27ac5ba012
 ARG REPRO_SOURCES_LIST_VERSION=v0.1.0
@@ -26,7 +26,7 @@ RUN \
   apt-get install -y apt-utils automake autotools-dev file make git ninja-build meson
 # Set SOURCE_DATE_EPOCH after running repro-sources-list.sh, for cache efficiency
 ARG SOURCE_DATE_EPOCH
-RUN git clone https://git.qemu.org/libslirp.git /libslirp
+RUN git clone https://gitlab.freedesktop.org/slirp/libslirp.git /libslirp
 WORKDIR /libslirp
 ARG LIBSLIRP_COMMIT
 RUN  git pull && git checkout ${LIBSLIRP_COMMIT}
