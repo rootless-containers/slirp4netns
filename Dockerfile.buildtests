@@ -28,7 +28,6 @@ FROM buildtest-ubuntu1804-common AS buildtest-ubuntu1804-dynamic
 RUN ./configure && make && cp -f slirp4netns /
 
 # CentOS 7 is no longer tested in this file.
-# See Vagrantfile for CentOS 7 tests.
 
 # openSUSE (dynamic only)
 FROM opensuse/leap:15 AS buildtest-opensuse15-common
