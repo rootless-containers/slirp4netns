@@ -94,6 +94,13 @@ static void libslirp_register_poll_fd(int fd, void *opaque)
      */
 }
 
+#if SLIRP_CONFIG_VERSION_MAX >= 6 /* libslirp v4.9.0 */
+static void libslirp_register_poll_socket(slirp_os_socket sock, void *opaque)
+{
+    libslirp_register_poll_fd((int)sock, opaque);
+}
+#endif
+
 /* implements SlirpCb.unregister_poll_fd */
 static void libslirp_unregister_poll_fd(int fd, void *opaque)
 {
@@ -105,6 +112,13 @@ static void libslirp_unregister_poll_fd(int fd, void *opaque)
      *  * qemu/net/slirp.c:          net_slirp_unregister_poll_fd (NOP)
      */
 }
+
+#if SLIRP_CONFIG_VERSION_MAX >= 6 /* libslirp v4.9.0 */
+static void libslirp_unregister_poll_socket(slirp_os_socket sock, void *opaque)
+{
+    libslirp_unregister_poll_fd((int)sock, opaque);
+}
+#endif
 
 /* implements SlirpCb.notify */
 static void libslirp_notify(void *opaque)
@@ -160,6 +174,14 @@ static int libslirp_add_poll(int fd, int events, void *opaque)
     g_array_append_val(pollfds, pfd);
     return idx;
 }
+
+#if SLIRP_CONFIG_VERSION_MAX >= 6 /* libslirp v4.9.0 */
+static int libslirp_add_poll_socket(slirp_os_socket sock, int events,
+                                    void *opaque)
+{
+    return libslirp_add_poll((int)sock, events, opaque);
+}
+#endif
 
 static int libslirp_gio_to_poll(int events)
 {
@@ -243,8 +265,13 @@ static const SlirpCb libslirp_cb = {
     .timer_new = libslirp_timer_new,
     .timer_free = libslirp_timer_free,
     .timer_mod = libslirp_timer_mod,
+#if SLIRP_CONFIG_VERSION_MAX >= 6 /* libslirp v4.9.0 */
+    .register_poll_socket = libslirp_register_poll_socket,
+    .unregister_poll_socket = libslirp_unregister_poll_socket,
+#else
     .register_poll_fd = libslirp_register_poll_fd,
     .unregister_poll_fd = libslirp_unregister_poll_fd,
+#endif
     .notify = libslirp_notify,
 };
 
@@ -292,6 +319,10 @@ Slirp *create_slirp(void *opaque, struct slirp4netns_config *s4nn)
         cfg.version = 3;
         cfg.disable_dns = true;
     }
+#endif
+#if SLIRP_CONFIG_VERSION_MAX >= 6 /* libslirp v4.9.0 */
+    /* For slirp_os_socket callbacks */
+    cfg.version = 6;
 #endif
     slirp = slirp_new(&cfg, &libslirp_cb, opaque);
     if (slirp == NULL) {
@@ -372,7 +403,12 @@ int do_slirp(int tapfd, int readyfd, int exitfd, const char *api_socket,
         GPollFD *pollfds_data;
         uint32_t timeout = -1; /* msec */
         g_array_set_size(pollfds, n_fds);
+#if SLIRP_CONFIG_VERSION_MAX >= 6 /* libslirp v4.9.0 */
+        slirp_pollfds_fill_socket(slirp, &timeout, libslirp_add_poll_socket,
+                                  pollfds);
+#else
         slirp_pollfds_fill(slirp, &timeout, libslirp_add_poll, pollfds);
+#endif
         update_ra_timeout(&timeout, &opaque);
         pollfds_data = (GPollFD *)pollfds->data;
         do {

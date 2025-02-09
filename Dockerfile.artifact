@@ -5,7 +5,7 @@
 #   --platform=amd64,arm64,arm,s390x,ppc64le,riscv64 \
 #   -f Dockerfile.artifact .
 
-ARG LIBSLIRP_COMMIT=v4.8.0
+ARG LIBSLIRP_COMMIT=v4.9.0
 ARG UBUNTU_VERSION=jammy-20240125
 ARG XX_VERSION=1.2.1@sha256:8879a398dedf0aadaacfbd332b29ff2f84bc39ae6d4e9c0a1109db27ac5ba012
 ARG REPRO_SOURCES_LIST_VERSION=v0.1.0
