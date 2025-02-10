@@ -2,18 +2,19 @@ name: Main
 on: [push, pull_request]
 jobs:
   test-main:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         libslirp_commit: [master, v4.9.0, v4.8.0, v4.1.0]
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - run: docker build -t slirp4netns-tests --build-arg LIBSLIRP_COMMIT -f Dockerfile.tests .
       env:
         LIBSLIRP_COMMIT: ${{ matrix.libslirp_commit }}
+    - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
     - run: docker run --rm --privileged slirp4netns-tests
   test-build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - run: DOCKER_BUILDKIT=1 docker build -f Dockerfile.buildtests .
