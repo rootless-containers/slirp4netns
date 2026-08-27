@@ -5,7 +5,7 @@
 #   --platform=amd64,arm64,arm,s390x,ppc64le,riscv64 \
 #   -f Dockerfile.artifact .
 
-ARG LIBSLIRP_COMMIT=v4.9.2
+ARG LIBSLIRP_COMMIT=v4.9.4
 # TODO: update from jammy (22.04) to noble (24.04)
 ARG UBUNTU_VERSION=jammy-20260509
 ARG XX_VERSION=1.6.1@sha256:923441d7c25f1e2eb5789f82d987693c47b8ed987c4ab3b075d6ed2b5d6779a3
